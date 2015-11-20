@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cstdlib>
 
-class Model {
+class Model { 
 
   public:
     int nUsers;
@@ -26,7 +26,6 @@ class Model {
 
 //define constructor
 Model::Model(const Params& params) {
-  int i;
 
   nUsers    = params.nUsers;
   nItems    = params.nItems;
@@ -38,15 +37,21 @@ Model::Model(const Params& params) {
   maxIter   = params.maxIter;
 
   //init user latent factors
-  uFac.resize(nUsers);
-  for (i = 0; i < nUsers; i++) {
-    uFac[i].resize(facDim, 0);
+  uFac.reserve(nUsers);
+  for (auto uf: uFac) {
+    uf.reserve(facDim);
+    for (double& v: uf) {
+      *v = (double)rand() / (double) (1.0 + RAND_MAX);
+    }
   }
 
   //init item latent factors
-  iFac.resize(nItems);
-  for (i = 0; i < nItems; i++) {
-    iFac[i].resize(facDim, 0);
+  iFac.reserve(nItems);
+  for (auto itemf: iFac) {
+    itemf.reserve(facDim);
+    for (double& v: itemf) {
+      *v = (double)rand() / (double) (1.0 + RAND_MAX);
+    }
   }
 
 }
