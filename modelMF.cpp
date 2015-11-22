@@ -1,33 +1,69 @@
+#include "modelMF.h"
 
 
-class ModelMF : public Model {
-
-  public:
-
-    ModelMF(const Params& params) : Model(params) {}
-    
+void ModelMF::updateFac(std::vector<double> &fac, std::vector<double> &grad,
+    std::vector<double> &gradAcc) {
+  for (int i = 0; i < facDim; i++) {
+    gradAcc[i] = gradAcc[i]*rhoRMS + (1.0-rhoRMS)*grad[i]*grad[i];
+    fac[i] = (learnRate/sqrt(gradAcc[i]+0.0000001)) * grad[i];
+  }
 }
 
 
-ModelMF::void train(const Data &data) {
+void ModelMF::computeUGrad(int user, int item, float r_ui, 
+        std::vector<double> &uGrad) {
+  //estimate rating on the item
+  double r_ui_est = std::inner_product(uFac[user].begin(), uFac[user].end(), 
+                                        iFac[item].begin(), 0);
+  double diff = r_ui - r_ui_est;
+
+  //initialize gradients to 0
+  std::fill(uGrad.begin(), uGrad.end(), 0);
+  for (int i = 0; i < facDim; i++) {
+    uGrad[i] = -2.0*diff*iFac[item][i] + 2.0*uReg*uFac[user][i];
+  }
+
+}
+ 
+
+void ModelMF::computeIGrad(int user, int item, float r_ui, 
+        std::vector<double> &iGrad) {
+  //estimate rating on the item
+  double r_ui_est = std::inner_product(uFac[user].begin(), uFac[user].end(), 
+                                        iFac[item].begin(), 0);
+  double diff = r_ui - r_ui_est;
+
+  //initialize gradients to 0
+  std::fill(iGrad.begin(), iGrad.end(), 0);
+  for (int i = 0; i < facDim; i++) {
+    iGrad[i] = -2.0*diff*uFac[user][i] + 2.0*iReg*iFac[item][i];
+  }
+
+}
+
+
+void ModelMF::train(const Data &data, ModelMF &bestModel) {
   
-  int u, iter, subIter;
+  int u, iter, subIter, bestIter;
   int item, nUserItems, itemInd;
   float itemRat;
+  double bestObj, prevObj;
   int nnz = 0;
+
 
   gk_csr_t *trainMat = data.trainMat;
 
   //array to hold user and item gradients
-  std::array<double, facDim> uGrad{};
-  std::array<double, facDim> iGrad{};
+  std::vector<double> uGrad (facDim, 0);
+  std::vector<double> iGrad (facDim, 0);
  
-  //TODO: verify whether below are zero init
-  //array to hold user gradient accumulation
-  std::array<std::array<double, facDim> , nUsers> uGradsAcc{}; 
-  
-  //array to hold item gradient accumulation
-  std::array<std::array<double, facDim> , nItems> iGradsAcc{}; 
+  //vector to hold user gradient accumulation
+  std::vector<std::vector<double>> uGradsAcc (nUsers, 
+      std::vector<double>(facDim,0)); 
+
+  //vector to hold item gradient accumulation
+  std::vector<std::vector<double>> iGradsAcc (nUsers, 
+      std::vector<double>(facDim,0)); 
 
   //find nnz in train matrix
   for (u = 0; u < trainMat->nrows; u++) {
@@ -49,13 +85,31 @@ ModelMF::void train(const Data &data) {
       itemRat = trainMat->rowval[trainMat->rowptr[u] + itemInd]; 
       
       //compute user gradient
+      computeUGrad(u, item, itemRat, uGrad);
+
       //update user
+      updateFac(uFac[u], uGrad, uGradsAcc[u]); 
+
       //compute item gradient
+      computeIGrad(u, item, itemRat, iGrad);
+
       //update item
+      updateFac(iFac[item], iGrad, iGradsAcc[item]);
+
     }
+
     //check objective
-    //
+    //TODO: OBJ_ITER
+    if (iter % OBJ_ITER == 0) {
+      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj)) {
+        break; 
+      }
+    }
+  
   }
+
+  std::cout << "\nNum Iter: " << iter << " Best Iter: " << bestIter
+    << " Best obj: " << std::scientific << bestObj;
 
 
 }
