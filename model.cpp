@@ -12,7 +12,7 @@ double Model::RMSE(gk_csr_t *mat) {
       i = mat->rowind[ii];
       r_ui = mat->rowval[ii];
       r_ui_est = std::inner_product(uFac[u].begin(), uFac[u].end(), 
-          iFac[i].begin(), 0);
+          iFac[i].begin(), 0.0);
       diff = r_ui - r_ui_est;
       rmse += diff*diff;
       nnz++;
@@ -43,7 +43,6 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
       ret = true;
     }
     
-    //TODO:define EPS
     if (fabs(prevObj - currObj) < EPS) {
       //convergence
       printf("\nConverged in iteration: %d prevObj: %.10e currObj: %.10e", iter,
@@ -76,21 +75,23 @@ double Model::objective(const Data& data) {
       item = trainMat->rowind[ii];
       itemRat = trainMat->rowval[ii];
       diff = itemRat - std::inner_product(uFac[u].begin(), uFac[u].end(),
-                                          iFac[item].begin(), 0);
+                                          iFac[item].begin(), 0.0);
       rmse += diff*diff;
     }
     uRegErr += std::inner_product(uFac[u].begin(), uFac[u].end(), 
-                                  uFac[u].begin(), 0);
+                                  uFac[u].begin(), 0.0);
   }
   uRegErr = uRegErr*uReg;
   
   for (item = 0; item < nItems; item++) {
     iRegErr += std::inner_product(iFac[item].begin(), iFac[item].end(),
-                                  iFac[item].begin(), 0);
+                                  iFac[item].begin(), 0.0);
   }
   iRegErr = iRegErr*iReg;
 
   obj = rmse + uRegErr + iRegErr;
+    
+  std::cout <<"\nrmse: " << std::scientific << rmse << " uReg: " << uRegErr << " iReg: " << iRegErr ; 
 
   return obj;
 }
@@ -112,9 +113,10 @@ Model::Model(const Params& params) {
   uFac.assign(nUsers, std::vector<double>(facDim, 0));
   for (auto& uf: uFac) {
     for (auto& v: uf) {
-      v = (double)rand() / (double) (1.0 + RAND_MAX);
+      v = (double)rand() / (double) (1.0 + RAND_MAX);    
     }
   }
+
 
   //init item latent factors
   iFac.assign(nItems, std::vector<double>(facDim, 0));
@@ -123,6 +125,8 @@ Model::Model(const Params& params) {
       v = (double)rand() / (double) (1.0 + RAND_MAX);
     }
   }
+  
+
 
 }
 

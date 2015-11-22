@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
   ModelMF trainModel(params);
 
   //create mf model instance to store the best model
-  ModelMF bestModel(trainModel);
+  Model bestModel(trainModel);
 
   //run training
   trainModel.train(data, bestModel);

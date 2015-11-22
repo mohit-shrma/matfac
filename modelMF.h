@@ -12,7 +12,7 @@ class ModelMF : public Model {
   public:
 
     ModelMF(const Params& params) : Model(params) {}
-    void train(const Data &data, ModelMF &bestModel);
+    void train(const Data& data, Model& bestModel) ;
     void computeUGrad(int user, int item, float r_ui, 
         std::vector<double> &uGrad);
     void computeIGrad(int user, int item, float r_ui, 

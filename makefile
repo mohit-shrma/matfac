@@ -1,7 +1,8 @@
-CXX=g++
+CXX=/usr/bin/g++
 RM=rm -f
-GKINCHOME=/home/grad02/mohit/George/GKlib/trunk
-GKLIBHOME=/home/grad02/mohit/George/GKlib/trunk/build/Linux-x86_64/
+
+GKINCHOME=/Users/mohitsharma/dev/gklib/trunk
+GKLIBHOME=/Users/mohitsharma/dev/gklib/trunk/build/Darwin-x86_64/
 
 #Standard Libraries
 STDLIBS=-lm
