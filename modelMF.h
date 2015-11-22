@@ -4,7 +4,6 @@
 #include <iostream>
 #include <vector>
 #include <cstdio>
-#include "const.h"
 #include "model.h"
 
 class ModelMF : public Model {
@@ -19,6 +18,7 @@ class ModelMF : public Model {
         std::vector<double> &iGrad);
     void updateFac(std::vector<double> &fac, std::vector<double> &grad,
         std::vector<double> &gradAcc);
+    void gradCheck(int u, int item, float r_ui);
 };
 
 

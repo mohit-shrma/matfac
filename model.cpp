@@ -91,7 +91,7 @@ double Model::objective(const Data& data) {
 
   obj = rmse + uRegErr + iRegErr;
     
-  std::cout <<"\nrmse: " << std::scientific << rmse << " uReg: " << uRegErr << " iReg: " << iRegErr ; 
+  //std::cout <<"\nrmse: " << std::scientific << rmse << " uReg: " << uRegErr << " iReg: " << iRegErr ; 
 
   return obj;
 }

@@ -5,7 +5,7 @@ void ModelMF::updateFac(std::vector<double> &fac, std::vector<double> &grad,
     std::vector<double> &gradAcc) {
   for (int i = 0; i < facDim; i++) {
     gradAcc[i] = gradAcc[i]*rhoRMS + (1.0-rhoRMS)*grad[i]*grad[i];
-    fac[i] = (learnRate/sqrt(gradAcc[i]+0.0000001)) * grad[i];
+    fac[i] -= (learnRate/sqrt(gradAcc[i]+0.0000001)) * grad[i];
   }
 }
 
@@ -37,6 +37,89 @@ void ModelMF::computeIGrad(int user, int item, float r_ui,
   std::fill(iGrad.begin(), iGrad.end(), 0);
   for (int i = 0; i < facDim; i++) {
     iGrad[i] = -2.0*diff*uFac[user][i] + 2.0*iReg*iFac[item][i];
+  }
+
+}
+
+
+void ModelMF::gradCheck(int u, int item, float r_ui) {
+  int i;
+  std::vector<double> grad (facDim, 0);
+  std::vector<double> tempFac (facDim, 0);
+  double lossRight, lossLeft, gradE;
+
+  double r_ui_est = std::inner_product(uFac[u].begin(), uFac[u].end(),
+                                        iFac[item].begin(), 0.0);
+  double diff = r_ui - r_ui_est;
+  
+  //gradient w.r.t. u
+  for (i = 0; i < facDim; i++) {
+    grad[i] = -2.0*diff*iFac[item][i]; 
+  }
+  
+  //perturb user with +E and compute loss
+  tempFac = uFac[u];
+  for(auto& v: tempFac) {
+    v = v + 0.0001; 
+  }
+  r_ui_est = std::inner_product(tempFac.begin(), tempFac.end(),
+                                  iFac[item].begin(), 0.0);
+  lossRight = (r_ui - r_ui_est)*(r_ui - r_ui_est);
+  
+  //perturb user with -E and compute loss
+  tempFac = uFac[u];
+  for(auto& v: tempFac) {
+    v = v - 0.0001; 
+  }
+  r_ui_est = std::inner_product(tempFac.begin(), tempFac.end(),
+                                  iFac[item].begin(), 0.0);
+  lossLeft = (r_ui - r_ui_est)*(r_ui - r_ui_est);
+
+  //compute gradient and E dotprod
+  gradE = 0;
+  for (auto v: grad) {
+    gradE += 2.0*v*0.0001;
+  }
+  
+  if (fabs(lossRight - lossLeft - gradE) > 0.0001) {
+    printf("\nu: %d lr: %f ll: %f diff: %f div: %f lDiff:%f gradE:%f",
+        u, lossRight, lossLeft, lossRight - lossLeft -gradE,
+        (lossRight-lossLeft)/gradE, lossRight-lossLeft, gradE); 
+  }
+  
+  //gradient w.r.t. item
+  for (i = 0; i < facDim; i++) {
+    grad[i] = -2.0*diff*uFac[u][i]; 
+  }
+  
+  //perturb item with +E and compute loss
+  tempFac = iFac[item];
+  for(auto& v: tempFac) {
+    v = v + 0.0001; 
+  }
+  r_ui_est = std::inner_product(tempFac.begin(), tempFac.end(),
+                                  uFac[u].begin(), 0.0);
+  lossRight = (r_ui - r_ui_est)*(r_ui - r_ui_est);
+  
+  //perturb user with -E and compute loss
+  tempFac = iFac[item];
+  for(auto& v: tempFac) {
+    v = v - 0.0001; 
+  }
+  r_ui_est = std::inner_product(tempFac.begin(), tempFac.end(),
+                                  uFac[u].begin(), 0.0);
+  lossLeft = (r_ui - r_ui_est)*(r_ui - r_ui_est);
+
+  //compute gradient and E dotprod
+  gradE = 0;
+  for (auto v: grad) {
+    gradE += 2.0*v*0.0001;
+  }
+  
+  if (fabs(lossRight - lossLeft - gradE) > 0.0001) {
+    printf("\nitem: %d lr: %f ll: %f diff: %f div: %f lDiff:%f gradE:%f",
+        item, lossRight, lossLeft, lossRight - lossLeft -gradE,
+        (lossRight-lossLeft)/gradE, lossRight-lossLeft, gradE); 
   }
 
 }
@@ -85,7 +168,10 @@ void ModelMF::train(const Data &data, Model &bestModel) {
       itemInd = rand()%nUserItems; 
       item = trainMat->rowind[trainMat->rowptr[u] + itemInd];
       itemRat = trainMat->rowval[trainMat->rowptr[u] + itemInd]; 
-      
+    
+      //std::cout << "\nGradCheck u: " << u << " item: " << item;
+      //gradCheck(u, item, itemRat);
+
       //compute user gradient
       computeUGrad(u, item, itemRat, uGrad);
 
