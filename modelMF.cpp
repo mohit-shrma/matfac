@@ -62,7 +62,7 @@ void ModelMF::train(const Data &data, ModelMF &bestModel) {
       std::vector<double>(facDim,0)); 
 
   //vector to hold item gradient accumulation
-  std::vector<std::vector<double>> iGradsAcc (nUsers, 
+  std::vector<std::vector<double>> iGradsAcc (nItems, 
       std::vector<double>(facDim,0)); 
 
   //find nnz in train matrix

@@ -14,7 +14,7 @@ CPPFLAGS=-g -Wall -std=c++11 -I$(GKINCHOME)
 LDFLAGS=-g
 LDLIBS=$(STDLIBS) $(EXT_LIBS_DIR) $(EXT_LIBS) 
 
-SRCS=datastruct.cpp model.cpp modelMF.cpp main.cpp
+SRCS=model.cpp modelMF.cpp main.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 
 all: mf
