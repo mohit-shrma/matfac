@@ -2,18 +2,18 @@
 #include <cstdlib>
 #include "datastruct.h"
 #include "modelMF.h"
-
+#include "modelMFWtReg.h"
 
 Params parse_cmd_line(int argc, char *argv[]) {
   
-  if (argc < 11) {
+  if (argc < 12) {
     std::cout << "\nNot enough arguments";
     exit(0);
   } 
   
   Params params(atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]),
-      atof(argv[5]), atof(argv[6]), atof(argv[7]), atof(argv[8]),
-      argv[9], argv[10]);
+      atof(argv[5]), atof(argv[6]), atof(argv[7]), atof(argv[8]), atof(argv[9]),
+      argv[10], argv[11]);
 
   return params;
 }
@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
 
 
   //create mf model instance
-  ModelMF trainModel(params);
+  ModelMFWtReg trainModel(params);
 
   //create mf model instance to store the best model
   Model bestModel(trainModel);

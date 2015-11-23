@@ -12,9 +12,9 @@ class ModelMF : public Model {
 
     ModelMF(const Params& params) : Model(params) {}
     void train(const Data& data, Model& bestModel) ;
-    void computeUGrad(int user, int item, float r_ui, 
+    virtual void computeUGrad(int user, int item, float r_ui, 
         std::vector<double> &uGrad);
-    void computeIGrad(int user, int item, float r_ui, 
+    virtual void computeIGrad(int user, int item, float r_ui, 
         std::vector<double> &iGrad);
     void updateFac(std::vector<double> &fac, std::vector<double> &grad,
         std::vector<double> &gradAcc);

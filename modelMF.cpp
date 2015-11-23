@@ -131,8 +131,7 @@ void ModelMF::train(const Data &data, Model &bestModel) {
   int item, nUserItems, itemInd;
   float itemRat;
   double bestObj, prevObj;
-  int nnz = 0;
-
+  int nnz = data.trainNNZ;
 
   gk_csr_t *trainMat = data.trainMat;
 
@@ -148,11 +147,6 @@ void ModelMF::train(const Data &data, Model &bestModel) {
   std::vector<std::vector<double>> iGradsAcc (nItems, 
       std::vector<double>(facDim,0)); 
 
-  //find nnz in train matrix
-  for (u = 0; u < trainMat->nrows; u++) {
-    nnz += trainMat->rowptr[u+1] - trainMat->rowptr[u];
-  }
-  
   std::cout << "\nNNZ = " << nnz;
   prevObj = objective(data);
   std::cout << "\nInit obj: " << prevObj;
@@ -187,12 +181,11 @@ void ModelMF::train(const Data &data, Model &bestModel) {
     }
 
     //check objective
-    //TODO: OBJ_ITER
     if (iter % OBJ_ITER == 0) {
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj)) {
         break; 
       }
-      std::cout << "\nIter: " << iter << " Objective: " << std::scientific <<prevObj ;
+      std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj ;
     }
   
   }

@@ -31,7 +31,7 @@ class Model {
       std::cerr<< "\nTraining not in base class";
     };
 
-    double objective(const Data& data);
+    virtual double objective(const Data& data);
     bool isTerminateModel(Model& bestModel, const Data& data, int iter, 
         int& bestIter, double& bestObj, double& prevObj);
     double RMSE(gk_csr_t* mat);
