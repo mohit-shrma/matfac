@@ -185,7 +185,8 @@ void ModelMF::train(const Data &data, Model &bestModel) {
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj)) {
         break; 
       }
-      //std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj ;
+      //std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj 
+      //          << " Train RMSE: " << RMSE(data.trainMat);
     }
   
   }

@@ -48,6 +48,9 @@ void ModelMFWtReg::train(const Data& data, Model& bestModel) {
   //divide regularization by nnz
   uReg = uReg/data.trainNNZ;
   iReg = iReg/data.trainNNZ;
+  //std::cout<<"\nuReg: " << uReg;
+  //std::cout<<"\niReg: " << iReg;
+  
   ModelMF::train(data, bestModel);
 }
 
@@ -77,6 +80,7 @@ void ModelMFWtReg::computeMarginals(const Data &data) {
 
 void ModelMFWtReg::computeUGrad(int user, int item, float r_ui, 
         std::vector<double> &uGrad) {
+  
   //estimate rating on the item
   double r_ui_est = std::inner_product(begin(uFac[user]), end(uFac[user]), 
                                         begin(iFac[item]), 0.0);
@@ -88,7 +92,6 @@ void ModelMFWtReg::computeUGrad(int user, int item, float r_ui,
     uGrad[i] = -2.0*diff*iFac[item][i] + 
                 2.0*uReg*pow(uMarg[user], alpha-1)*uFac[user][i];
   }
-
 }
  
 
