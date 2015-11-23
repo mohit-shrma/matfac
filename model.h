@@ -35,5 +35,6 @@ class Model {
     bool isTerminateModel(Model& bestModel, const Data& data, int iter, 
         int& bestIter, double& bestObj, double& prevObj);
     double RMSE(gk_csr_t* mat);
+    double fullRMSE(const Data& data);
 };
 #endif

@@ -24,6 +24,46 @@ double Model::RMSE(gk_csr_t *mat) {
 }
 
 
+double Model::fullRMSE(const Data& data) {
+  int u, i, ii, nnz;
+  float r_ui;
+  double r_ui_est, diff, rmse;
+  gk_csr_t *mat = data.trainMat;
+
+  nnz = 0;
+  rmse = 0;
+  
+  for (u = 0; u < nUsers; u++) {
+    for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      i = mat->rowind[ii];
+      r_ui = mat->rowval[ii];
+      r_ui_est = std::inner_product(uFac[u].begin(), uFac[u].end(), 
+          iFac[i].begin(), 0.0);
+      diff = r_ui - r_ui_est;
+      rmse += diff*diff;
+      nnz++;
+    }
+  }
+
+  mat = data.testMat;
+  for (u = 0; u < nUsers; u++) {
+    for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      i = mat->rowind[ii];
+      r_ui = mat->rowval[ii];
+      r_ui_est = std::inner_product(uFac[u].begin(), uFac[u].end(), 
+          iFac[i].begin(), 0.0);
+      diff = r_ui - r_ui_est;
+      rmse += diff*diff;
+      nnz++;
+    }
+  }
+
+  rmse = sqrt(rmse/nnz);
+  
+  return rmse;
+}
+
+
 bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
     int& bestIter, double& bestObj, double& prevObj) {
   bool ret = false;

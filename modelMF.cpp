@@ -147,9 +147,9 @@ void ModelMF::train(const Data &data, Model &bestModel) {
   std::vector<std::vector<double>> iGradsAcc (nItems, 
       std::vector<double>(facDim,0)); 
 
-  std::cout << "\nNNZ = " << nnz;
+  //std::cout << "\nNNZ = " << nnz;
   prevObj = objective(data);
-  std::cout << "\nInit obj: " << prevObj;
+  //std::cout << "\nInit obj: " << prevObj;
 
   for (iter = 0; iter < maxIter; iter++) {  
     for (subIter = 0; subIter < nnz; subIter++) {
@@ -185,13 +185,13 @@ void ModelMF::train(const Data &data, Model &bestModel) {
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj)) {
         break; 
       }
-      std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj ;
+      //std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj ;
     }
   
   }
 
-  std::cout << "\nNum Iter: " << iter << " Best Iter: " << bestIter
-    << " Best obj: " << std::scientific << bestObj ;
+  //std::cout << "\nNum Iter: " << iter << " Best Iter: " << bestIter
+  //  << " Best obj: " << std::scientific << bestObj ;
 
 
 }

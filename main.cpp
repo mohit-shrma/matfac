@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstdlib>
+#include <future>
 #include "datastruct.h"
 #include "modelMF.h"
 #include "modelMFWtReg.h"
@@ -19,7 +20,7 @@ Params parse_cmd_line(int argc, char *argv[]) {
 }
 
 
-int main(int argc, char* argv[]) {
+int main(int argc , char* argv[]) {
 
   //get passed parameters
   Params params = parse_cmd_line(argc, argv);
@@ -28,18 +29,28 @@ int main(int argc, char* argv[]) {
 
 
   //create mf model instance
-  ModelMFWtReg trainModel(params);
+  ModelMFWtReg trainWtModel(params);
+  ModelMF trainModel(params);
+
 
   //create mf model instance to store the best model
-  Model bestModel(trainModel);
+  Model bestWtModel(trainWtModel);
+  Model bestModel(trainWtModel);
 
-  //run training
-  trainModel.train(data, bestModel);
+  //run training asynchronously
+  std::future<void> futModel(std::async(
+        [&trainModel, &data, &bestModel] (){
+          trainModel.train(data, bestModel);}));
+  std::future<void> futWtModel(std::async(
+        [&trainWtModel, &data, &bestWtModel] (){
+          trainWtModel.train(data, bestWtModel);}));
+  
+  //wait for these to finish can use .wait()
+  futModel.get();
+  futWtModel.get();
 
-  double trainErr = bestModel.RMSE(data.trainMat);
-  double testErr  = bestModel.RMSE(data.testMat);
-
-  std::cout << "\nTrain Err: " << trainErr << "\nTest Err: " << testErr;
+  std::cout<<"MF model full RMSE: " << bestModel.fullRMSE(data);
+  std::cout<<"MF wt model full RMSE: " << bestWtModel.fullRMSE(data);
 
   return 0;
 }
