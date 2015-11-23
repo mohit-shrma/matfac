@@ -1,15 +1,16 @@
-#ifndef _MODELMF_WT_REG_H_
-#define _MODELMF_WT_REG_H_
+#ifndef _MODELMF_WT_REG_ARB_H_
+#define _MODELMF_WT_REG_ARB_H_  
 
 /*
- * Collaborative filtering in a non-uniform world: learning with the weighted
- * trace norm
+ * Learning with weighted trace norm under arbitary sampling distribution
  */
 
-#include <vector>
-#include "modelMF.h"
 
-class ModelMFWtReg : public ModelMF {
+#include <vector>
+#include <algorithm>
+#include "modelMF.h" 
+
+class ModelMFWtRegArb: public ModelMF {
 
   public:
     float alpha;
@@ -26,11 +27,11 @@ class ModelMFWtReg : public ModelMF {
 
     void train(const Data& data, Model& bestModel);
   
-    ModelMFWtReg(const Params& params): ModelMF(params), alpha(params.alpha) {
+    ModelMFWtRegArb(const Params& params): ModelMF(params), alpha(params.alpha) {
       uMarg.assign(nUsers, 0);
       iMarg.assign(nItems, 0);
     }
 };
 
-
 #endif
+
