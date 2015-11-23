@@ -27,11 +27,11 @@ class Model {
     Model(const Params& params);
 
     //declare virtual method for train
-    void train(const Data& data, Model& bestModel) {
+    virtual void train(const Data& data, Model& bestModel) {
       std::cerr<< "\nTraining not in base class";
     };
 
-    double objective(const Data& data);
+    virtual double objective(const Data& data);
     bool isTerminateModel(Model& bestModel, const Data& data, int iter, 
         int& bestIter, double& bestObj, double& prevObj);
     double RMSE(gk_csr_t* mat);
