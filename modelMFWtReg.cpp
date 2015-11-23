@@ -57,6 +57,7 @@ void ModelMFWtReg::computeMarginals(const Data &data) {
   int u, ii, item, nnz;
   gk_csr_t *trainMat  = data.trainMat;
   
+  nnz = 0;
   for (u = 0; u < nUsers; u++) {
     for (ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
       item = trainMat->rowind[ii];
