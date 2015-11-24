@@ -149,7 +149,7 @@ void ModelMF::train(const Data &data, Model &bestModel) {
 
   //std::cout << "\nNNZ = " << nnz;
   prevObj = objective(data);
-  //std::cout << "\nInit obj: " << prevObj;
+  std::cout << "\nInit obj: " << prevObj;
 
   for (iter = 0; iter < maxIter; iter++) {  
     for (subIter = 0; subIter < nnz; subIter++) {
@@ -185,8 +185,8 @@ void ModelMF::train(const Data &data, Model &bestModel) {
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj)) {
         break; 
       }
-      //std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj 
-      //          << " Train RMSE: " << RMSE(data.trainMat);
+      std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj 
+                << " Train RMSE: " << RMSE(data.trainMat);
     }
   
   }

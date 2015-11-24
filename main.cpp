@@ -24,6 +24,21 @@ Params parse_cmd_line(int argc, char *argv[]) {
 }
 
 
+void knownLowRankEval(Data& data, Model& bestModel, Params& params) {
+
+  //compute metric async
+  std::future<double> trainRMSEFut(std::async(std::launch::async,
+        [&bestModel, &data](){return bestModel.RMSE(data.trainMat);}));
+  std::future<double> LowRankRMSEFut(std::async(std::launch::async,
+        [&bestModel, &data](){return bestModel.fullLowRankErr(data);}));
+
+  std::cout<<"\nRE: " << params.facDim << " " << params.uReg << " " 
+            << params.iReg << " " << params.rhoRMS << " " << params.alpha << " " 
+            << trainRMSEFut.get() << " " 
+            << LowRankRMSEFut.get() << std::endl;
+}
+
+
 int main(int argc , char* argv[]) {
 
   //get passed parameters
@@ -31,7 +46,6 @@ int main(int argc , char* argv[]) {
 
   Data data (params);
 
-  /*
   //create mf model instance
   ModelMFWtRegArb trainModel(params);
   //ModelMFWtReg trainModel(params);
@@ -41,15 +55,9 @@ int main(int argc , char* argv[]) {
   //create mf model instance to store the best model
   Model bestModel(trainModel);
 
-  //run training asynchronously
   trainModel.train(data, bestModel);
- 
-  std::cout<<"\nRE: " << params.facDim << " " << params.uReg << " " 
-            << params.iReg << " " << params.rhoRMS << " " << params.alpha << " " 
-            << bestModel.RMSE(data.trainMat)  << " "
-            << bestModel.RMSE(data.testMat)   << " "
-            << bestModel.fullRMSE(data) << std::endl;
-  */
+
+  knownLowRankEval(data, bestModel, params); 
 
   return 0;
 }
