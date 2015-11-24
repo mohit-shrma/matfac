@@ -61,16 +61,14 @@ class Data {
         if (NULL != params.origUFacFile) {
           origUFac.assign(nUsers, std::vector<double>(origFacDim, 0));
           readMat(origUFac, nUsers, origFacDim, params.origUFacFile);      
-          writeMat(origUFac, nUsers, origFacDim, "readUFac.txt");
+          //writeMat(origUFac, nUsers, origFacDim, "readUFac.txt");
         }
         
         if (NULL != params.origIFacFile) {
           origIFac.assign(nItems, std::vector<double>(origFacDim, 0));
           readMat(origIFac, nItems, origFacDim, params.origIFacFile);
-          writeMat(origIFac, nItems, origFacDim, "readIFac.txt");
+          //writeMat(origIFac, nItems, origFacDim, "readIFac.txt");
         }
-
-        //TODO: verify whether correct fators are read
         
       }
 

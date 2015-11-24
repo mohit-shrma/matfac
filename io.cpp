@@ -7,7 +7,8 @@ void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols,
   std::string line, token;
   std::string delimiter = " ";
   std::ifstream inFile (fileName);
-  int i, j, pos;
+  int i, j; 
+  size_t pos;
 
   if (inFile.is_open()) {
     i = 0;
