@@ -1,21 +1,21 @@
-CXX=/usr/bin/g++
+CXX=g++
 RM=rm -f
 
-GKINCHOME=/Users/mohitsharma/dev/gklib/trunk
-GKLIBHOME=/Users/mohitsharma/dev/gklib/trunk/build/Darwin-x86_64/
+GKINCHOME=/home/grad02/mohit/George/GKlib/trunk
+GKLIBHOME=/home/grad02/mohit/George/GKlib/trunk/build/Linux-x86_64/
 
 #Standard Libraries
-STDLIBS=-lm
+STDLIBS=-lm -lpthread
 
 #external libraries
 EXT_LIBS=-lGKlib 
 EXT_LIBS_DIR=-L$(GKLIBHOME) 
 
-CPPFLAGS=-g -Wall -std=c++11 -I$(GKINCHOME)
+CPPFLAGS=-g -o3 -Wall -std=c++11 -I$(GKINCHOME)
 LDFLAGS=-g
 LDLIBS=$(STDLIBS) $(EXT_LIBS_DIR) $(EXT_LIBS) 
 
-SRCS=model.cpp modelMF.cpp main.cpp
+SRCS=model.cpp modelMF.cpp modelMFWtRegArb.cpp modelMFWtReg.cpp io.cpp main.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 
 all: mf
