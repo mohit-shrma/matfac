@@ -142,9 +142,9 @@ double Model::fullLowRankErr(const Data& data) {
   rmse = 0;
   for (int u = 0; u < nUsers; u++) {
     for (int item = 0; item < nItems; item++) {
-      r_ui_orig = std::inner_product(uFac[u].begin(), uFac[u].end(),
+      r_ui_est = std::inner_product(uFac[u].begin(), uFac[u].end(),
                                       iFac[item].begin(), 0.0);
-      r_ui_est = std::inner_product(data.origUFac[u].begin(), 
+      r_ui_orig = std::inner_product(data.origUFac[u].begin(), 
                                     data.origUFac[u].end(),
                                     data.origIFac[item].begin(), 0.0);
       diff = r_ui_orig - r_ui_est;
@@ -152,6 +152,26 @@ double Model::fullLowRankErr(const Data& data) {
     }
   }
   rmse = sqrt(rmse/(nUsers*nItems));
+  return rmse;
+}
+
+
+double Model::subMatKnownRankErr(const Data& data, int uStart, int uEnd,
+    int iStart, int iEnd) {
+  double r_ui_est, r_ui_orig, diff, rmse;
+  rmse = 0;
+  for (int u = uStart; u <= uEnd; u++) {
+    for (int item = iStart; item <= iEnd; item++) {
+      r_ui_est = std::inner_product(uFac[u].begin(), uFac[u].end(),
+                                    iFac[item].begin(), 0.0);
+      r_ui_orig = std::inner_product(data.origUFac[u].begin(), 
+                                     data.origUFac[u].end(),
+                                     data.origIFac[item].begin(), 0.0);
+      diff = r_ui_orig - r_ui_est;
+      rmse += diff*diff;
+    }
+  }
+  rmse = sqrt(rmse/((uEnd-uStart+1)*(iEnd-iStart+1)));
   return rmse;
 }
 

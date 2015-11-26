@@ -36,6 +36,8 @@ class Model {
         int& bestIter, double& bestObj, double& prevObj);
     double RMSE(gk_csr_t* mat);
     double fullLowRankErr(const Data& data);
+    double subMatKnownRankErr(const Data& data, int uStart, int uEnd,
+      int iStart, int iEnd);
     double fullRMSE(const Data& data);
 };
 #endif
