@@ -1,7 +1,14 @@
 #include "modelMF.h"
 
 
-void ModelMF::updateFac(std::vector<double> &fac, std::vector<double> &grad,
+void ModelMF::updateFac(std::vector<double> &fac, std::vector<double> &grad) {
+  for (int i = 0; i < facDim; i++) {
+    fac[i] -= learnRate * grad[i];
+  }
+}
+
+
+void ModelMF::updateAdaptiveFac(std::vector<double> &fac, std::vector<double> &grad,
     std::vector<double> &gradAcc) {
   for (int i = 0; i < facDim; i++) {
     gradAcc[i] = gradAcc[i]*rhoRMS + (1.0-rhoRMS)*grad[i]*grad[i];
@@ -170,13 +177,15 @@ void ModelMF::train(const Data &data, Model &bestModel) {
       computeUGrad(u, item, itemRat, uGrad);
 
       //update user
-      updateFac(uFac[u], uGrad, uGradsAcc[u]); 
+      //updateAdaptiveFac(uFac[u], uGrad, uGradsAcc[u]); 
+      updateFac(uFac[u], uGrad); 
 
       //compute item gradient
       computeIGrad(u, item, itemRat, iGrad);
 
       //update item
-      updateFac(iFac[item], iGrad, iGradsAcc[item]);
+      //updateAdaptiveFac(iFac[item], iGrad, iGradsAcc[item]);
+      updateFac(iFac[item], iGrad);
 
     }
 
