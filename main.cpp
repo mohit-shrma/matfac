@@ -27,29 +27,7 @@ Params parse_cmd_line(int argc, char *argv[]) {
 
 void knownLowRankEval(Data& data, Model& bestModel, Params& params) {
 
-  //compute metric async
-  /*
-  std::future<double> trainRMSEFut(std::async(std::launch::async,
-        [&bestModel, &data](){return bestModel.RMSE(data.trainMat);}));
-  std::future<double> LowRankRMSEFut(std::async(std::launch::async,
-        [&bestModel, &data](){return bestModel.fullLowRankErr(data);}));
-  std::future<double> D00RMSEFut(std::async(std::launch::async,
-        [&bestModel, &data](){return bestModel.subMatKnownRankErr(
-          data, 0, 499, 0, 449);}));
-  std::future<double> D11RMSEFut(std::async(std::launch::async,
-        [&bestModel, &data](){return bestModel.subMatKnownRankErr(
-          data, 500, 1000, 450, 900);}));
-  std::future<double> S01RMSEFut(std::async(std::launch::async,
-        [&bestModel, &data](){return bestModel.subMatKnownRankErr(
-          data, 0, 499, 450, 900);}));
-  std::future<double> S10RMSEFut(std::async(std::launch::async,
-        [&bestModel, &data](){return bestModel.subMatKnownRankErr(
-          data, 500, 1000, 0, 449);}));
-  std::future<double> GluRMSEFut(std::async(std::launch::async,
-        [&bestModel, &data](){return bestModel.subMatKnownRankErr(
-          data, 0, 1000, 901, 1000);}));
-  */
-
+  //compute metrics
   double trainRMSE  = bestModel.RMSE(data.trainMat);
   double loRankRMSE = bestModel.fullLowRankErr(data);
   double D00RMSE    = bestModel.subMatKnownRankErr(data, 0, 499, 0, 449);
