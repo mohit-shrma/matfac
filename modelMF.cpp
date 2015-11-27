@@ -133,7 +133,9 @@ void ModelMF::gradCheck(int u, int item, float r_ui) {
 
 
 void ModelMF::train(const Data &data, Model &bestModel) {
-  
+
+  std::cout << "\nModelMF::train";
+
   int u, iter, subIter, bestIter;
   int item, nUserItems, itemInd;
   float itemRat;

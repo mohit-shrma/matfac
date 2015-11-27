@@ -43,6 +43,9 @@ double ModelMFWtReg::objective(const Data& data) {
 
 
 void ModelMFWtReg::train(const Data& data, Model& bestModel) {
+  
+  std::cout <<"\nModelMFWtReg::train";
+
   //compute no. of ratings in rows and cols
   computeMarginals(data);
   //divide regularization by nnz

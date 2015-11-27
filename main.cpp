@@ -3,6 +3,7 @@
 #include <future>
 #include <chrono>
 #include <thread>
+#include "util.h"
 #include "datastruct.h"
 #include "modelMF.h"
 #include "modelMFWtReg.h"
@@ -27,6 +28,7 @@ Params parse_cmd_line(int argc, char *argv[]) {
 void knownLowRankEval(Data& data, Model& bestModel, Params& params) {
 
   //compute metric async
+  /*
   std::future<double> trainRMSEFut(std::async(std::launch::async,
         [&bestModel, &data](){return bestModel.RMSE(data.trainMat);}));
   std::future<double> LowRankRMSEFut(std::async(std::launch::async,
@@ -46,14 +48,24 @@ void knownLowRankEval(Data& data, Model& bestModel, Params& params) {
   std::future<double> GluRMSEFut(std::async(std::launch::async,
         [&bestModel, &data](){return bestModel.subMatKnownRankErr(
           data, 0, 1000, 901, 1000);}));
-  
+  */
 
+  double trainRMSE  = bestModel.RMSE(data.trainMat);
+  double loRankRMSE = bestModel.fullLowRankErr(data);
+  double D00RMSE    = bestModel.subMatKnownRankErr(data, 0, 499, 0, 449);
+  double D11RMSE    = bestModel.subMatKnownRankErr(data, 500, 999, 450, 899);
+  double S01RMSE    = bestModel.subMatKnownRankErr(data, 0, 499, 450, 899);
+  double S10RMSE    = bestModel.subMatKnownRankErr(data, 500, 999, 0, 449);
+  double GluRMSE    = bestModel.subMatKnownRankErr(data, 0, 999, 900, 999);
 
-  std::cout<<"\nRE: " << params.facDim << " " << params.uReg << " " 
+  std::cout.precision(5);
+  std::cout<<"\nRE: " << std::fixed << params.facDim << " " << params.uReg << " " 
             << params.iReg << " " << params.rhoRMS << " " << params.alpha << " " 
-            << trainRMSEFut.get() << " " << LowRankRMSEFut.get() << " "
-            << D00RMSEFut.get() << " " << D11RMSEFut.get() << " " << " " 
-            << S01RMSEFut.get() << " " << S10RMSEFut.get() << std::endl;
+            << trainRMSE << " " << loRankRMSE << " "
+            << D00RMSE << " " << D11RMSE << " " << " " 
+            << S01RMSE << " " << S10RMSE << " " << GluRMSE << " " 
+            << meanRating(data.trainMat) << " " 
+            << data.meanKnownSubMatRat(0, 999, 0, 999) << std::endl;
 }
 
 
@@ -65,9 +77,9 @@ int main(int argc , char* argv[]) {
   Data data (params);
 
   //create mf model instance
-  ModelMFWtRegArb trainModel(params);
+  //ModelMFWtRegArb trainModel(params);
   //ModelMFWtReg trainModel(params);
-  //ModelMF trainModel(params);
+  ModelMF trainModel(params);
 
 
   //create mf model instance to store the best model

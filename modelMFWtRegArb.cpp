@@ -41,6 +41,9 @@ double ModelMFWtRegArb::objective(const Data& data) {
 
 
 void ModelMFWtRegArb::train(const Data& data, Model& bestModel) {
+  
+  std::cout<<"\nModelMFWtRegArb::train";
+  
   //compute empirical distribution of ratings in rows and cols
   computeMarginals(data);
   

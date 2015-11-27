@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <numeric>
 #include "GKlib.h"
 #include "io.h"
 
@@ -38,7 +39,8 @@ class Params {
 
 };
 
-class Data {
+
+ class Data {
 
   public:
     gk_csr_t *trainMat;
@@ -51,6 +53,22 @@ class Data {
     int trainNNZ;
     int nUsers;
     int nItems;
+
+    double meanKnownSubMatRat(int uStart, int uEnd, int iStart, int iEnd) {
+
+      int u, item;
+      double rmse = 0;
+
+      for (u = iStart; u <= uEnd; u++) {
+        for (item = iStart; item <= iEnd; item++) {
+          rmse += std::inner_product(origUFac[u].begin(), origUFac[u].end(),
+                                     origIFac[item].begin(), 0.0);
+        }
+      }
+      
+      rmse = sqrt(rmse/((uEnd-uStart+1)*(iEnd-iStart+1)));
+      return rmse;
+    }
 
     Data(const Params& params) {
       origFacDim = params.origFacDim;
@@ -98,6 +116,10 @@ class Data {
     }
 
 };
+
+
+
+
 
 
 #endif
