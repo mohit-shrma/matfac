@@ -164,11 +164,11 @@ void ModelMF::train(const Data &data, Model &bestModel) {
     for (subIter = 0; subIter < nnz; subIter++) {
       
       //sample u
-      u = rand() % nUsers;
+      u = std::rand() % nUsers;
       
       //sample item rated by user
       nUserItems =  trainMat->rowptr[u+1] - trainMat->rowptr[u];
-      itemInd = rand()%nUserItems; 
+      itemInd = std::rand()%nUserItems; 
       item = trainMat->rowind[trainMat->rowptr[u] + itemInd];
       itemRat = trainMat->rowval[trainMat->rowptr[u] + itemInd]; 
     

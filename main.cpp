@@ -11,15 +11,15 @@
 
 Params parse_cmd_line(int argc, char *argv[]) {
   
-  if (argc < 15) {
+  if (argc < 16) {
     std::cout << "\nNot enough arguments";
     exit(0);
-  } 
+  }  
   
   Params params(atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), 
-      atoi(argv[5]),
-      atof(argv[6]), atof(argv[7]), atof(argv[8]), atof(argv[9]), atof(argv[10]),
-      argv[11], argv[12], argv[13], argv[14]);
+      atoi(argv[5]), atoi(argv[6]),
+      atof(argv[7]), atof(argv[8]), atof(argv[9]), atof(argv[10]), atof(argv[11]),
+      argv[12], argv[13], argv[14], argv[15]);
 
   return params;
 }
@@ -51,6 +51,9 @@ int main(int argc , char* argv[]) {
 
   //get passed parameters
   Params params = parse_cmd_line(argc, argv);
+
+  //initialize
+  std::srand(params.seed);
 
   Data data (params);
 

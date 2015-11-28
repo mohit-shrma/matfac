@@ -192,7 +192,7 @@ Model::Model(const Params& params) {
   uFac.assign(nUsers, std::vector<double>(facDim, 0));
   for (auto& uf: uFac) {
     for (auto& v: uf) {
-      v = (double)rand() / (double) (1.0 + RAND_MAX);    
+      v = (double)std::rand() / (double) (1.0 + RAND_MAX);    
     }
   }
 
@@ -201,7 +201,7 @@ Model::Model(const Params& params) {
   iFac.assign(nItems, std::vector<double>(facDim, 0));
   for (auto& itemf: iFac) {
     for (auto& v: itemf) {
-      v = (double)rand() / (double) (1.0 + RAND_MAX);
+      v = (double)std::rand() / (double) (1.0 + RAND_MAX);
     }
   }
   
