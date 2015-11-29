@@ -1,6 +1,15 @@
 #include "util.h"
 
 
+double dotProd(double *a, double *b, int size) {
+  double prod = 0;
+  for (int i = 0; i < size; i++) {
+    prod += a[i]*b[i];
+  }
+  return prod;
+} 
+
+
 double meanRating(gk_csr_t* mat) {
   int u, ii, nnz;
   double avg = 0;

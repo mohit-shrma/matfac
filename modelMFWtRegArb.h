@@ -14,22 +14,27 @@ class ModelMFWtRegArb: public ModelMF {
 
   public:
     float alpha;
-    std::vector<double> uMarg;
-    std::vector<double> iMarg;
+    double *uMarg;
+    double *iMarg;
 
     void computeMarginals(const Data& data);
     
     void computeUGrad(int user, int item, float r_ui, 
-        std::vector<double> &uGrad);
+        double *uGrad);
     void computeIGrad(int user, int item, float r_ui, 
-        std::vector<double> &iGrad);
+        double *iGrad);
     double objective(const Data& data);
 
     void train(const Data& data, Model& bestModel);
   
     ModelMFWtRegArb(const Params& params): ModelMF(params), alpha(params.alpha) {
-      uMarg.assign(nUsers, 0);
-      iMarg.assign(nItems, 0);
+      uMarg = new double[nUsers];
+      iMarg = new double[nItems];
+    }
+
+    ~ModelMFWtRegArb() {
+      delete[] uMarg;
+      delete[] iMarg;
     }
 };
 

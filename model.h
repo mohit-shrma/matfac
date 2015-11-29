@@ -5,11 +5,16 @@
 #include <numeric>
 #include <cstdio>
 #include <vector>
+#include "util.h"
 #include "const.h"
 #include "GKlib.h"
 #include "datastruct.h"
 
 class Model { 
+    
+  private:
+    //disable copy constructor 
+    Model(const Model &obj);
 
   public:
     int nUsers;
@@ -20,11 +25,17 @@ class Model {
     int maxIter;
     float uReg;
     float iReg;
-    std::vector<std::vector<double>> uFac; 
-    std::vector<std::vector<double>> iFac;
+    double **uFac; 
+    double **iFac;
 
     //declare constructor
     Model(const Params& params);
+    ~Model();
+    
+
+    //assignment operator
+    Model& operator=(const Model &other); 
+
 
     //declare virtual method for train
     virtual void train(const Data& data, Model& bestModel) {

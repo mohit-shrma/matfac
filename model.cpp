@@ -11,8 +11,7 @@ double Model::RMSE(gk_csr_t *mat) {
     for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
       i = mat->rowind[ii];
       r_ui = mat->rowval[ii];
-      r_ui_est = std::inner_product(uFac[u].begin(), uFac[u].end(), 
-          iFac[i].begin(), 0.0);
+      r_ui_est = dotProd(uFac[u], iFac[i], facDim);
       diff = r_ui - r_ui_est;
       rmse += diff*diff;
       nnz++;
@@ -37,8 +36,7 @@ double Model::fullRMSE(const Data& data) {
     for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
       i = mat->rowind[ii];
       r_ui = mat->rowval[ii];
-      r_ui_est = std::inner_product(uFac[u].begin(), uFac[u].end(), 
-          iFac[i].begin(), 0.0);
+      r_ui_est = dotProd(uFac[u], iFac[i], facDim);
       diff = r_ui - r_ui_est;
       rmse += diff*diff;
       nnz++;
@@ -50,8 +48,7 @@ double Model::fullRMSE(const Data& data) {
     for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
       i = mat->rowind[ii];
       r_ui = mat->rowval[ii];
-      r_ui_est = std::inner_product(uFac[u].begin(), uFac[u].end(), 
-          iFac[i].begin(), 0.0);
+      r_ui_est = dotProd(uFac[u], iFac[i], facDim);
       diff = r_ui - r_ui_est;
       rmse += diff*diff;
       nnz++;
@@ -114,18 +111,15 @@ double Model::objective(const Data& data) {
     for (ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
       item = trainMat->rowind[ii];
       itemRat = trainMat->rowval[ii];
-      diff = itemRat - std::inner_product(uFac[u].begin(), uFac[u].end(),
-                                          iFac[item].begin(), 0.0);
+      diff = itemRat - dotProd(uFac[u], iFac[item], facDim);
       rmse += diff*diff;
     }
-    uRegErr += std::inner_product(uFac[u].begin(), uFac[u].end(), 
-                                  uFac[u].begin(), 0.0);
+    uRegErr += dotProd(uFac[u], uFac[u], facDim);
   }
   uRegErr = uRegErr*uReg;
   
   for (item = 0; item < nItems; item++) {
-    iRegErr += std::inner_product(iFac[item].begin(), iFac[item].end(),
-                                  iFac[item].begin(), 0.0);
+    iRegErr += dotProd(iFac[item], iFac[item], facDim);
   }
   iRegErr = iRegErr*iReg;
 
@@ -142,11 +136,8 @@ double Model::fullLowRankErr(const Data& data) {
   rmse = 0;
   for (int u = 0; u < nUsers; u++) {
     for (int item = 0; item < nItems; item++) {
-      r_ui_est = std::inner_product(uFac[u].begin(), uFac[u].end(),
-                                      iFac[item].begin(), 0.0);
-      r_ui_orig = std::inner_product(data.origUFac[u].begin(), 
-                                    data.origUFac[u].end(),
-                                    data.origIFac[item].begin(), 0.0);
+      r_ui_est =  dotProd(uFac[u], iFac[item], facDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
       diff = r_ui_orig - r_ui_est;
       rmse += diff*diff;
     }
@@ -162,11 +153,8 @@ double Model::subMatKnownRankErr(const Data& data, int uStart, int uEnd,
   rmse = 0;
   for (int u = uStart; u <= uEnd; u++) {
     for (int item = iStart; item <= iEnd; item++) {
-      r_ui_est = std::inner_product(uFac[u].begin(), uFac[u].end(),
-                                    iFac[item].begin(), 0.0);
-      r_ui_orig = std::inner_product(data.origUFac[u].begin(), 
-                                     data.origUFac[u].end(),
-                                     data.origIFac[item].begin(), 0.0);
+      r_ui_est =  dotProd(uFac[u], iFac[item], facDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
       diff = r_ui_orig - r_ui_est;
       rmse += diff*diff;
     }
@@ -189,24 +177,54 @@ Model::Model(const Params& params) {
   maxIter   = params.maxIter;
 
   //init user latent factors
-  uFac.assign(nUsers, std::vector<double>(facDim, 0));
-  for (auto& uf: uFac) {
-    for (auto& v: uf) {
-      v = (double)std::rand() / (double) (1.0 + RAND_MAX);    
-    }
-  }
-
-
-  //init item latent factors
-  iFac.assign(nItems, std::vector<double>(facDim, 0));
-  for (auto& itemf: iFac) {
-    for (auto& v: itemf) {
-      v = (double)std::rand() / (double) (1.0 + RAND_MAX);
+  uFac = new double*[nUsers];
+  for (int i = 0; i < nUsers; i++) {
+    uFac[i] = new double[facDim];
+    for (int j = 0; j < facDim; j++) {
+      uFac[i][j] = (double)std::rand() / (double) (1.0 + RAND_MAX);
     }
   }
   
-
+  //init item latent factors
+  iFac = new double*[nItems];
+  for (int i = 0; i < nItems; i++) {
+    iFac[i] = new double[facDim];
+    for (int j = 0; j < facDim; j++) {
+      iFac[i][j] = (double)std::rand() / (double) (1.0 + RAND_MAX);
+    }
+  }
 
 }
+
+
+//define destructor
+Model::~Model() {
+  for (int i = 0; i < nUsers; i++) {
+    delete[] uFac[i];
+  }
+  delete[] uFac;
+  for (int i = 0; i < nItems; i++) {
+    delete[] iFac[i];
+  }
+  delete[] iFac;
+}
+
+
+Model& Model::operator=(const Model &other) {
+  
+  for (int i = 0; i < nUsers; i++) {
+    for (int j = 0; j < facDim; j++) {
+      uFac[i][j] = other.uFac[i][j];
+    }
+  }
+
+  for (int i = 0; i < nItems; i++) {
+    for (int j = 0; j < facDim; j++) {
+      iFac[i][j] = other.iFac[i][j];
+    }
+  }
+  return *this;
+}
+
 
 

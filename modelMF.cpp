@@ -1,15 +1,15 @@
 #include "modelMF.h"
 
 
-void ModelMF::updateFac(std::vector<double> &fac, std::vector<double> &grad) {
+void ModelMF::updateFac(double *fac, double *grad) {
   for (int i = 0; i < facDim; i++) {
     fac[i] -= learnRate * grad[i];
   }
 }
 
 
-void ModelMF::updateAdaptiveFac(std::vector<double> &fac, std::vector<double> &grad,
-    std::vector<double> &gradAcc) {
+void ModelMF::updateAdaptiveFac(double *fac, double *grad,
+    double *gradAcc) {
   for (int i = 0; i < facDim; i++) {
     gradAcc[i] = gradAcc[i]*rhoRMS + (1.0-rhoRMS)*grad[i]*grad[i];
     fac[i] -= (learnRate/sqrt(gradAcc[i]+0.0000001)) * grad[i];
@@ -18,14 +18,12 @@ void ModelMF::updateAdaptiveFac(std::vector<double> &fac, std::vector<double> &g
 
 
 void ModelMF::computeUGrad(int user, int item, float r_ui, 
-        std::vector<double> &uGrad) {
+        double *uGrad) {
   //estimate rating on the item
-  double r_ui_est = std::inner_product(begin(uFac[user]), end(uFac[user]), 
-                                        begin(iFac[item]), 0.0);
+  double r_ui_est = dotProd(uFac[user], iFac[item], facDim);
   double diff = r_ui - r_ui_est;
 
   //initialize gradients to 0
-  std::fill(uGrad.begin(), uGrad.end(), 0);
   for (int i = 0; i < facDim; i++) {
     uGrad[i] = -2.0*diff*iFac[item][i] + 2.0*uReg*uFac[user][i];
   }
@@ -34,14 +32,12 @@ void ModelMF::computeUGrad(int user, int item, float r_ui,
  
 
 void ModelMF::computeIGrad(int user, int item, float r_ui, 
-        std::vector<double> &iGrad) {
+        double *iGrad) {
   //estimate rating on the item
-  double r_ui_est = std::inner_product(uFac[user].begin(), uFac[user].end(), 
-                                        iFac[item].begin(), 0.0);
+  double r_ui_est = dotProd(uFac[user], iFac[item], facDim);
   double diff = r_ui - r_ui_est;
 
   //initialize gradients to 0
-  std::fill(iGrad.begin(), iGrad.end(), 0);
   for (int i = 0; i < facDim; i++) {
     iGrad[i] = -2.0*diff*uFac[user][i] + 2.0*iReg*iFac[item][i];
   }
@@ -50,6 +46,7 @@ void ModelMF::computeIGrad(int user, int item, float r_ui,
 
 
 void ModelMF::gradCheck(int u, int item, float r_ui) {
+  /*
   int i;
   std::vector<double> grad (facDim, 0);
   std::vector<double> tempFac (facDim, 0);
@@ -128,7 +125,7 @@ void ModelMF::gradCheck(int u, int item, float r_ui) {
         item, lossRight, lossLeft, lossRight - lossLeft -gradE,
         (lossRight-lossLeft)/gradE, lossRight-lossLeft, gradE); 
   }
-
+  */
 }
 
 
@@ -145,16 +142,20 @@ void ModelMF::train(const Data &data, Model &bestModel) {
   gk_csr_t *trainMat = data.trainMat;
 
   //array to hold user and item gradients
-  std::vector<double> uGrad (facDim, 0);
-  std::vector<double> iGrad (facDim, 0);
+  double *uGrad = new double[facDim];
+  double *iGrad = new double[facDim];
  
-  //vector to hold user gradient accumulation
-  std::vector<std::vector<double>> uGradsAcc (nUsers, 
-      std::vector<double>(facDim,0)); 
+  //hold user gradient accumulation
+  double **uGradsAcc = new double*[nUsers];
+  for (u = 0; u < nUsers; u++) {
+    uGradsAcc[u] = new double[facDim];
+  }
 
-  //vector to hold item gradient accumulation
-  std::vector<std::vector<double>> iGradsAcc (nItems, 
-      std::vector<double>(facDim,0)); 
+  //item gradient accumulation
+  double **iGradsAcc = new double*[nItems];
+  for (item = 0; item < nItems; item++) {
+    iGradsAcc[item] = new double[facDim];
+  }
 
   //std::cout << "\nNNZ = " << nnz;
   prevObj = objective(data);
@@ -204,8 +205,17 @@ void ModelMF::train(const Data &data, Model &bestModel) {
 
   //std::cout << "\nNum Iter: " << iter << " Best Iter: " << bestIter
   //  << " Best obj: " << std::scientific << bestObj ;
-
-
+  
+  delete[] uGrad;
+  delete[] iGrad;
+  for (u = 0; u < nUsers; u++) {
+    delete[] uGradsAcc[u];
+  }
+  delete[] uGradsAcc;
+  for (item = 0; item < nItems; item++) {
+    delete[] iGradsAcc[item];
+  }
+  delete[] iGradsAcc;
 }
 
 

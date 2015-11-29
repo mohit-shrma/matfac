@@ -45,13 +45,17 @@ class Params {
 
  class Data {
 
+  private:
+    Data(Data const &);
+    Data &operator=(Data const &);
+
   public:
     gk_csr_t *trainMat;
     gk_csr_t *testMat;
-    
-    std::vector<std::vector<double>> origUFac;
-    std::vector<std::vector<double>> origIFac;
-    
+   
+    double **origUFac;
+    double **origIFac;
+
     int origFacDim;
     int trainNNZ;
     int nUsers;
@@ -64,8 +68,7 @@ class Params {
 
       for (u = iStart; u <= uEnd; u++) {
         for (item = iStart; item <= iEnd; item++) {
-          rmse += std::inner_product(origUFac[u].begin(), origUFac[u].end(),
-                                     origIFac[item].begin(), 0.0);
+          rmse += dotProd(origUFac[u], origIFac[item], origFacDim);        
         }
       }
       
@@ -77,16 +80,25 @@ class Params {
       origFacDim = params.origFacDim;
       nUsers = params.nUsers;
       nItems = params.nItems;
+      origUFac = NULL;
+      origIFac = NULL;
 
       if (origFacDim > 0) {
+
         if (NULL != params.origUFacFile) {
-          origUFac.assign(nUsers, std::vector<double>(origFacDim, 0));
+          origUFac = new double*[nUsers];
+          for (int i = 0; i < nUsers; i++) {
+            origUFac[i] = new double[origFacDim];
+          }
+          //TODO:
           readMat(origUFac, nUsers, origFacDim, params.origUFacFile);      
-          //writeMat(origUFac, nUsers, origFacDim, "readUFac.txt");
         }
         
         if (NULL != params.origIFacFile) {
-          origIFac.assign(nItems, std::vector<double>(origFacDim, 0));
+          origIFac = new double*[nItems];
+          for (int i = 0; i < nItems; i++) {
+            origIFac[i] = new double[origFacDim];
+          }
           readMat(origIFac, nItems, origFacDim, params.origIFacFile);
           //writeMat(origIFac, nItems, origFacDim, "readIFac.txt");
         }
@@ -114,13 +126,27 @@ class Params {
     }
 
     ~Data() {
+    
+      //free resources
+      if (origUFac) {
+        for (int i = 0; i < nUsers; i++) {
+          delete[] origUFac[i];
+        }
+        delete[] origUFac;
+      }
+
+      if (origIFac) {
+        for (int i = 0; i < nItems; i++) {
+          delete[] origIFac[i];
+        }
+        delete[] origIFac;
+      }
+
       gk_csr_Free(&trainMat);
       gk_csr_Free(&testMat);
     }
 
 };
-
-
 
 
 
