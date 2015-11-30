@@ -20,28 +20,24 @@ void ModelMF::updateAdaptiveFac(std::vector<double> &fac, std::vector<double> &g
 void ModelMF::computeUGrad(int user, int item, float r_ui, 
         std::vector<double> &uGrad) {
   //estimate rating on the item
-  double r_ui_est = std::inner_product(begin(uFac[user]), end(uFac[user]), 
-                                        begin(iFac[item]), 0.0);
+  double r_ui_est = dotProd(uFac[user], iFac[item], facDim);
   double diff = r_ui - r_ui_est;
 
   //initialize gradients to 0
-  std::fill(uGrad.begin(), uGrad.end(), 0);
   for (int i = 0; i < facDim; i++) {
     uGrad[i] = -2.0*diff*iFac[item][i] + 2.0*uReg*uFac[user][i];
   }
 
 }
- 
+
 
 void ModelMF::computeIGrad(int user, int item, float r_ui, 
         std::vector<double> &iGrad) {
   //estimate rating on the item
-  double r_ui_est = std::inner_product(uFac[user].begin(), uFac[user].end(), 
-                                        iFac[item].begin(), 0.0);
+  double r_ui_est = dotProd(uFac[user], iFac[item], facDim);
   double diff = r_ui - r_ui_est;
 
   //initialize gradients to 0
-  std::fill(iGrad.begin(), iGrad.end(), 0);
   for (int i = 0; i < facDim; i++) {
     iGrad[i] = -2.0*diff*uFac[user][i] + 2.0*iReg*iFac[item][i];
   }
@@ -55,8 +51,7 @@ void ModelMF::gradCheck(int u, int item, float r_ui) {
   std::vector<double> tempFac (facDim, 0);
   double lossRight, lossLeft, gradE;
 
-  double r_ui_est = std::inner_product(uFac[u].begin(), uFac[u].end(),
-                                        iFac[item].begin(), 0.0);
+  double r_ui_est = dotProd(uFac[u], iFac[item], facDim);
   double diff = r_ui - r_ui_est;
   
   //gradient w.r.t. u
@@ -69,8 +64,7 @@ void ModelMF::gradCheck(int u, int item, float r_ui) {
   for(auto& v: tempFac) {
     v = v + 0.0001; 
   }
-  r_ui_est = std::inner_product(tempFac.begin(), tempFac.end(),
-                                  iFac[item].begin(), 0.0);
+  r_ui_est = dotProd(tempFac, iFac[item], facDim);
   lossRight = (r_ui - r_ui_est)*(r_ui - r_ui_est);
   
   //perturb user with -E and compute loss
@@ -78,8 +72,7 @@ void ModelMF::gradCheck(int u, int item, float r_ui) {
   for(auto& v: tempFac) {
     v = v - 0.0001; 
   }
-  r_ui_est = std::inner_product(tempFac.begin(), tempFac.end(),
-                                  iFac[item].begin(), 0.0);
+  r_ui_est = dotProd(tempFac, iFac[item], facDim);
   lossLeft = (r_ui - r_ui_est)*(r_ui - r_ui_est);
 
   //compute gradient and E dotprod
@@ -104,8 +97,7 @@ void ModelMF::gradCheck(int u, int item, float r_ui) {
   for(auto& v: tempFac) {
     v = v + 0.0001; 
   }
-  r_ui_est = std::inner_product(tempFac.begin(), tempFac.end(),
-                                  uFac[u].begin(), 0.0);
+  r_ui_est = dotProd(tempFac, uFac[u], facDim);
   lossRight = (r_ui - r_ui_est)*(r_ui - r_ui_est);
   
   //perturb user with -E and compute loss
@@ -113,8 +105,7 @@ void ModelMF::gradCheck(int u, int item, float r_ui) {
   for(auto& v: tempFac) {
     v = v - 0.0001; 
   }
-  r_ui_est = std::inner_product(tempFac.begin(), tempFac.end(),
-                                  uFac[u].begin(), 0.0);
+  r_ui_est = dotProd(tempFac, uFac[u], facDim);
   lossLeft = (r_ui - r_ui_est)*(r_ui - r_ui_est);
 
   //compute gradient and E dotprod
@@ -135,6 +126,12 @@ void ModelMF::gradCheck(int u, int item, float r_ui) {
 void ModelMF::train(const Data &data, Model &bestModel) {
 
   std::cout << "\nModelMF::train";
+
+  //copy passed origUFac to uFac
+  //uFac = data.origUFac; 
+  
+  //copy passed origIFac to iFac
+  //iFac = data.origIFac;
 
   int u, iter, subIter, bestIter;
   int item, nUserItems, itemInd;
@@ -160,6 +157,9 @@ void ModelMF::train(const Data &data, Model &bestModel) {
   prevObj = objective(data);
   std::cout << "\nInit obj: " << prevObj;
 
+  std::chrono::time_point<std::chrono::system_clock> start, end;
+  start = std::chrono::system_clock::now();
+
   for (iter = 0; iter < maxIter; iter++) {  
     for (subIter = 0; subIter < nnz; subIter++) {
       
@@ -179,15 +179,15 @@ void ModelMF::train(const Data &data, Model &bestModel) {
       computeUGrad(u, item, itemRat, uGrad);
 
       //update user
-      //updateAdaptiveFac(uFac[u], uGrad, uGradsAcc[u]); 
-      updateFac(uFac[u], uGrad); 
+      updateAdaptiveFac(uFac[u], uGrad, uGradsAcc[u]); 
+      //updateFac(uFac[u], uGrad); 
 
       //compute item gradient
       computeIGrad(u, item, itemRat, iGrad);
 
       //update item
-      //updateAdaptiveFac(iFac[item], iGrad, iGradsAcc[item]);
-      updateFac(iFac[item], iGrad);
+      updateAdaptiveFac(iFac[item], iGrad, iGradsAcc[item]);
+      //updateFac(iFac[item], iGrad);
 
     }
 
@@ -201,7 +201,12 @@ void ModelMF::train(const Data &data, Model &bestModel) {
     }
   
   }
+  
+  end = std::chrono::system_clock::now();  
 
+  std::chrono::duration<double> duration =  (end - start) ;
+
+  std::cout << "\nduration: " << duration.count();
   //std::cout << "\nNum Iter: " << iter << " Best Iter: " << bestIter
   //  << " Best obj: " << std::scientific << bestObj ;
 
