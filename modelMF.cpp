@@ -133,6 +133,8 @@ void ModelMF::train(const Data &data, Model &bestModel) {
   //copy passed origIFac to iFac
   //iFac = data.origIFac;
 
+  svdFrmCSR(data.trainMat, facDim, uFac, iFac);
+
   int u, iter, subIter, bestIter;
   int item, nUserItems, itemInd;
   float itemRat;
