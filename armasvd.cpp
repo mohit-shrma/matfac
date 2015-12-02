@@ -4,11 +4,11 @@ void svdFrmCSR(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& uFac,
                 std::vector<std::vector<double>>& iFac) {
  
   int u, item;
-  int nnz = 1;
+  int nnz = 0;
   //int nrows = mat->nrows;
   //int ncols = mat->ncols;
   for (int u = 0; u < mat->nrows; u++) {
-    nnz += mat->rowptr[u+1] - mat->rowptr[u] + 1;
+    nnz += mat->rowptr[u+1] - mat->rowptr[u];
   }
 
   std::cout << "\nNNZ = " << nnz;
