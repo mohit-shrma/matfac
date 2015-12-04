@@ -126,15 +126,11 @@ void ModelMF::gradCheck(int u, int item, float r_ui) {
 void ModelMF::train(const Data &data, Model &bestModel) {
 
   std::cout << "\nModelMF::train";
-
-  //copy passed origUFac to uFac
-  //uFac = data.origUFac; 
-  
-  //copy passed origIFac to iFac
-  //iFac = data.origIFac;
+  std::cout << "\nObj b4 svd: " << objective(data) << " Train RMSE: " << RMSE(data.trainMat);
 
   std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
   startSVD = std::chrono::system_clock::now();
+  //initialization with svd of the passed matrix
   spectraSvdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
   endSVD = std::chrono::system_clock::now();
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
@@ -162,7 +158,7 @@ void ModelMF::train(const Data &data, Model &bestModel) {
 
   //std::cout << "\nNNZ = " << nnz;
   prevObj = objective(data);
-  std::cout << "\nInit obj: " << prevObj;
+  std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " << RMSE(data.trainMat);
 
   std::chrono::time_point<std::chrono::system_clock> start, end;
   start = std::chrono::system_clock::now();
