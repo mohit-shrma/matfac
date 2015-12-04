@@ -6,4 +6,8 @@
 
 void svdFrmCSR(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& uFac,
                 std::vector<std::vector<double>>& iFac);
+
+void svdFrmCSRColAvg(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& uFac,
+                std::vector<std::vector<double>>& iFac);
+
 #endif

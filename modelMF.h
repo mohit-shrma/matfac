@@ -5,8 +5,7 @@
 #include <vector>
 #include <cstdio>
 #include "model.h"
-#include "armasvd.h"
-
+#include "spectrasvd.h"
 
 class ModelMF : public Model {
 

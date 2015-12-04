@@ -31,9 +31,6 @@ void computeTopEig(Eigen::MatrixXd M, int nev, int ncv,
 }
 
 
-
-
-
 void spectraSvdFrmCSR(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& uFac,
                 std::vector<std::vector<double>>& iFac) {
   int item;

@@ -133,7 +133,12 @@ void ModelMF::train(const Data &data, Model &bestModel) {
   //copy passed origIFac to iFac
   //iFac = data.origIFac;
 
-  svdFrmCSR(data.trainMat, facDim, uFac, iFac);
+  std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
+  startSVD = std::chrono::system_clock::now();
+  spectraSvdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
+  endSVD = std::chrono::system_clock::now();
+  std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
+  std::cout << "\nsvd duration: " << durationSVD.count();
 
   int u, iter, subIter, bestIter;
   int item, nUserItems, itemInd;
@@ -181,15 +186,15 @@ void ModelMF::train(const Data &data, Model &bestModel) {
       computeUGrad(u, item, itemRat, uGrad);
 
       //update user
-      updateAdaptiveFac(uFac[u], uGrad, uGradsAcc[u]); 
-      //updateFac(uFac[u], uGrad); 
+      //updateAdaptiveFac(uFac[u], uGrad, uGradsAcc[u]); 
+      updateFac(uFac[u], uGrad); 
 
       //compute item gradient
       computeIGrad(u, item, itemRat, iGrad);
 
       //update item
-      updateAdaptiveFac(iFac[item], iGrad, iGradsAcc[item]);
-      //updateFac(iFac[item], iGrad);
+      //updateAdaptiveFac(iFac[item], iGrad, iGradsAcc[item]);
+      updateFac(iFac[item], iGrad);
 
     }
 
@@ -207,7 +212,6 @@ void ModelMF::train(const Data &data, Model &bestModel) {
   end = std::chrono::system_clock::now();  
 
   std::chrono::duration<double> duration =  (end - start) ;
-
   std::cout << "\nduration: " << duration.count();
   //std::cout << "\nNum Iter: " << iter << " Best Iter: " << bestIter
   //  << " Best obj: " << std::scientific << bestObj ;
