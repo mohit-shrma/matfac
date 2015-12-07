@@ -12,14 +12,14 @@ SVDLIBPATH=/home/grad02/mohit/exmoh/lib/SVDLIBC
 STDLIBS=-lm -lpthread
 
 #external libraries
-EXT_LIBS=-lGKlib -lsvd 
-EXT_LIBS_DIR=-L$(GKLIBHOME) -L$(SVDLIBPATH)
+EXT_LIBS=-lGKlib  
+EXT_LIBS_DIR=-L$(GKLIBHOME) 
 
-CPPFLAGS=-g -o3 -Wall -std=c++11 -I$(GKINCHOME) -I$(SVDLIBPATH) -I$(EIGENPATH) -I$(SPECTRAPATH) 
+CPPFLAGS=-g -o3 -Wall -std=c++11 -I$(GKINCHOME) -I$(EIGENPATH) 
 LDFLAGS=-g
 LDLIBS=$(STDLIBS) $(EXT_LIBS_DIR) $(EXT_LIBS)  
 
-SRCS=model.cpp modelMF.cpp modelMFWtRegArb.cpp modelMFWtReg.cpp io.cpp util.cpp svd.cpp svdFrmsvdlib.cpp  main.cpp
+SRCS=model.cpp modelMF.cpp modelMFWtRegArb.cpp modelMFWtReg.cpp io.cpp util.cpp svd.cpp main.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 
 all: mf

@@ -133,9 +133,7 @@ void ModelMF::train(const Data &data, Model &bestModel) {
   //initialization with svd of the passed matrix
   svdFrmCSR(data.trainMat, facDim, uFac, iFac);
   //svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
-  //svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac);
-  //writeMat(uFac, nUsers, facDim, "uFacSvd.svdlib");
-  //writeMat(iFac, nItems, facDim, "iFacSvd.svdlib");
+  
   endSVD = std::chrono::system_clock::now();
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
   std::cout << "\nsvd duration: " << durationSVD.count();
