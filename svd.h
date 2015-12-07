@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 #include <iostream>
 #include "GKlib.h"
+#include "util.h"
 
 void svdFrmCSR(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& uFac,
                 std::vector<std::vector<double>>& iFac);

@@ -125,14 +125,19 @@ void ModelMF::gradCheck(int u, int item, float r_ui) {
 
 void ModelMF::train(const Data &data, Model &bestModel) {
 
+  //copy passed know factors
+  uFac = data.origUFac;
+  iFac = data.origIFac;
+  
   std::cout << "\nModelMF::train";
   std::cout << "\nObj b4 svd: " << objective(data) << " Train RMSE: " << RMSE(data.trainMat);
-
+  
   std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
   startSVD = std::chrono::system_clock::now();
   //initialization with svd of the passed matrix
-  svdFrmCSR(data.trainMat, facDim, uFac, iFac);
-  //svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
+  
+  //svdFrmCSR(data.trainMat, facDim, uFac, iFac);
+  svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
   
   endSVD = std::chrono::system_clock::now();
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;

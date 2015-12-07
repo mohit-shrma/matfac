@@ -1,5 +1,19 @@
 #include "svd.h" 
 
+
+double computeDiff(Eigen::MatrixXf &denseMat, std::vector<std::vector<double>>& uFac,
+    std::vector<std::vector<double>>& iFac, int facDim) {
+  double rmse = 0.0, diff;
+  for (int u = 0; u < denseMat.rows(); u++) {
+    for (int item = 0; item < denseMat.cols(); item++) {
+      diff = dotProd(uFac[u], iFac[item], facDim) - denseMat(u,item);
+      rmse += diff*diff;
+    }
+  }
+  return rmse;
+}
+
+
 void svdFrmCSR(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& uFac,
                 std::vector<std::vector<double>>& iFac) {
 
@@ -17,6 +31,8 @@ void svdFrmCSR(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& uFac,
   }
   std::cout << "\nmat nrows: " << mat->nrows << " ncols: " << mat->ncols; 
   std::cout << "\nDense mat nrows: " << denseMat.rows() << " ncols: " << denseMat.cols();
+  std::cout << "\nrmse with known fac before svd: " << computeDiff(denseMat, 
+      uFac, iFac, rank) << std::endl;
 
   //compute thin svd
   Eigen::JacobiSVD<Eigen::MatrixXf> svd(denseMat, Eigen::ComputeThinU|Eigen::ComputeThinV);
@@ -45,6 +61,9 @@ void svdFrmCSR(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& uFac,
       iFac[item][k] = thinV(item, k);
     }
   }
+  
+  std::cout << "\nrmse with known fac after svd: " << computeDiff(denseMat, 
+      uFac, iFac, rank) << std::endl;
   
 }
 
@@ -76,8 +95,11 @@ void svdFrmCSRColAvg(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& 
       }
     }
   }
+  std::cout << "\nSVD row avg";
   std::cout << "\nmat nrows: " << mat->nrows << " ncols: " << mat->ncols; 
   std::cout << "\nDense mat nrows: " << denseMat.rows() << " ncols: " << denseMat.cols();
+  std::cout << "\nrmse with known fac before svd: " << computeDiff(denseMat, 
+      uFac, iFac, rank) << std::endl;
 
   //compute thin svd
   Eigen::JacobiSVD<Eigen::MatrixXf> svd(denseMat, Eigen::ComputeThinU|Eigen::ComputeThinV);
@@ -101,6 +123,9 @@ void svdFrmCSRColAvg(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& 
       iFac[item][k] = thinV(item, k);
     }
   }
+  
+  std::cout << "\nrmse with known fac after svd: " << computeDiff(denseMat, 
+      uFac, iFac, rank) << std::endl;
   
 }
 
