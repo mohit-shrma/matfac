@@ -34,7 +34,7 @@ void svdFrmSvdlibCSR(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& 
   pointr[item] = mat->colptr[item];
 
   //compute top-rank svd, returns pointer to svdrec
-  SVDRec svd = svdLAS2A(ipMat.get(), 0); 
+  SVDRec svd = svdLAS2A(ipMat.get(), rank); 
   std::cout << "\nDimensionality: " << svd->d;
   std::cout << "\nSingular values: ";
   for (i = 0; i < rank; i++) {
