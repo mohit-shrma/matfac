@@ -21,6 +21,12 @@ void svdFrmCSR(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& uFac,
   //compute thin svd
   Eigen::JacobiSVD<Eigen::MatrixXf> svd(denseMat, Eigen::ComputeThinU|Eigen::ComputeThinV);
   std::cout <<"\nRank using svd: " << svd.rank();
+  
+  std::cout << "\nSingular values: ";
+  auto singVals = svd.singularValues();
+  for (int i = 0; i < rank; i++) {
+    std::cout << singVals[i] << " ";
+  }
 
   //copy top-rank left singular vectors to uFac
   auto thinU = svd.matrixU(); 

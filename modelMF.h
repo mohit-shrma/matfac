@@ -4,8 +4,10 @@
 #include <iostream>
 #include <vector>
 #include <cstdio>
+#include "io.h"
 #include "model.h"
-#include "spectrasvd.h"
+#include "svd.h"
+#include "svdFrmsvdlib.h"
 
 class ModelMF : public Model {
 
