@@ -1,5 +1,6 @@
 #include "model.h"
 
+
 double Model::RMSE(gk_csr_t *mat) {
   int u, i, ii, nnz;
   float r_ui;
@@ -19,6 +20,30 @@ double Model::RMSE(gk_csr_t *mat) {
   }
   rmse = sqrt(rmse/nnz);
   
+  return rmse;
+}
+
+
+double Model::subMatRMSE(gk_csr_t *mat, int uStart, int uEnd, 
+    int iStart, int iEnd) {
+  double r_ui_est, diff, rmse, r_ui;
+  int u, ii, item, nnz;
+  
+  rmse = 0;
+  nnz = 0;
+  
+  for (u = uStart; u <= uEnd; u++) {
+    for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      item = mat->rowind[ii];
+      r_ui = mat->rowval[ii];
+      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      diff = r_ui - r_ui_est;
+      rmse += diff*diff;
+      nnz++;
+    }
+  }
+
+  rmse = sqrt(rmse/nnz);
   return rmse;
 }
 
@@ -195,6 +220,36 @@ Model::Model(const Params& params) {
   
 
 
+}
+
+
+Model::Model(int p_nUsers, int p_nItems, const Params& params) {
+
+  nUsers    = p_nUsers;
+  nItems    = p_nItems;
+  facDim    = params.facDim;
+  uReg      = params.uReg;
+  iReg      = params.iReg;
+  learnRate = params.learnRate;
+  rhoRMS    = params.rhoRMS;
+  maxIter   = params.maxIter;
+
+  //init user latent factors
+  uFac.assign(nUsers, std::vector<double>(facDim, 0));
+  for (auto& uf: uFac) {
+    for (auto& v: uf) {
+      v = (double)std::rand() / (double) (1.0 + RAND_MAX);    
+    }
+  }
+
+  //init item latent factors
+  iFac.assign(nItems, std::vector<double>(facDim, 0));
+  for (auto& itemf: iFac) {
+    for (auto& v: itemf) {
+      v = (double)std::rand() / (double) (1.0 + RAND_MAX);
+    }
+  }
+  
 }
 
 

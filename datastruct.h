@@ -7,6 +7,7 @@
 #include "GKlib.h"
 #include "io.h"
 
+
 class Params {
   
   public:
@@ -74,6 +75,16 @@ class Params {
       return rmse;
     }
 
+    
+    Data(gk_csr_t *p_trainMat, gk_csr_t *p_testMat) {
+      trainMat   = p_trainMat;
+      testMat    = p_testMat;
+      nUsers     = trainMat->nrows;
+      nItems     = trainMat->ncols;
+      origFacDim = 0;
+    }
+    
+
     Data(const Params& params) {
       origFacDim = params.origFacDim;
       nUsers = params.nUsers;
@@ -94,36 +105,43 @@ class Params {
         
       }
 
-      std::cout << "\nReading partial train matrix 0-indexed... ";
+      trainMat = NULL;
       if (NULL != params.trainMatFile) {
+        std::cout << "\nReading partial train matrix 0-indexed... ";
         trainMat = gk_csr_Read(params.trainMatFile, GK_CSR_FMT_CSR, 1, 0);
         gk_csr_CreateIndex(trainMat, GK_CSR_COL);
+        //get nnz in train matrix
+        trainNNZ = 0;
+        for (int u = 0; u < trainMat->nrows; u++) {
+          trainNNZ += trainMat->rowptr[u+1] - trainMat->rowptr[u];
+        }
       }
       
-      //get nnz in train matrix
-      trainNNZ = 0;
-      for (int u = 0; u < trainMat->nrows; u++) {
-        trainNNZ += trainMat->rowptr[u+1] - trainMat->rowptr[u];
-      }
       std::cout<<"\ntrain nnz = " << trainNNZ;
-      std::cout << "\nReading test matrix 0-indexed... ";
+     
+      testMat = NULL;
       if (NULL != params.testMatFile) {
+        std::cout << "\nReading test matrix 0-indexed... ";
         testMat = gk_csr_Read(params.testMatFile, GK_CSR_FMT_CSR, 1, 0);
         gk_csr_CreateIndex(testMat, GK_CSR_COL);
       }
 
     }
 
+
     ~Data() {
-      gk_csr_Free(&trainMat);
-      gk_csr_Free(&testMat);
+      
+      if (NULL != trainMat) {
+        gk_csr_Free(&trainMat);
+      }
+
+      if (NULL != testMat) {
+        gk_csr_Free(&testMat);
+      }
+
     }
 
 };
-
-
-
-
 
 
 #endif

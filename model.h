@@ -28,8 +28,16 @@ class Model {
     //declare constructor
     Model(const Params& params);
 
+    Model(int nUsers, int nItems, const Params& params);
+
     //declare virtual method for train
     virtual void train(const Data& data, Model& bestModel) {
+      std::cerr<< "\nTraining not in base class";
+    };
+
+    //virtual method for training on a part of submatrix
+    virtual void subTrain(const Data& data, Model& bestModel,
+                        int uStart, int uEnd, int iStart, int iEnd) {
       std::cerr<< "\nTraining not in base class";
     };
 
@@ -37,6 +45,8 @@ class Model {
     bool isTerminateModel(Model& bestModel, const Data& data, int iter, 
         int& bestIter, double& bestObj, double& prevObj);
     double RMSE(gk_csr_t* mat);
+    double subMatRMSE(gk_csr_t *mat, int uStart, int uEnd, int iStart, 
+                      int iEnd);
     double fullLowRankErr(const Data& data);
     double subMatKnownRankErr(const Data& data, int uStart, int uEnd,
       int iStart, int iEnd);

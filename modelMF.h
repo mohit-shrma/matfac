@@ -14,6 +14,8 @@ class ModelMF : public Model {
 
     ModelMF(const Params& params) : Model(params) {}
     virtual void train(const Data& data, Model& bestModel) ;
+    virtual void subTrain(const Data& data, Model& bestModel,
+                        int uStart, int uEnd, int iStart, int iEnd);
     virtual void computeUGrad(int user, int item, float r_ui, 
         std::vector<double> &uGrad);
     virtual void computeIGrad(int user, int item, float r_ui, 
