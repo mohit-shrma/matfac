@@ -15,6 +15,7 @@ class Params {
     int facDim;
     int maxIter;
     int origFacDim;
+    int gluSz;
     int seed;
     float uReg;
     float iReg;
