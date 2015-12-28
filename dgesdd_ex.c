@@ -16,25 +16,26 @@
 ********************************************************************************
 */
 /*
-   DGESVD Example.
+   DGESDD Example.
    ==============
 
    Program computes the singular value decomposition of a general
-   rectangular matrix A:
+   rectangular matrix A using a divide and conquer method, where A is:
 
-     8.79   9.93   9.83   5.45   3.16
-     6.11   6.91   5.04  -0.27   7.98
-    -9.15  -7.93   4.86   4.85   3.01
-     9.57   1.64   8.83   0.74   5.80
-    -3.49   4.02   9.80  10.00   4.27
-     9.84   0.15  -8.99  -6.02  -5.31
+     7.52  -1.10  -7.95   1.08
+    -0.76   0.62   9.34  -7.10
+     5.13   6.62  -5.66   0.87
+    -4.75   8.52   5.75   5.30
+     1.33   4.91  -5.49  -3.52
+    -2.40  -6.77   2.34   3.95
 
    Description.
    ============
 
    The routine computes the singular value decomposition (SVD) of a real
    m-by-n matrix A, optionally computing the left and/or right singular
-   vectors. The SVD is written as
+   vectors. If singular vectors are desired, it uses a divide and conquer
+   algorithm. The SVD is written as
 
    A = U*SIGMA*VT
 
@@ -50,39 +51,38 @@
    Example Program Results.
    ========================
 
- DGESVD Example Program Results
+ DGESDD Example Program Results
 
  Singular values
-  27.47  22.64   8.56   5.99   2.01
+  18.37  13.63  10.85   4.49
 
  Left singular vectors (stored columnwise)
-  -0.59   0.26   0.36   0.31   0.23
-  -0.40   0.24  -0.22  -0.75  -0.36
-  -0.03  -0.60  -0.45   0.23  -0.31
-  -0.43   0.24  -0.69   0.33   0.16
-  -0.47  -0.35   0.39   0.16  -0.52
-   0.29   0.58  -0.02   0.38  -0.65
+  -0.57   0.18   0.01   0.53
+   0.46  -0.11  -0.72   0.42
+  -0.45  -0.41   0.00   0.36
+   0.33  -0.69   0.49   0.19
+  -0.32  -0.31  -0.28  -0.61
+   0.21   0.46   0.39   0.09
 
  Right singular vectors (stored rowwise)
-  -0.25  -0.40  -0.69  -0.37  -0.41
-   0.81   0.36  -0.25  -0.37  -0.10
-  -0.26   0.70  -0.22   0.39  -0.49
-   0.40  -0.45   0.25   0.43  -0.62
-  -0.22   0.14   0.59  -0.63  -0.44
+  -0.52  -0.12   0.85  -0.03
+   0.08  -0.99  -0.09  -0.01
+  -0.28  -0.02  -0.14   0.95
+   0.81   0.01   0.50   0.31
 */
 #include <stdlib.h>
 #include <stdio.h>
 
-/* DGESVD prototype */
-extern void dgesvd_( char* jobu, char* jobvt, int* m, int* n, double* a,
+/* DGESDD prototype */
+extern void dgesdd_( char* jobz, int* m, int* n, double* a,
                 int* lda, double* s, double* u, int* ldu, double* vt, int* ldvt,
-                double* work, int* lwork, int* info );
+                double* work, int* lwork, int* iwork, int* info );
 /* Auxiliary routines prototypes */
 extern void print_matrix( char* desc, int m, int n, double* a, int lda );
 
 /* Parameters */
 #define M 6
-#define N 5
+#define N 4
 #define LDA M
 #define LDU M
 #define LDVT N
@@ -94,25 +94,26 @@ int main() {
         double wkopt;
         double* work;
         /* Local arrays */
+   /* iwork dimension should be at least 8*min(m,n) */
+   int iwork[8*N];
         double s[N], u[LDU*M], vt[LDVT*N];
         double a[LDA*N] = {
-            8.79,  6.11, -9.15,  9.57, -3.49,  9.84,
-            9.93,  6.91, -7.93,  1.64,  4.02,  0.15,
-            9.83,  5.04,  4.86,  8.83,  9.80, -8.99,
-            5.45, -0.27,  4.85,  0.74, 10.00, -6.02,
-            3.16,  7.98,  3.01,  5.80,  4.27, -5.31
+            7.52, -0.76,  5.13, -4.75,  1.33, -2.40,
+           -1.10,  0.62,  6.62,  8.52,  4.91, -6.77,
+           -7.95,  9.34, -5.66,  5.75, -5.49,  2.34,
+            1.08, -7.10,  0.87,  5.30, -3.52,  3.95
         };
         /* Executable statements */
-        printf( " DGESVD Example Program Results\n" );
+        printf( " DGESDD Example Program Results\n" );
         /* Query and allocate the optimal workspace */
         lwork = -1;
-        dgesvd_( "All", "All", &m, &n, a, &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork,
-         &info );
+        dgesdd_( "Singular vectors", &m, &n, a, &lda, s, u, &ldu, vt, &ldvt, &wkopt,
+         &lwork, iwork, &info );
         lwork = (int)wkopt;
         work = (double*)malloc( lwork*sizeof(double) );
         /* Compute SVD */
-        dgesvd_( "All", "All", &m, &n, a, &lda, s, u, &ldu, vt, &ldvt, work, &lwork,
-         &info );
+        dgesdd_( "Singular vectors", &m, &n, a, &lda, s, u, &ldu, vt, &ldvt, work,
+         &lwork, iwork, &info );
         /* Check for convergence */
         if( info > 0 ) {
                 printf( "The algorithm computing SVD failed to converge.\n" );
@@ -127,7 +128,7 @@ int main() {
         /* Free workspace */
         free( (void*)work );
         exit( 0 );
-} /* End of DGESVD Example */
+} /* End of DGESDD Example */
 
 /* Auxiliary routine: printing a matrix */
 void print_matrix( char* desc, int m, int n, double* a, int lda ) {
@@ -138,7 +139,3 @@ void print_matrix( char* desc, int m, int n, double* a, int lda ) {
                 printf( "\n" );
         }
 }
-
-
-
-
