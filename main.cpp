@@ -200,11 +200,15 @@ int main(int argc , char* argv[]) {
 
   trainModel.train(data, bestModel);
   //trainModel.subTrain(data, bestModel, 0, 10000, 0, 10000);
- 
-  std::cout << "\nSubmat RMSE: " << 
-    bestModel.subMatRMSE(data.trainMat, 0, 10000, 0, 10000) << std::endl;
-  std::cout << "\nMat RMSE: " << bestModel.RMSE(data.trainMat) << std::endl;
 
+  double subMatRMSE   = bestModel.subMatRMSE(data.trainMat, 0, 10000, 0, 10000);
+  double subMatExRMSE = bestModel.subMatExRMSE(data.trainMat, 0, 10000, 0, 10000);
+  double matRMSE      = bestModel.RMSE(data.trainMat);
+
+  std::cout << "\nSubmat RMSE: " << subMatRMSE << std::endl;
+  std::cout << "\nSubmatEx RMSE: " << subMatExRMSE << std::endl;
+  std::cout << "\nMat RMSE: " << matRMSE << std::endl;
+  std::cout << "\nRE: " << subMatRMSE << " " << subMatExRMSE << " " << matRMSE << std::endl;
   //knownLowRankEval2(data, bestModel, params); 
 
   return 0;
