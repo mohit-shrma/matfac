@@ -74,9 +74,13 @@
 #include <stdio.h>
 
 /* DGESDD prototype */
-extern void dgesdd_( char* jobz, int* m, int* n, double* a,
+extern "C" {
+  void dgesdd_( char* jobz, int* m, int* n, double* a,
                 int* lda, double* s, double* u, int* ldu, double* vt, int* ldvt,
                 double* work, int* lwork, int* iwork, int* info );
+}
+  
+  
 /* Auxiliary routines prototypes */
 extern void print_matrix( char* desc, int m, int n, double* a, int lda );
 
