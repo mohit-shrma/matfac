@@ -11,6 +11,15 @@
 #define LDVT N
 
 
+void displayMat(double *a, int m, int n) {
+  for (int i = 0; i < m; i++) {
+    for (int j = 0; j < n; j++) {
+      std::cout << a[i*m + j] << " ";
+    }
+    std::cout << std::endl;
+  }
+}
+
 
 int main(int argc, char *argv[]) {
   
@@ -31,6 +40,15 @@ int main(int argc, char *argv[]) {
  
   svdLapackRoutine(a, U, Vt, S, iWork, lda, ldu, ldvt, m, n);
   
+  std::cout << "\nU: " << std::endl;
+  displayMat(U, m, min_mn);
+  std::cout << "\nVt: " << std::endl;
+  displayMat(Vt, min_mn, n);
+  std::cout << "\nSingular values: " << std::endl; 
+  for (int i = 0; i < min_mn; i++) {
+    std::cout << S[i] << " " ;
+  }
+
   free(U);
   free(Vt);
   free(S);
