@@ -237,7 +237,7 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
   std::cout << "\nModelMF::train";
   
   /*
-  std::cout << "\nObj b4 svd: " << objective(data) << " Train RMSE: " << RMSE(data.trainMat);
+  std::cout << "\nObj b4 svd: " << objectiveSubMat(data) << " Train RMSE: " << RMSE(data.trainMat);
  
   std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
   startSVD = std::chrono::system_clock::now();
@@ -257,6 +257,8 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
   double bestObj, prevObj;
   int nnz = nnzSubMat(data.trainMat, uStart, uEnd, iStart, iEnd);
 
+  std::cout << "\nsubmat nnz: " << nnz << std::endl;
+
   gk_csr_t *trainMat = data.trainMat;
 
   //array to hold user and item gradients
@@ -272,7 +274,7 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
       std::vector<double>(facDim,0)); 
 
   //std::cout << "\nNNZ = " << nnz;
-  prevObj = objective(data);
+  prevObj = objectiveSubMat(data, uStart, uEnd, iStart, iEnd);
   std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " << RMSE(data.trainMat);
 
   std::chrono::time_point<std::chrono::system_clock> start, end;

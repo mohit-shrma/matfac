@@ -22,7 +22,7 @@ int nnzSubMat(gk_csr_t *mat, int uStart, int uEnd, int iStart, int iEnd) {
   int nnz = 0;
 
   for (u = uStart; u < uEnd; u++) {
-    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+    for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
       item = mat->rowind[ii];
       if (item >= iStart && item < iEnd) {
         nnz++;
