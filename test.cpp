@@ -13,7 +13,8 @@
 void displayMat(double *a, int m, int n) {
   for (int i = 0; i < m; i++) {
     for (int j = 0; j < n; j++) {
-      std::cout << a[i*m + j] << " ";
+      //a[i][j] - a[j*m + i] columnwise
+      std::cout << a[j*m + i] << " ";
     }
     std::cout << std::endl;
   }
@@ -36,7 +37,7 @@ void svdRoutine(double *a, double *U, double *Vt, double *S,
   work = (double*) malloc(sizeof(double)*lwork);
   
   //compute SVD
-  dgesdd_(&jobz, &m, &n, a, &lda, S, U, &ldu, Vt, &ldvt, &wkopt, &lwork, iWork,
+  dgesdd_(&jobz, &m, &n, a, &lda, S, U, &ldu, Vt, &ldvt, work, &lwork, iWork,
       &info);
 
   /* Check for convergence */
@@ -66,12 +67,29 @@ int main(int argc, char *argv[]) {
   U = (double*) malloc(sizeof(double)*ldu*min_mn);
   Vt = (double*) malloc(sizeof(double)*ldvt*min_mn);
  
-  svdRoutine(a, U, Vt, S, iWork, lda, ldu, ldvt, m, n);
+  svdLapackRoutine(a, U, Vt, S, iWork, lda, ldu, ldvt, m, n);
   
   std::cout << "\nU: " << std::endl;
-  displayMat(U, m, min_mn);
+  //displayMat(U, m, min_mn);
+  //top-3 singular vectors
+  for (int i = 0; i < m; i++) {
+    for (int j = 0; j < 3; j++) {
+      std::cout << U[j*m + i] << " ";
+    }
+    std::cout << std::endl;
+  }
+
   std::cout << "\nVt: " << std::endl;
-  displayMat(Vt, min_mn, n);
+  //displayMat(Vt, min_mn, n);
+  //top-3 singular vectors
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < 3; j++) {
+      std::cout << Vt[i*min_mn + j] << " ";
+    }
+    std::cout << std::endl;
+  }
+
+
   std::cout << "\nSingular values: " << std::endl; 
   for (int i = 0; i < min_mn; i++) {
     std::cout << S[i] << " " ;
