@@ -194,12 +194,14 @@ int main(int argc , char* argv[]) {
   //ModelMFWtRegArb trainModel(params);
   //ModelMFWtReg trainModel(params);
   ModelMF trainModel(params);
-
-
+  
   //create mf model instance to store the best model
   Model bestModel(trainModel);
 
   trainModel.train(data, bestModel);
+  //trainModel.subTrain(data, bestModel, 0, 10000, 0, 10000);
+ 
+  std::cout << "\nsubmat RMSE: " << bestModel.subMatRMSE(data.trainMat, 0, 10000, 0, 10000) << std::endl;
 
   //knownLowRankEval2(data, bestModel, params); 
 

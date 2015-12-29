@@ -42,8 +42,13 @@ class Model {
     };
 
     virtual double objective(const Data& data);
+    double objectiveSubMat(const Data& data, int uStart, int uEnd,
+    int iStart, int iEnd);
     bool isTerminateModel(Model& bestModel, const Data& data, int iter, 
         int& bestIter, double& bestObj, double& prevObj);
+    bool isTerminateModelSubMat(Model& bestModel, const Data& data, int iter,
+      int& bestIter, double& bestObj, double& prevObj, int uStart, int uEnd,
+      int iStart, int iEnd); 
     double RMSE(gk_csr_t* mat);
     double subMatRMSE(gk_csr_t *mat, int uStart, int uEnd, int iStart, 
                       int iEnd);

@@ -226,6 +226,7 @@ void ModelMF::train(const Data &data, Model &bestModel) {
 }
 
 
+//train on a submatrix excluding users and items interval
 void ModelMF::subTrain(const Data &data, Model &bestModel,
                     int uStart, int uEnd, int iStart, int iEnd) {
 
@@ -234,8 +235,10 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
   //iFac = data.origIFac;
   
   std::cout << "\nModelMF::train";
-  std::cout << "\nObj b4 svd: " << objective(data) << " Train RMSE: " << RMSE(data.trainMat);
   
+  /*
+  std::cout << "\nObj b4 svd: " << objective(data) << " Train RMSE: " << RMSE(data.trainMat);
+ 
   std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
   startSVD = std::chrono::system_clock::now();
   //initialization with svd of the passed matrix
@@ -246,6 +249,7 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
   endSVD = std::chrono::system_clock::now();
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
   std::cout << "\nsvd duration: " << durationSVD.count();
+  */
 
   int u, iter, subIter, bestIter, nSubUsers;
   int item, nUserItems, itemInd;
@@ -287,7 +291,7 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
       itemInd = std::rand()%nUserItems; 
       item = trainMat->rowind[trainMat->rowptr[u] + itemInd];
       
-      if (item < iStart && item > iEnd) {
+      if (item < iStart && item >= iEnd) {
         continue;
       }
       
@@ -313,11 +317,13 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
 
     //check objective
     if (iter % OBJ_ITER == 0) {
-      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj)) {
+      if (isTerminateModelSubMat(bestModel, data, iter, bestIter, bestObj, 
+            prevObj, uStart, uEnd, iStart, iEnd)) {
         break; 
       }
       std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj 
-                << " Train RMSE: " << RMSE(data.trainMat);
+                << " Train subMat RMSE: " << subMatRMSE(data.trainMat, uStart,
+                                                    uEnd, iStart, iEnd);
     }
   
   } 
