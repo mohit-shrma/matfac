@@ -17,4 +17,7 @@ void svdUsingLapack(gk_csr_t *mat, int rank,
     std::vector<std::vector<double>>& uFac, 
     std::vector<std::vector<double>>& iFac);
 
+void svdLapackRoutine(double *a, double *U, double *Vt, double *S, 
+    int *iWork, int lda, int ldu, int ldvt, int m, int n);
+
 #endif

@@ -1,5 +1,38 @@
 #include "svdLapack.h"
 
+
+void svdLapackRoutine(double *a, double *U, double *Vt, double *S, 
+    int *iWork, int lda, int ldu, int ldvt, int m, int n) {
+  
+  int info, lwork;
+  double *work;
+  double wkopt;
+  char jobz = 'S';
+  
+  /* Query and allocate the optimal workspace */
+  lwork= -1; 
+  dgesdd_(&jobz, &m, &n, a, &lda, S, U, &ldu, Vt, &ldvt, &wkopt, &lwork, iWork,
+      &info);
+  lwork = (int)wkopt;
+  work = (double*) malloc(sizeof(double)*lwork);
+  
+  //compute SVD
+  dgesdd_(&jobz, &m, &n, a, &lda, S, U, &ldu, Vt, &ldvt, &wkopt, &lwork, iWork,
+      &info);
+
+  /* Check for convergence */
+  if( info > 0 ) {
+    std::cout << "The algorithm computing SVD failed to converge.\n";
+    exit(1);
+  }
+
+  free(work);
+}
+
+
+
+
+
 void svdUsingLapack(gk_csr_t *mat, int rank, 
     std::vector<std::vector<double>>& uFac, 
     std::vector<std::vector<double>>& iFac) {
@@ -10,10 +43,8 @@ void svdUsingLapack(gk_csr_t *mat, int rank,
   double rating;
 
   //declare variables for svd comp
-  char jobz = 'S';
-  double *a, *U, *Vt, *S, *work;
-  double wkopt;
-  int m, n, lda, ldu, ldvt, info, lwork;
+  double *U, *Vt, *S;
+  int m, n, lda, ldu, ldvt;
   int *iWork;
 
   //create dense matrix
@@ -35,29 +66,13 @@ void svdUsingLapack(gk_csr_t *mat, int rank,
   }
   m = nrows, n = ncols;
   lda = m, ldu =  m, ldvt = n;
-  a = dMat;
   iWork = (int*) malloc(sizeof(int)*8*min_mn);  
   S = (double*) malloc(sizeof(double)*min_mn); 
   U = (double*) malloc(sizeof(double)*ldu*min_mn);
   Vt = (double*) malloc(sizeof(double)*ldvt*min_mn);
-
-  /* Query and allocate the optimal workspace */
-  lwork= -1; 
-  dgesdd_(&jobz, &m, &n, a, &lda, S, U, &ldu, Vt, &ldvt, &wkopt, &lwork, iWork,
-      &info);
-  lwork = (int)wkopt;
-  work = (double*) malloc(sizeof(double)*lwork);
   
-  //compute SVD
-  dgesdd_(&jobz, &m, &n, a, &lda, S, U, &ldu, Vt, &ldvt, &wkopt, &lwork, iWork,
-      &info);
-
-  /* Check for convergence */
-  if( info > 0 ) {
-    std::cout << "The algorithm computing SVD failed to converge.\n";
-    exit(1);
-  }
-
+  svdLapackRoutine(dMat, U, Vt, S, iWork, lda, ldu, ldvt, m, n);
+  
   //copy left-singular vectors to uFac
   for (u = 0; u < nrows; u++) {
     for (k = 0; k < rank; k++) {
@@ -73,7 +88,6 @@ void svdUsingLapack(gk_csr_t *mat, int rank,
   }
   
 
-  free(work);
   free(U);
   free(Vt);
   free(S);
