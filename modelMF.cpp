@@ -130,18 +130,22 @@ void ModelMF::train(const Data &data, Model &bestModel) {
   //iFac = data.origIFac;
   
   std::cout << "\nModelMF::train";
+  
+  /*
   std::cout << "\nObj b4 svd: " << objective(data) << " Train RMSE: " << RMSE(data.trainMat);
   
   std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
   startSVD = std::chrono::system_clock::now();
   //initialization with svd of the passed matrix
   
+  //svdUsingLapack(data.trainMat, facDim, uFac, iFac);
   //svdFrmCSR(data.trainMat, facDim, uFac, iFac);
-  svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
+  //svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
   
   endSVD = std::chrono::system_clock::now();
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
   std::cout << "\nsvd duration: " << durationSVD.count();
+  */
 
   int u, iter, subIter, bestIter;
   int item, nUserItems, itemInd;

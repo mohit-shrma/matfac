@@ -7,6 +7,7 @@
 #include "io.h"
 #include "model.h"
 #include "svd.h"
+#include "svdLapack.h"
 
 class ModelMF : public Model {
 

@@ -17,7 +17,7 @@ void svdLapackRoutine(double *a, double *U, double *Vt, double *S,
   work = (double*) malloc(sizeof(double)*lwork);
   
   //compute SVD
-  dgesdd_(&jobz, &m, &n, a, &lda, S, U, &ldu, Vt, &ldvt, &wkopt, &lwork, iWork,
+  dgesdd_(&jobz, &m, &n, a, &lda, S, U, &ldu, Vt, &ldvt, work, &lwork, iWork,
       &info);
 
   /* Check for convergence */
@@ -28,9 +28,6 @@ void svdLapackRoutine(double *a, double *U, double *Vt, double *S,
 
   free(work);
 }
-
-
-
 
 
 void svdUsingLapack(gk_csr_t *mat, int rank, 
@@ -76,14 +73,17 @@ void svdUsingLapack(gk_csr_t *mat, int rank,
   //copy left-singular vectors to uFac
   for (u = 0; u < nrows; u++) {
     for (k = 0; k < rank; k++) {
-      uFac[u][k] = U[u*min_mn + k]; 
+      //columnwise storage [u][k] - [k*nrows + u]
+      uFac[u][k] = U[k*nrows + u]; 
     }
   }
 
   //copy right-singular vectors to iFac
   for (item = 0; item < ncols; item++) {
     for (k = 0; k < rank; k++) {
-      iFac[item][k] = Vt[k*ncols + item];
+      //columnwise storage and transpose
+      //V[i,j] = Vt[j,i]
+      iFac[item][k] = Vt[item*min_mn + k]; //Vt[k,item]
     }
   }
   

@@ -19,7 +19,8 @@ Params parse_cmd_line(int argc, char *argv[]) {
   Params params(atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), 
       atoi(argv[5]), atoi(argv[6]),
       atof(argv[7]), atof(argv[8]), atof(argv[9]), atof(argv[10]), atof(argv[11]),
-      argv[12], argv[13], argv[14], argv[15]);
+      argv[12], argv[13], NULL, NULL);
+      //argv[12], argv[13], argv[14], argv[15]);
 
   return params;
 }
@@ -200,7 +201,7 @@ int main(int argc , char* argv[]) {
 
   trainModel.train(data, bestModel);
 
-  knownLowRankEval2(data, bestModel, params); 
+  //knownLowRankEval2(data, bestModel, params); 
 
   return 0;
 }
