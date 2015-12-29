@@ -17,7 +17,7 @@ void svdLapackRoutine(double *a, double *U, double *Vt, double *S,
   work = (double*) malloc(sizeof(double)*lwork);
   
   //compute SVD
-  dgesdd_(&jobz, &m, &n, a, &lda, S, U, &ldu, Vt, &ldvt, &wkopt, &lwork, iWork,
+  dgesdd_(&jobz, &m, &n, a, &lda, S, U, &ldu, Vt, &ldvt, work, &lwork, iWork,
       &info);
 
   /* Check for convergence */
@@ -28,9 +28,6 @@ void svdLapackRoutine(double *a, double *U, double *Vt, double *S,
 
   free(work);
 }
-
-
-
 
 
 void svdUsingLapack(gk_csr_t *mat, int rank, 
