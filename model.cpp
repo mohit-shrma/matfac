@@ -51,6 +51,33 @@ double Model::subMatRMSE(gk_csr_t *mat, int uStart, int uEnd,
 }
 
 
+double Model::subMatExRMSE(gk_csr_t *mat, int uStart, int uEnd, 
+    int iStart, int iEnd) {
+  double r_ui_est, diff, rmse, r_ui;
+  int u, ii, item, nnz;
+  
+  rmse = 0;
+  nnz = 0;
+  
+  for (u = uStart; u < uEnd; u++) {
+    for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      item = mat->rowind[ii];
+      if (item >= iStart && item < iEnd) {
+        continue;
+      }
+      r_ui = mat->rowval[ii];
+      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      diff = r_ui - r_ui_est;
+      rmse += diff*diff;
+      nnz++;
+    }
+  }
+
+  rmse = sqrt(rmse/nnz);
+  return rmse;
+}
+
+
 double Model::fullRMSE(const Data& data) {
   int u, i, ii, nnz;
   float r_ui;

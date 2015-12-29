@@ -52,6 +52,8 @@ class Model {
     double RMSE(gk_csr_t* mat);
     double subMatRMSE(gk_csr_t *mat, int uStart, int uEnd, int iStart, 
                       int iEnd);
+    double subMatExRMSE(gk_csr_t *mat, int uStart, int uEnd, 
+                      int iStart, int iEnd) {
     double fullLowRankErr(const Data& data);
     double subMatKnownRankErr(const Data& data, int uStart, int uEnd,
       int iStart, int iEnd);
