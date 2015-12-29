@@ -35,7 +35,7 @@ double Model::subMatRMSE(gk_csr_t *mat, int uStart, int uEnd,
   for (u = uStart; u < uEnd; u++) {
     for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
       item = mat->rowind[ii];
-      if (item < iStart && item >= iEnd) {
+      if (item < iStart || item >= iEnd) {
         continue;
       }
       r_ui = mat->rowval[ii];
@@ -209,7 +209,7 @@ double Model::objectiveSubMat(const Data& data, int uStart, int uEnd,
   for (u = uStart; u < uEnd; u++) {
     for (ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
       item = trainMat->rowind[ii];
-      if (item < iStart && item >= iEnd) {
+      if (item < iStart || item >= iEnd) {
         continue;
       }
       itemRat = trainMat->rowval[ii];

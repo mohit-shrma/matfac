@@ -255,7 +255,7 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
   int item, nUserItems, itemInd;
   float itemRat;
   double bestObj, prevObj;
-  int nnz = data.trainNNZ;
+  int nnz = nnzSubMat(data.trainMat, uStart, uEnd, iStart, iEnd);
 
   gk_csr_t *trainMat = data.trainMat;
 
@@ -291,7 +291,7 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
       itemInd = std::rand()%nUserItems; 
       item = trainMat->rowind[trainMat->rowptr[u] + itemInd];
       
-      if (item < iStart && item >= iEnd) {
+      if (item < iStart || item >= iEnd) {
         continue;
       }
       
