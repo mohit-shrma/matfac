@@ -193,6 +193,45 @@ bool Model::isTerminateModelSubMat(Model& bestModel, const Data& data, int iter,
 }
 
 
+bool Model::isTerminateModelExSubMat(Model& bestModel, const Data& data, int iter,
+    int& bestIter, double& bestObj, double& prevObj, int uStart, int uEnd,
+    int iStart, int iEnd) {
+  bool ret = false;
+  double currObj = objectiveExSubMat(data, uStart, uEnd, iStart, iEnd);
+  if (iter > 0) {
+    
+    if (currObj < bestObj) {
+      bestModel = *this;
+      bestObj = currObj;
+      bestIter = iter;
+    }
+
+    if (iter - bestIter >= 500) {
+      //can't go lower than best objective after 500 iterations
+      printf("\nNOT CONVERGED: bestIter:%d bestObj: %.10e"
+          " currIter:%d currObj: %.10e", bestIter, bestObj, iter, currObj);
+      ret = true;
+    }
+    
+    if (fabs(prevObj - currObj) < EPS) {
+      //convergence
+      printf("\nConverged in iteration: %d prevObj: %.10e currObj: %.10e", iter,
+              prevObj, currObj); 
+      ret = true;
+    }
+  }
+
+  if (iter == 0) {
+    bestObj = currObj;
+    bestIter = iter;
+  }
+
+  prevObj = currObj;
+
+  return ret;
+}
+
+
 //compute objective on train mat for basic mf model
 double Model::objective(const Data& data) {
 
@@ -237,6 +276,42 @@ double Model::objectiveSubMat(const Data& data, int uStart, int uEnd,
     for (ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
       item = trainMat->rowind[ii];
       if (item < iStart || item >= iEnd) {
+        continue;
+      }
+      itemRat = trainMat->rowval[ii];
+      diff = itemRat - dotProd(uFac[u], iFac[item], facDim);
+      rmse += diff*diff;
+    }
+    uRegErr += dotProd(uFac[u], uFac[u], facDim);
+  }
+  uRegErr = uRegErr*uReg;
+  
+  for (item = iStart; item < iEnd; item++) {
+    iRegErr += dotProd(iFac[item], iFac[item], facDim);
+  }
+  iRegErr = iRegErr*iReg;
+
+  obj = rmse + uRegErr + iRegErr;
+    
+  //std::cout <<"\nrmse: " << std::scientific << rmse << " uReg: " << uRegErr << " iReg: " << iRegErr ; 
+
+  return obj;
+}
+
+
+double Model::objectiveExSubMat(const Data& data, int uStart, int uEnd,
+    int iStart, int iEnd) {
+
+  int u, ii, item;
+  float itemRat;
+  double rmse = 0, uRegErr = 0, iRegErr = 0, obj = 0, diff = 0;
+  gk_csr_t *trainMat = data.trainMat;
+
+  for (u = 0; u < nUsers; u++) {
+    for (ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+      item = trainMat->rowind[ii];
+      //skip if sampled user and item are in the submatrix 
+      if ((u >= uStart && u < uEnd) && (item >= iStart && item < iEnd)) {
         continue;
       }
       itemRat = trainMat->rowval[ii];

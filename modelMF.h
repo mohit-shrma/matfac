@@ -17,6 +17,8 @@ class ModelMF : public Model {
     virtual void train(const Data& data, Model& bestModel) ;
     virtual void subTrain(const Data& data, Model& bestModel,
                         int uStart, int uEnd, int iStart, int iEnd);
+    virtual void subExTrain(const Data& data, Model& bestModel,
+                        int uStart, int uEnd, int iStart, int iEnd);
     virtual void computeUGrad(int user, int item, float r_ui, 
         std::vector<double> &uGrad);
     virtual void computeIGrad(int user, int item, float r_ui, 
@@ -25,6 +27,8 @@ class ModelMF : public Model {
         std::vector<double> &gradAcc);
     void updateFac(std::vector<double> &fac, std::vector<double> &grad);
     void gradCheck(int u, int item, float r_ui);
+
+
 };
 
 

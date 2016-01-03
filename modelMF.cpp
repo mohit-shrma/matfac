@@ -339,3 +339,120 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
 
 }
 
+
+
+void ModelMF::subExTrain(const Data &data, Model &bestModel,
+                    int uStart, int uEnd, int iStart, int iEnd) {
+
+  //copy passed known factors
+  //uFac = data.origUFac;
+  //iFac = data.origIFac;
+  
+  std::cout << "\nModelMF::train";
+  
+  /*
+  std::cout << "\nObj b4 svd: " << objectiveSubMat(data) << " Train RMSE: " << RMSE(data.trainMat);
+ 
+  std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
+  startSVD = std::chrono::system_clock::now();
+  //initialization with svd of the passed matrix
+  
+  //svdFrmCSR(data.trainMat, facDim, uFac, iFac);
+  svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
+  
+  endSVD = std::chrono::system_clock::now();
+  std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
+  std::cout << "\nsvd duration: " << durationSVD.count();
+  */
+
+  int u, iter, subIter, bestIter;
+  int item, nUserItems, itemInd;
+  float itemRat;
+  double bestObj, prevObj;
+  int nnz = nnzSubMat(data.trainMat, uStart, uEnd, iStart, iEnd);
+
+  std::cout << "\nsubmat nnz: " << nnz << std::endl;
+
+  gk_csr_t *trainMat = data.trainMat;
+
+  //array to hold user and item gradients
+  std::vector<double> uGrad (facDim, 0);
+  std::vector<double> iGrad (facDim, 0);
+ 
+  //vector to hold user gradient accumulation
+  std::vector<std::vector<double>> uGradsAcc (nUsers, 
+      std::vector<double>(facDim,0)); 
+
+  //vector to hold item gradient accumulation
+  std::vector<std::vector<double>> iGradsAcc (nItems, 
+      std::vector<double>(facDim,0)); 
+
+  //std::cout << "\nNNZ = " << nnz;
+  prevObj = objectiveSubMat(data, uStart, uEnd, iStart, iEnd);
+  std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " << RMSE(data.trainMat);
+
+  std::chrono::time_point<std::chrono::system_clock> start, end;
+  start = std::chrono::system_clock::now();
+
+
+  for (iter = 0; iter < maxIter; iter++) {  
+    for (subIter = 0; subIter < nnz; subIter++) {
+      
+      //sample u
+      u = std::rand() % nUsers;
+      
+      //sample item rated by user
+      nUserItems =  trainMat->rowptr[u+1] - trainMat->rowptr[u];
+      itemInd = std::rand()%nUserItems; 
+      item = trainMat->rowind[trainMat->rowptr[u] + itemInd];
+     
+      //continue if sampled user and item pair falls within the block
+      if ( (u >= uStart && u < uEnd)  && (item >= iStart && item < iEnd)) {
+        continue;
+      }
+      
+      itemRat = trainMat->rowval[trainMat->rowptr[u] + itemInd]; 
+      //std::cout << "\nGradCheck u: " << u << " item: " << item;
+      //gradCheck(u, item, itemRat);
+
+      //compute user gradient
+      computeUGrad(u, item, itemRat, uGrad);
+
+      //update user
+      //updateAdaptiveFac(uFac[u], uGrad, uGradsAcc[u]); 
+      updateFac(uFac[u], uGrad); 
+
+      //compute item gradient
+      computeIGrad(u, item, itemRat, iGrad);
+
+      //update item
+      //updateAdaptiveFac(iFac[item], iGrad, iGradsAcc[item]);
+      updateFac(iFac[item], iGrad);
+
+     }
+
+    //check objective
+    if (iter % OBJ_ITER == 0) {
+      if (isTerminateModelSubMat(bestModel, data, iter, bestIter, bestObj, 
+            prevObj, uStart, uEnd, iStart, iEnd)) {
+        break; 
+      }
+      std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj 
+                << " Train subMat RMSE: " << subMatRMSE(data.trainMat, uStart,
+                                                    uEnd, iStart, iEnd);
+    }
+  
+  } 
+   
+  end = std::chrono::system_clock::now();  
+
+  std::chrono::duration<double> duration =  (end - start) ;
+  std::cout << "\nduration: " << duration.count();
+  //std::cout << "\nNum Iter: " << iter << " Best Iter: " << bestIter
+  //  << " Best obj: " << std::scientific << bestObj ;
+
+}
+
+
+
+

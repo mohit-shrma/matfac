@@ -198,7 +198,8 @@ int main(int argc , char* argv[]) {
   //create mf model instance to store the best model
   Model bestModel(trainModel);
 
-  trainModel.train(data, bestModel);
+  //trainModel.train(data, bestModel);
+  trainModel.subExTrain(data, bestModel, 0, 10000, 0, 10000);
   //trainModel.subTrain(data, bestModel, 0, 10000, 0, 10000);
 
   double subMatRMSE   = bestModel.subMatRMSE(data.trainMat, 0, 10000, 0, 10000);

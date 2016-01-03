@@ -38,15 +38,25 @@ class Model {
     //virtual method for training on a part of submatrix
     virtual void subTrain(const Data& data, Model& bestModel,
                         int uStart, int uEnd, int iStart, int iEnd) {
-      std::cerr<< "\nTraining not in base class";
+      std::cerr<< "\nsubTrain not in base class";
+    };
+    
+    virtual void subExTrain(const Data &data, Model &bestModel,
+         int uStart, int uEnd, int iStart, int iEnd) {
+      std::cerr << "\nsubExTrain not in base class";
     };
 
     virtual double objective(const Data& data);
     double objectiveSubMat(const Data& data, int uStart, int uEnd,
-    int iStart, int iEnd);
+      int iStart, int iEnd);
+    double objectiveExSubMat(const Data& data, int uStart, int uEnd,
+      int iStart, int iEnd);
     bool isTerminateModel(Model& bestModel, const Data& data, int iter, 
         int& bestIter, double& bestObj, double& prevObj);
     bool isTerminateModelSubMat(Model& bestModel, const Data& data, int iter,
+      int& bestIter, double& bestObj, double& prevObj, int uStart, int uEnd,
+      int iStart, int iEnd); 
+    bool isTerminateModelExSubMat(Model& bestModel, const Data& data, int iter,
       int& bestIter, double& bestObj, double& prevObj, int uStart, int uEnd,
       int iStart, int iEnd); 
     double RMSE(gk_csr_t* mat);
