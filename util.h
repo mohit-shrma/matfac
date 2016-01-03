@@ -6,6 +6,8 @@
 
 double meanRating(gk_csr_t* mat);
 int nnzSubMat(gk_csr_t *mat, int uStart, int uEnd, int iStart, int iEnd);
+bool isInsideBlock(int u, int item, int uStart, int uEnd, int iStart, 
+    int iEnd);
 
 inline
 double dotProd(const std::vector<double> &a, const std::vector<double> &b, int size) {

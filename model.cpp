@@ -24,6 +24,7 @@ double Model::RMSE(gk_csr_t *mat) {
 }
 
 
+//compute RMSE with in the submatrix
 double Model::subMatRMSE(gk_csr_t *mat, int uStart, int uEnd, 
     int iStart, int iEnd) {
   double r_ui_est, diff, rmse, r_ui;
@@ -35,7 +36,7 @@ double Model::subMatRMSE(gk_csr_t *mat, int uStart, int uEnd,
   for (u = uStart; u < uEnd; u++) {
     for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
       item = mat->rowind[ii];
-      if (item < iStart || item >= iEnd) {
+      if (!isInsideBlock(u, item, uStart, uEnd, iStart, iEnd)) {
         continue;
       }
       r_ui = mat->rowval[ii];
@@ -51,6 +52,7 @@ double Model::subMatRMSE(gk_csr_t *mat, int uStart, int uEnd,
 }
 
 
+//compute rmse outside the submatrix
 double Model::subMatExRMSE(gk_csr_t *mat, int uStart, int uEnd, 
     int iStart, int iEnd) {
   double r_ui_est, diff, rmse, r_ui;
@@ -59,10 +61,11 @@ double Model::subMatExRMSE(gk_csr_t *mat, int uStart, int uEnd,
   rmse = 0;
   nnz = 0;
   
-  for (u = uStart; u < uEnd; u++) {
+  for (u = 0; u < mat->nrows; u++) {
     for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
       item = mat->rowind[ii];
-      if (item >= iStart && item < iEnd) {
+      //if inside block then continue
+      if (isInsideBlock(u, item, uStart, uEnd, iStart, iEnd)) {
         continue;
       }
       r_ui = mat->rowval[ii];
@@ -275,7 +278,7 @@ double Model::objectiveSubMat(const Data& data, int uStart, int uEnd,
   for (u = uStart; u < uEnd; u++) {
     for (ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
       item = trainMat->rowind[ii];
-      if (item < iStart || item >= iEnd) {
+      if (!isInsideBlock(u, item, uStart, uEnd, iStart, iEnd)) {
         continue;
       }
       itemRat = trainMat->rowval[ii];
@@ -311,7 +314,7 @@ double Model::objectiveExSubMat(const Data& data, int uStart, int uEnd,
     for (ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
       item = trainMat->rowind[ii];
       //skip if sampled user and item are in the submatrix 
-      if ((u >= uStart && u < uEnd) && (item >= iStart && item < iEnd)) {
+      if (isInsideBlock(u, item, uStart, uEnd, iStart, iEnd)) {
         continue;
       }
       itemRat = trainMat->rowval[ii];
@@ -322,7 +325,10 @@ double Model::objectiveExSubMat(const Data& data, int uStart, int uEnd,
   }
   uRegErr = uRegErr*uReg;
   
-  for (item = iStart; item < iEnd; item++) {
+  for (item = 0; item < nItems; item++) {
+    if (item >= iStart && item < iEnd) {
+      continue;
+    }
     iRegErr += dotProd(iFac[item], iFac[item], facDim);
   }
   iRegErr = iRegErr*iReg;

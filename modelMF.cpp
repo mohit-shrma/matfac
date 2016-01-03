@@ -292,8 +292,9 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
       nUserItems =  trainMat->rowptr[u+1] - trainMat->rowptr[u];
       itemInd = std::rand()%nUserItems; 
       item = trainMat->rowind[trainMat->rowptr[u] + itemInd];
-      
-      if (item < iStart || item >= iEnd) {
+     
+      //skip if outside submat
+      if (!isInsideBlock(u, item, uStart, uEnd, iStart, iEnd)) {
         continue;
       }
       
@@ -394,7 +395,6 @@ void ModelMF::subExTrain(const Data &data, Model &bestModel,
   std::chrono::time_point<std::chrono::system_clock> start, end;
   start = std::chrono::system_clock::now();
 
-
   for (iter = 0; iter < maxIter; iter++) {  
     for (subIter = 0; subIter < nnz; subIter++) {
       
@@ -407,7 +407,7 @@ void ModelMF::subExTrain(const Data &data, Model &bestModel,
       item = trainMat->rowind[trainMat->rowptr[u] + itemInd];
      
       //continue if sampled user and item pair falls within the block
-      if ( (u >= uStart && u < uEnd)  && (item >= iStart && item < iEnd)) {
+      if (isInsideBlock(u, item, uStart, uEnd, iStart, iEnd)) {
         continue;
       }
       
@@ -433,13 +433,13 @@ void ModelMF::subExTrain(const Data &data, Model &bestModel,
 
     //check objective
     if (iter % OBJ_ITER == 0) {
-      if (isTerminateModelSubMat(bestModel, data, iter, bestIter, bestObj, 
+      if (isTerminateModelExSubMat(bestModel, data, iter, bestIter, bestObj, 
             prevObj, uStart, uEnd, iStart, iEnd)) {
         break; 
       }
       std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj 
-                << " Train subMat RMSE: " << subMatRMSE(data.trainMat, uStart,
-                                                    uEnd, iStart, iEnd);
+                << " Train ExSubMat RMSE: " << subMatExRMSE(data.trainMat, 
+                    uStart, uEnd, iStart, iEnd);
     }
   
   } 
@@ -452,7 +452,5 @@ void ModelMF::subExTrain(const Data &data, Model &bestModel,
   //  << " Best obj: " << std::scientific << bestObj ;
 
 }
-
-
 
 

@@ -33,3 +33,15 @@ int nnzSubMat(gk_csr_t *mat, int uStart, int uEnd, int iStart, int iEnd) {
   return nnz;
 }
 
+
+//check if (u, item) is present inside the passed block
+//includes start but exclude end
+bool isInsideBlock(int u, int item, int uStart, int uEnd, int iStart, 
+    int iEnd) {
+  if ((u >= uStart && u < uEnd) && (item >= iStart && item < iEnd)) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
