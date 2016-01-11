@@ -374,6 +374,46 @@ double Model::subMatKnownRankErr(const Data& data, int uStart, int uEnd,
 }
 
 
+//start inclusive, end exclusive
+double Model::subMatKnownRankNonObsErr(const Data& data, int uStart, int uEnd,
+    int iStart, int iEnd) {
+  
+  double r_ui_est, r_ui_orig, diff, seKnown, seUnknown, rmseUnknown;
+  int u, ii, item, nnzKnown;
+
+  seKnown = 0;
+  seUnknown = 0;
+  nnzKnown = 0;
+
+  gk_csr_t *mat = data.trainMat;
+
+  for (u = uStart; u < uEnd; u++) {
+    for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      item = mat->rowind[ii];
+      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      diff = r_ui_orig - r_ui_est;
+      seKnown += diff*diff;
+      nnzKnown++;
+    }
+  }
+
+  for (u = uStart; u < uEnd; u++) {
+    for (item = iStart; item < iEnd; item++) {
+      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      diff = r_ui_orig - r_ui_est;
+      seUnknown += diff*diff;
+    }
+  }
+
+  seUnknown = seUnknown - seKnown;
+  rmseUnknown = sqrt(seUnknown/(((uEnd-uStart)*(iEnd-iStart)) - nnzKnown));
+
+  return rmseUnknown;
+}
+
+
 //define constructor
 Model::Model(const Params& params) {
 

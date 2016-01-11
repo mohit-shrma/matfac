@@ -117,8 +117,8 @@ class Params {
         }
       }
       
-      std::cout<<"\ntrain nnz = " << trainNNZ;
-     
+      std::cout <<"\ntrain nnz = " << trainNNZ;
+      std::cout <<"\ntrain nrows: " << trainMat->nrows << " ncols: " << trainMat->ncols;
       testMat = NULL;
       if (NULL != params.testMatFile) {
         std::cout << "\nReading test matrix 0-indexed... ";

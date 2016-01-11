@@ -67,6 +67,8 @@ class Model {
     double fullLowRankErr(const Data& data);
     double subMatKnownRankErr(const Data& data, int uStart, int uEnd,
       int iStart, int iEnd);
+    double subMatKnownRankNonObsErr(const Data& data, int uStart, int uEnd,
+      int iStart, int iEnd);
     double fullRMSE(const Data& data);
 };
 #endif

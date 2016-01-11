@@ -206,7 +206,7 @@ void ModelMF::train(const Data &data, Model &bestModel) {
     }
 
     //check objective
-    if (iter % OBJ_ITER == 0) {
+    if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj)) {
         break; 
       }
@@ -319,7 +319,7 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
      }
 
     //check objective
-    if (iter % OBJ_ITER == 0) {
+    if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
       if (isTerminateModelSubMat(bestModel, data, iter, bestIter, bestObj, 
             prevObj, uStart, uEnd, iStart, iEnd)) {
         break; 
@@ -339,7 +339,6 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
   //  << " Best obj: " << std::scientific << bestObj ;
 
 }
-
 
 
 void ModelMF::subExTrain(const Data &data, Model &bestModel,
@@ -432,7 +431,7 @@ void ModelMF::subExTrain(const Data &data, Model &bestModel,
      }
 
     //check objective
-    if (iter % OBJ_ITER == 0) {
+    if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
       if (isTerminateModelExSubMat(bestModel, data, iter, bestIter, bestObj, 
             prevObj, uStart, uEnd, iStart, iEnd)) {
         break; 

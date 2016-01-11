@@ -53,4 +53,25 @@ void writeMat(std::vector<std::vector<double>>& mat, int nrows, int ncols,
 }
 
 
+void writeCSRWSparsityStructure(gk_csr_t *mat, const char *opFileName, 
+    std::vector<std::vector<double>> uFac, 
+    std::vector<std::vector<double>> iFac, int facDim) {
+  
+  int item, u, ii;
+  float rating;
+
+  std::ofstream opFile (opFileName);
+  if (opFile.is_open()) {
+    for (u = 0; u < mat->nrows; u++) {
+      for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+        item = mat->rowind[ii];
+        rating = dotProd(uFac[u], iFac[item], facDim);         
+        opFile << item << " " << rating << " ";
+      }
+      opFile << std::endl;
+    }
+    opFile.close();
+  }
+
+}
 

@@ -19,8 +19,7 @@ Params parse_cmd_line(int argc, char *argv[]) {
   Params params(atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), 
       atoi(argv[5]), atoi(argv[6]),
       atof(argv[7]), atof(argv[8]), atof(argv[9]), atof(argv[10]), atof(argv[11]),
-      argv[12], argv[13], NULL, NULL);
-      //argv[12], argv[13], argv[14], argv[15]);
+      argv[12], argv[13], argv[14], argv[15]);
 
   return params;
 }
@@ -198,18 +197,17 @@ int main(int argc , char* argv[]) {
   //create mf model instance to store the best model
   Model bestModel(trainModel);
 
-  //trainModel.train(data, bestModel);
-  trainModel.subExTrain(data, bestModel, 0, 10000, 0, 10000);
+  trainModel.train(data, bestModel);
+  //trainModel.subExTrain(data, bestModel, 0, 10000, 0, 10000);
   //trainModel.subTrain(data, bestModel, 0, 10000, 0, 10000);
 
-  double subMatRMSE   = bestModel.subMatRMSE(data.trainMat, 0, 10000, 0, 10000);
-  double subMatExRMSE = bestModel.subMatExRMSE(data.trainMat, 0, 10000, 0, 10000);
-  double matRMSE      = bestModel.RMSE(data.trainMat);
+  double subMatNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, 0, 10000, 0, 10000);
+  double matNonObsRMSE    = bestModel.subMatKnownRankNonObsErr(data, 0, params.nUsers, 
+                                                                    0, params.nItems);
 
-  std::cout << "\nSubmat RMSE: " << subMatRMSE << std::endl;
-  std::cout << "\nSubmatEx RMSE: " << subMatExRMSE << std::endl;
-  std::cout << "\nMat RMSE: " << matRMSE << std::endl;
-  std::cout << "\nRE: " << subMatRMSE << " " << subMatExRMSE << " " << matRMSE << std::endl;
+  std::cout << "\nsubMatNonObs RMSE: " << subMatNonObsRMSE;
+  std::cout << "\nmatNonObs RMSE: " << matNonObsRMSE;
+  std::cout << "\nRE: " << subMatNonObsRMSE << " " << matNonObsRMSE <<  std::endl;
   //knownLowRankEval2(data, bestModel, params); 
 
   return 0;
