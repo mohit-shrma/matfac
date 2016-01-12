@@ -1,6 +1,17 @@
 #include "model.h"
 
 
+
+void Model::save() {
+  std::string uFacName = "uFac_" + std::to_string(nUsers) + "_" 
+    + std::to_string(facDim) + std::to_string(uReg) + ".mat";
+  writeMat(uFac, nUsers, facDim, uFacName.c_str());
+  std::string iFacName = "iFac_" + std::to_string(nItems) + "_" 
+    + std::to_string(facDim) + "_" + std::to_string(iReg) + ".mat";
+  writeMat(iFac, nUsers, facDim, iFacName.c_str());
+}
+
+
 double Model::RMSE(gk_csr_t *mat) {
   int u, i, ii, nnz;
   float r_ui;

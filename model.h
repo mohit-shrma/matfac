@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <vector>
 #include <chrono>
+#include <string>
 #include "util.h"
 #include "const.h"
 #include "GKlib.h"
@@ -70,5 +71,6 @@ class Model {
     double subMatKnownRankNonObsErr(const Data& data, int uStart, int uEnd,
       int iStart, int iEnd);
     double fullRMSE(const Data& data);
+    void save();
 };
 #endif

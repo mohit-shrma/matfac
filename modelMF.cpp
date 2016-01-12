@@ -211,7 +211,7 @@ void ModelMF::train(const Data &data, Model &bestModel) {
         break; 
       }
       std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj 
-                << " Train RMSE: " << RMSE(data.trainMat);
+                << " Train RMSE: " << RMSE(data.trainMat) << std::endl;
     }
   
   }
@@ -325,8 +325,9 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
         break; 
       }
       std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj 
-                << " Train subMat RMSE: " << subMatRMSE(data.trainMat, uStart,
-                                                    uEnd, iStart, iEnd);
+                << " Train subMat RMSE: " 
+                << subMatRMSE(data.trainMat, uStart, uEnd, iStart, iEnd) 
+                << std::endl;
     }
   
   } 
