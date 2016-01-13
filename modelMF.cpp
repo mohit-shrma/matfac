@@ -327,6 +327,8 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
       std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj 
                 << " Train subMat RMSE: " 
                 << subMatRMSE(data.trainMat, uStart, uEnd, iStart, iEnd) 
+                << " Train subMat Non-Obs RMSE: "
+                << subMatKnownRankNonObsErr(data, uStart, uEnd, iStart, iEnd) 
                 << std::endl;
     }
   

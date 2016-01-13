@@ -71,6 +71,7 @@ class Model {
     double subMatKnownRankNonObsErr(const Data& data, int uStart, int uEnd,
       int iStart, int iEnd);
     double fullRMSE(const Data& data);
-    void save();
+    void save(std::string prefix);
+    void load(const char* uFacName, const char *iFacName);
 };
 #endif

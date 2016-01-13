@@ -2,7 +2,7 @@
 
 
 void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
-    char *fileName) {
+    const char *fileName) {
   
   std::string line, token;
   std::string delimiter = " ";

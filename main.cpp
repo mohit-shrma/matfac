@@ -11,7 +11,7 @@
 
 Params parse_cmd_line(int argc, char *argv[]) {
   
-  if (argc < 16) {
+  if (argc < 17) {
     std::cout << "\nNot enough arguments";
     exit(0);
   }  
@@ -19,7 +19,7 @@ Params parse_cmd_line(int argc, char *argv[]) {
   Params params(atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), 
       atoi(argv[5]), atoi(argv[6]),
       atof(argv[7]), atof(argv[8]), atof(argv[9]), atof(argv[10]), atof(argv[11]),
-      argv[12], argv[13], argv[14], argv[15]);
+      argv[12], argv[13], argv[14], argv[15], argv[16]);
 
   return params;
 }
@@ -201,9 +201,13 @@ int main(int argc , char* argv[]) {
   //trainModel.subExTrain(data, bestModel, 0, 10000, 0, 10000);
   //trainModel.subTrain(data, bestModel, 0, 10000, 0, 10000);
 
+  //bestModel.load("uFac_20000_50.001000.mat", "iFac_17764_5_0.001000.mat");
+
   double subMatNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, 0, 10000, 0, 10000);
   double matNonObsRMSE    = bestModel.subMatKnownRankNonObsErr(data, 0, params.nUsers, 
                                                                     0, params.nItems);
+  std::string prefix(params.prefix);
+  bestModel.save(prefix);
 
   std::cout << "\nsubMatNonObs RMSE: " << subMatNonObsRMSE;
   std::cout << "\nmatNonObs RMSE: " << matNonObsRMSE;

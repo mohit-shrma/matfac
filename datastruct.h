@@ -27,19 +27,21 @@ class Params {
     char *testMatFile;
     char *origUFacFile;
     char *origIFacFile;
+    char *prefix;
 
     Params(int p_nUsers, int p_nItems, int p_facDim, int p_maxIter, 
         int p_origFacDim, int p_seed,
         float p_uReg, float p_iReg,  float p_learnRate, float p_rhoRMS, 
         float p_alpha,
         char *p_trainMatFile, char *p_testMatFile, char *p_origUFacFile, 
-        char *p_origIFacFile)
+        char *p_origIFacFile, char *p_prefix)
       : nUsers(p_nUsers), nItems(p_nItems), facDim(p_facDim), maxIter(p_maxIter),
       origFacDim(p_origFacDim), seed(p_seed),
       uReg(p_uReg), iReg(p_iReg), learnRate(p_learnRate), rhoRMS(p_rhoRMS), 
       alpha(p_alpha),
       trainMatFile(p_trainMatFile), testMatFile(p_testMatFile), 
-      origUFacFile(p_origUFacFile), origIFacFile(p_origIFacFile){}
+      origUFacFile(p_origUFacFile), origIFacFile(p_origIFacFile), 
+      prefix(p_prefix){}
 
 
 };

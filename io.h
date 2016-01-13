@@ -9,7 +9,7 @@
 #include "util.h"
 
 void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
-    char *fileName);
+    const char *fileName);
 void writeMat(std::vector<std::vector<double>>& mat, int nrows, int ncols,
               const char* opFileName);
 void writeCSRWSparsityStructure(gk_csr_t *mat, const char *opFileName, 

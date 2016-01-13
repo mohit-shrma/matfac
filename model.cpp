@@ -1,14 +1,19 @@
 #include "model.h"
 
 
-
-void Model::save() {
-  std::string uFacName = "uFac_" + std::to_string(nUsers) + "_" 
+void Model::save(std::string prefix) {
+  std::string uFacName = prefix + "_uFac_" + std::to_string(nUsers) + "_" 
     + std::to_string(facDim) + std::to_string(uReg) + ".mat";
   writeMat(uFac, nUsers, facDim, uFacName.c_str());
-  std::string iFacName = "iFac_" + std::to_string(nItems) + "_" 
+  std::string iFacName = prefix + "_iFac_" + std::to_string(nItems) + "_" 
     + std::to_string(facDim) + "_" + std::to_string(iReg) + ".mat";
   writeMat(iFac, nUsers, facDim, iFacName.c_str());
+}
+
+
+void Model::load(const char* uFacName, const char *iFacName) {
+  readMat(uFac, nUsers, facDim, uFacName);
+  readMat(iFac, nItems, facDim, iFacName);
 }
 
 
@@ -401,6 +406,9 @@ double Model::subMatKnownRankNonObsErr(const Data& data, int uStart, int uEnd,
   for (u = uStart; u < uEnd; u++) {
     for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
       item = mat->rowind[ii];
+      if (!isInsideBlock(u, item, uStart, uEnd, iStart, iEnd)) {
+        continue;
+      }
       r_ui_est = dotProd(uFac[u], iFac[item], facDim);
       r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
       diff = r_ui_orig - r_ui_est;
@@ -419,6 +427,8 @@ double Model::subMatKnownRankNonObsErr(const Data& data, int uStart, int uEnd,
   }
 
   seUnknown = seUnknown - seKnown;
+  std::cout << "\nseUnknown: " << seUnknown << " seKnown: " << seKnown 
+    << " nnzKnown: " << nnzKnown  << std::endl;
   rmseUnknown = sqrt(seUnknown/(((uEnd-uStart)*(iEnd-iStart)) - nnzKnown));
 
   return rmseUnknown;
