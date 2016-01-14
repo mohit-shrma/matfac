@@ -5,9 +5,10 @@ void Model::save(std::string prefix) {
   std::string uFacName = prefix + "_uFac_" + std::to_string(nUsers) + "_" 
     + std::to_string(facDim) + std::to_string(uReg) + ".mat";
   writeMat(uFac, nUsers, facDim, uFacName.c_str());
+  
   std::string iFacName = prefix + "_iFac_" + std::to_string(nItems) + "_" 
     + std::to_string(facDim) + "_" + std::to_string(iReg) + ".mat";
-  writeMat(iFac, nUsers, facDim, iFacName.c_str());
+  writeMat(iFac, nItems, facDim, iFacName.c_str());
 }
 
 
