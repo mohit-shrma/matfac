@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <set>
 #include <cstdio>
 #include "io.h"
 #include "model.h"

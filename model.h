@@ -5,6 +5,7 @@
 #include <numeric>
 #include <cstdio>
 #include <vector>
+#include <set>
 #include <chrono>
 #include <string>
 #include "util.h"
@@ -70,6 +71,8 @@ class Model {
       int iStart, int iEnd);
     double subMatKnownRankNonObsErr(const Data& data, int uStart, int uEnd,
       int iStart, int iEnd);
+    double subMatKnownRankNonObsErrWSet(const Data& data, int uStart, int uEnd,
+      int iStart, int iEnd, std::set<int> exUSet, std::set<int> exISet);
     double fullRMSE(const Data& data);
     void save(std::string prefix);
     void load(const char* uFacName, const char *iFacName);

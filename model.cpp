@@ -2,10 +2,12 @@
 
 
 void Model::save(std::string prefix) {
+  //save user latent factors
   std::string uFacName = prefix + "_uFac_" + std::to_string(nUsers) + "_" 
-    + std::to_string(facDim) + std::to_string(uReg) + ".mat";
+    + std::to_string(facDim) + "_" + std::to_string(uReg) + ".mat";
   writeMat(uFac, nUsers, facDim, uFacName.c_str());
   
+  //save item latent factors
   std::string iFacName = prefix + "_iFac_" + std::to_string(nItems) + "_" 
     + std::to_string(facDim) + "_" + std::to_string(iReg) + ".mat";
   writeMat(iFac, nItems, facDim, iFacName.c_str());
@@ -431,6 +433,73 @@ double Model::subMatKnownRankNonObsErr(const Data& data, int uStart, int uEnd,
   std::cout << "\nseUnknown: " << seUnknown << " seKnown: " << seKnown 
     << " nnzKnown: " << nnzKnown  << std::endl;
   rmseUnknown = sqrt(seUnknown/(((uEnd-uStart)*(iEnd-iStart)) - nnzKnown));
+
+  return rmseUnknown;
+}
+
+
+//start inclusive, end exclusive
+double Model::subMatKnownRankNonObsErrWSet(const Data& data, int uStart, int uEnd,
+    int iStart, int iEnd, std::set<int> exUSet, std::set<int> exISet) {
+  
+  double r_ui_est, r_ui_orig, diff, seKnown, seUnknown, rmseUnknown;
+  int u, ii, item, nnzKnown, nnzUnknown;
+
+  seKnown = 0;
+  seUnknown = 0;
+  nnzKnown = 0;
+  nnzUnknown = 0;
+  gk_csr_t *mat = data.trainMat;
+
+  for (u = uStart; u < uEnd; u++) {
+    auto search = exUSet.find(u);
+    if (search != exUSet.end()) {
+      //found in set
+      continue;
+    }
+    for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      item = mat->rowind[ii];
+      search = exISet.find(item);
+      if (search != exISet.end()) {
+        //found in set
+        continue;
+      }
+      if (!isInsideBlock(u, item, uStart, uEnd, iStart, iEnd)) {
+        continue;
+      }
+      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      diff = r_ui_orig - r_ui_est;
+      seKnown += diff*diff;
+      nnzKnown++;
+    }
+  }
+
+  for (u = uStart; u < uEnd; u++) {
+    auto search = exUSet.find(u);
+    if (search != exUSet.end()) {
+      //found in set
+      continue;
+    }
+    for (item = iStart; item < iEnd; item++) {
+      search = exISet.find(item);
+      if (search != exISet.end()) {
+        //found in set
+        continue;
+      }
+      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      diff = r_ui_orig - r_ui_est;
+      seUnknown += diff*diff;
+      nnzUnknown++;
+    }
+  }
+
+  seUnknown = seUnknown - seKnown;
+  nnzUnknown = nnzUnknown - nnzKnown;
+  std::cout << "\nseUnknown: " << seUnknown << " seKnown: " << seKnown 
+    << " nnzKnown: " << nnzKnown  << " nnzUnknown: " << nnzUnknown << std::endl;
+  rmseUnknown = sqrt(seUnknown/nnzUnknown);
 
   return rmseUnknown;
 }

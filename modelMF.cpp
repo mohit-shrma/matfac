@@ -211,7 +211,10 @@ void ModelMF::train(const Data &data, Model &bestModel) {
         break; 
       }
       std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj 
-                << " Train RMSE: " << RMSE(data.trainMat) << std::endl;
+                << " Train RMSE: " << RMSE(data.trainMat)
+                << " Train subMat Non-Obs RMSE: "
+                << subMatKnownRankNonObsErr(data, 0, 10000, 0, 10000) 
+                << std::endl;
     }
   
   }
@@ -226,7 +229,7 @@ void ModelMF::train(const Data &data, Model &bestModel) {
 }
 
 
-//train on a submatrix excluding users and items interval
+//train on a submatrix inclusive start exclusive end
 void ModelMF::subTrain(const Data &data, Model &bestModel,
                     int uStart, int uEnd, int iStart, int iEnd) {
 
@@ -251,7 +254,7 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
   std::cout << "\nsvd duration: " << durationSVD.count();
   */
 
-  int u, iter, subIter, bestIter, nSubUsers;
+  int u, ii, iter, subIter, bestIter, nSubUsers, nSubItems;
   int item, nUserItems, itemInd;
   float itemRat;
   double bestObj, prevObj;
@@ -273,32 +276,68 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
   std::vector<std::vector<double>> iGradsAcc (nItems, 
       std::vector<double>(facDim,0)); 
 
+  //set to hold rated items in set
+  std::set<int> ratedItems;
+  //set to hold unrated items in set
+  std::set<int> unRatedItems;
+  //set to hold users w/o rating
+  std::set<int> unRatedUsers;
+
+  //vector to hold rated items in submatrix for users
+  std::vector<std::vector<int>> uRatedItems (nUsers);
+  int uNoItemsCount = 0;
+  for (u = uStart; u < uEnd; u++) {
+    for (ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+      item = trainMat->rowind[ii];
+      if (isInsideBlock(u, item, uStart, uEnd, iStart, iEnd)) {
+        uRatedItems[u].push_back(item);
+        ratedItems.insert(item);
+      }
+    }
+    if (uRatedItems[u].size() == 0) {
+      uNoItemsCount++;
+      unRatedUsers.insert(u);
+    }
+  }
+
+  for (item = iStart; item < iEnd; item++) {
+    auto search = ratedItems.find(item);
+    if (search == ratedItems.end()) {
+      //not found 
+      unRatedItems.insert(item);
+    }
+  }
+
+  nSubUsers = uEnd - uStart; 
+  nSubItems = iEnd - iStart;
+  std::cout << "\nUsers without rating in submat: " << uNoItemsCount 
+    << " " << unRatedUsers.size(); 
+  std::cout << "\nItems without rating in submat: " 
+    << nSubItems - ratedItems.size() << " " << unRatedItems.size();
+
   //std::cout << "\nNNZ = " << nnz;
   prevObj = objectiveSubMat(data, uStart, uEnd, iStart, iEnd);
   std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " << RMSE(data.trainMat);
 
   std::chrono::time_point<std::chrono::system_clock> start, end;
-  start = std::chrono::system_clock::now();
-
-  nSubUsers = uEnd - uStart + 1; 
 
   for (iter = 0; iter < maxIter; iter++) {  
+    start = std::chrono::system_clock::now();
+    
     for (subIter = 0; subIter < nnz; subIter++) {
       
       //sample u
       u = uStart + (std::rand() % nSubUsers);
-      
-      //sample item rated by user
-      nUserItems =  trainMat->rowptr[u+1] - trainMat->rowptr[u];
-      itemInd = std::rand()%nUserItems; 
-      item = trainMat->rowind[trainMat->rowptr[u] + itemInd];
-     
-      //skip if outside submat
-      if (!isInsideBlock(u, item, uStart, uEnd, iStart, iEnd)) {
-        continue;
+      while(uRatedItems[u].size() == 0) {
+        u = uStart + (std::rand() % nSubUsers);
       }
-      
+
+      //sample item rated by user
+      nUserItems =  uRatedItems[u].size();
+      itemInd = std::rand()%nUserItems; 
+      item = uRatedItems[u][itemInd];
       itemRat = trainMat->rowval[trainMat->rowptr[u] + itemInd]; 
+      
       //std::cout << "\nGradCheck u: " << u << " item: " << item;
       //gradCheck(u, item, itemRat);
 
@@ -310,12 +349,11 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
       updateFac(uFac[u], uGrad); 
 
       //compute item gradient
-      computeIGrad(u, item, itemRat, iGrad);
+      //computeIGrad(u, item, itemRat, iGrad);
 
       //update item
       //updateAdaptiveFac(iFac[item], iGrad, iGradsAcc[item]);
-      updateFac(iFac[item], iGrad);
-
+      //updateFac(iFac[item], iGrad);
      }
 
     //check objective
@@ -328,16 +366,17 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
                 << " Train subMat RMSE: " 
                 << subMatRMSE(data.trainMat, uStart, uEnd, iStart, iEnd) 
                 << " Train subMat Non-Obs RMSE: "
-                << subMatKnownRankNonObsErr(data, uStart, uEnd, iStart, iEnd) 
+                << subMatKnownRankNonObsErrWSet(data, uStart, uEnd, iStart, 
+                    iEnd, unRatedUsers, unRatedItems) 
                 << std::endl;
+      end = std::chrono::system_clock::now();  
+      std::chrono::duration<double> duration =  (end - start) ;
+      std::cout << "\nSubiter duration: " << duration.count();
     }
   
   } 
    
-  end = std::chrono::system_clock::now();  
 
-  std::chrono::duration<double> duration =  (end - start) ;
-  std::cout << "\nduration: " << duration.count();
   //std::cout << "\nNum Iter: " << iter << " Best Iter: " << bestIter
   //  << " Best obj: " << std::scientific << bestObj ;
 
