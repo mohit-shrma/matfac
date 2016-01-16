@@ -498,7 +498,7 @@ double Model::subMatKnownRankNonObsErrWSet(const Data& data, int uStart, int uEn
   seUnknown = seUnknown - seKnown;
   nnzUnknown = nnzUnknown - nnzKnown;
   std::cout << "\nseUnknown: " << seUnknown << " seKnown: " << seKnown 
-    << " nnzKnown: " << nnzKnown  << " nnzUnknown: " << nnzUnknown << std::endl;
+    << " nnzKnown: " << nnzKnown  << " nnzUnknown: " << nnzUnknown;
   rmseUnknown = sqrt(seUnknown/nnzUnknown);
 
   return rmseUnknown;

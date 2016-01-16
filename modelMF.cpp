@@ -131,13 +131,16 @@ void ModelMF::train(const Data &data, Model &bestModel) {
   
   std::cout << "\nModelMF::train";
   
-  /*
-  std::cout << "\nObj b4 svd: " << objective(data) << " Train RMSE: " << RMSE(data.trainMat);
+  int nnz = data.trainNNZ;
+  
+  std::cout << "\nObj b4 svd: " << objective(data) 
+    << " Train RMSE: " << RMSE(data.trainMat) 
+    << " Train nnz: " << nnz << std::endl;
   
   std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
   startSVD = std::chrono::system_clock::now();
   //initialization with svd of the passed matrix
-  
+  svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac); 
   //svdUsingLapack(data.trainMat, facDim, uFac, iFac);
   //svdFrmCSR(data.trainMat, facDim, uFac, iFac);
   //svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
@@ -145,13 +148,11 @@ void ModelMF::train(const Data &data, Model &bestModel) {
   endSVD = std::chrono::system_clock::now();
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
   std::cout << "\nsvd duration: " << durationSVD.count();
-  */
 
   int u, iter, subIter, bestIter;
   int item, nUserItems, itemInd;
   float itemRat;
   double bestObj, prevObj;
-  int nnz = data.trainNNZ;
 
   gk_csr_t *trainMat = data.trainMat;
 
@@ -172,9 +173,9 @@ void ModelMF::train(const Data &data, Model &bestModel) {
   std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " << RMSE(data.trainMat);
 
   std::chrono::time_point<std::chrono::system_clock> start, end;
-  start = std::chrono::system_clock::now();
 
   for (iter = 0; iter < maxIter; iter++) {  
+    start = std::chrono::system_clock::now();
     for (subIter = 0; subIter < nnz; subIter++) {
       
       //sample u
@@ -212,17 +213,14 @@ void ModelMF::train(const Data &data, Model &bestModel) {
       }
       std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj 
                 << " Train RMSE: " << RMSE(data.trainMat)
-                << " Train subMat Non-Obs RMSE: "
-                << subMatKnownRankNonObsErr(data, 0, 10000, 0, 10000) 
                 << std::endl;
+      end = std::chrono::system_clock::now();  
+      std::chrono::duration<double> duration =  (end - start) ;
+      std::cout << "\nsub duration: " << duration.count();
     }
   
   }
   
-  end = std::chrono::system_clock::now();  
-
-  std::chrono::duration<double> duration =  (end - start) ;
-  std::cout << "\nduration: " << duration.count();
   //std::cout << "\nNum Iter: " << iter << " Best Iter: " << bestIter
   //  << " Best obj: " << std::scientific << bestObj ;
 
@@ -237,22 +235,22 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
   //uFac = data.origUFac;
   //iFac = data.origIFac;
   
-  std::cout << "\nModelMF::train";
+  std::cout << "\nModelMF::subTrain";
   
-  /*
-  std::cout << "\nObj b4 svd: " << objectiveSubMat(data) << " Train RMSE: " << RMSE(data.trainMat);
+  std::cout << "\nObj b4 svd: " << objectiveSubMat(data, uStart, uEnd, iStart, iEnd) 
+    << " Train RMSE: " << subMatRMSE(data.trainMat, uStart, uEnd, iStart, iEnd);
  
   std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
   startSVD = std::chrono::system_clock::now();
   //initialization with svd of the passed matrix
   
   //svdFrmCSR(data.trainMat, facDim, uFac, iFac);
-  svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
-  
+  //svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
+  svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac);
+
   endSVD = std::chrono::system_clock::now();
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
   std::cout << "\nsvd duration: " << durationSVD.count();
-  */
 
   int u, ii, iter, subIter, bestIter, nSubUsers, nSubItems;
   int item, nUserItems, itemInd;
@@ -349,11 +347,11 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
       updateFac(uFac[u], uGrad); 
 
       //compute item gradient
-      //computeIGrad(u, item, itemRat, iGrad);
+      computeIGrad(u, item, itemRat, iGrad);
 
       //update item
       //updateAdaptiveFac(iFac[item], iGrad, iGradsAcc[item]);
-      //updateFac(iFac[item], iGrad);
+      updateFac(iFac[item], iGrad);
      }
 
     //check objective
@@ -377,6 +375,147 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
   } 
    
 
+  //std::cout << "\nNum Iter: " << iter << " Best Iter: " << bestIter
+  //  << " Best obj: " << std::scientific << bestObj ;
+
+}
+
+//train on full but dont update passed range of users and items factors
+//start inclusive end exclusive
+void ModelMF::fixTrain(const Data &data, Model &bestModel, int uStart, 
+    int uEnd, int iStart, int iEnd) {
+
+  //copy passed known factors
+  //uFac = data.origUFac;
+  //iFac = data.origIFac;
+  
+  std::cout << "\nModelMF::fixTrain";
+  
+  int nnz = data.trainNNZ;
+  int subMatNNZ = nnzSubMat(data.trainMat, uStart, uEnd, iStart, iEnd);
+  nnz = nnz - subMatNNZ;
+  std::cout << "\nNNZ = " << nnz << " subMatNNZ: " << subMatNNZ;
+ 
+  /*
+  std::cout << "\nObj b4 svd: " << objective(data) 
+    << " Train RMSE: " << RMSE(data.trainMat) 
+    << " Train nnz: " << nnz << std::endl;
+  std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
+  startSVD = std::chrono::system_clock::now();
+  //initialization with svd of the passed matrix
+  svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac); 
+  //svdUsingLapack(data.trainMat, facDim, uFac, iFac);
+  //svdFrmCSR(data.trainMat, facDim, uFac, iFac);
+  //svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
+  
+  endSVD = std::chrono::system_clock::now();
+  std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
+  std::cout << "\nsvd duration: " << durationSVD.count();
+  */
+
+  int u, ii, iter, subIter, bestIter;
+  int item, nUserItems, itemInd;
+  float itemRat;
+  double bestObj, prevObj;
+
+  gk_csr_t *trainMat = data.trainMat;
+
+  //array to hold user and item gradients
+  std::vector<double> uGrad (facDim, 0);
+  std::vector<double> iGrad (facDim, 0);
+ 
+  //vector to hold user gradient accumulation
+  std::vector<std::vector<double>> uGradsAcc (nUsers, 
+      std::vector<double>(facDim,0)); 
+
+  //vector to hold item gradient accumulation
+  std::vector<std::vector<double>> iGradsAcc (nItems, 
+      std::vector<double>(facDim,0)); 
+
+  prevObj = objective(data);
+  std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " << RMSE(data.trainMat);
+
+  std::chrono::time_point<std::chrono::system_clock> start, end;
+
+  //get eligible items for users
+  std::vector<std::vector<std::pair<int, float>>> eligibleItems(nUsers);
+  int uNoEligibleItems = 0;
+  for (u = 0; u < trainMat->nrows; u++) {
+    for (ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+      item = trainMat->rowind[ii];
+      itemRat = trainMat->rowval[ii];
+      if (item < iStart || item >= iEnd) {
+        eligibleItems[u].push_back(std::make_pair(item,itemRat));
+      }
+    }
+    if (eligibleItems[u].size() == 0) {
+      uNoEligibleItems++;
+    }
+  }
+
+  std::cout << "\nUsers with no eligible items: " << uNoEligibleItems << std::endl;
+
+  for (iter = 0; iter < maxIter; iter++) {  
+    start = std::chrono::system_clock::now();
+    for (subIter = 0; subIter < data.trainNNZ; subIter++) {
+      
+      //sample u
+      u = std::rand() % nUsers;
+      
+      //sample item rated by user
+      nUserItems =  trainMat->rowptr[u+1] - trainMat->rowptr[u];
+      itemInd = std::rand()%nUserItems; 
+      item = trainMat->rowind[trainMat->rowptr[u] + itemInd];
+      itemRat = trainMat->rowval[trainMat->rowptr[u] + itemInd]; 
+    
+      //std::cout << "\nGradCheck u: " << u << " item: " << item;
+      //gradCheck(u, item, itemRat);
+
+      if (u < uStart || u >= uEnd ) {
+        //update as outside the user block
+        //compute user gradient
+        computeUGrad(u, item, itemRat, uGrad);
+
+        //update user
+        //updateAdaptiveFac(uFac[u], uGrad, uGradsAcc[u]); 
+        updateFac(uFac[u], uGrad); 
+      }
+
+      if (item < iStart || item >= iEnd) {
+        //update as outside the item block
+        //compute item gradient
+        computeIGrad(u, item, itemRat, iGrad);
+
+        //update item
+        //updateAdaptiveFac(iFac[item], iGrad, iGradsAcc[item]);
+        updateFac(iFac[item], iGrad);
+      }
+
+    }
+
+    //check objective
+    if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
+      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj)) {
+        break; 
+      }
+      std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj 
+                << " Train RMSE: " << RMSE(data.trainMat)
+                << "\n subMat Non-Obs RMSE(0,10000,0,10000): "
+                << subMatKnownRankNonObsErr(data, 0, 10000, 0, 10000) 
+                << "\n subMat Non-Obs RMSE(10000,20000,0,10000): "
+                << subMatKnownRankNonObsErr(data, 10000, 20000, 0, 10000) 
+                << "\n subMat Non-Obs RMSE(0,10000,10000,17764): "
+                << subMatKnownRankNonObsErr(data, 0, 10000, 10000, 17764)
+                << "\n subMat Non-Obs RMSE(10000,20000,10000,17764): "
+                << subMatKnownRankNonObsErr(data, 10000, 20000, 10000, 17764)
+                << std::endl;
+      end = std::chrono::system_clock::now();  
+      std::chrono::duration<double> duration =  (end - start) ;
+      std::cout << "\nsub duration: " << duration.count();
+    }
+  
+  }
+  
   //std::cout << "\nNum Iter: " << iter << " Best Iter: " << bestIter
   //  << " Best obj: " << std::scientific << bestObj ;
 

@@ -189,25 +189,42 @@ int main(int argc , char* argv[]) {
 
   Data data (params);
 
+  //writeCSRWSparsityStructure(data.trainMat, "songRatingsSyn.csr", data.origUFac,
+  //    data.origIFac, 5);
+
   //create mf model instance
-  //ModelMFWtRegArb trainModel(params);
-  //ModelMFWtReg trainModel(params);
   ModelMF trainModel(params);
-  
+  //trainModel.load("sub_uFac_20000_50.001000.mat", "sub_iFac_17764_5_0.001000.mat");
+  //readMat(trainModel.uFac, trainModel.nUsers, trainModel.facDim, "sub_uFac_20000_50.001000.mat");
+  //readMat(trainModel.iFac, trainModel.nItems, trainModel.facDim, "sub_iFac_17764_5_0.001000.mat");
+
   //create mf model instance to store the best model
   Model bestModel(trainModel);
+  //bestModel.load("full_uFac_20000_50.001000.mat", "full_iFac_17764_5_0.001000.mat");
 
-  trainModel.train(data, bestModel);
-  //trainModel.subExTrain(data, bestModel, 0, 10000, 0, 10000);
-  //trainModel.subTrain(data, bestModel, 0, 10000, 0, 10000);
+  //trainModel.train(data, bestModel);
+  trainModel.subTrain(data, bestModel, 0, 10000, 0, 10000);
+  //trainModel.fixTrain(data, bestModel, 0, 10000, 0, 10000);
 
-  //bestModel.load("uFac_20000_50.001000.mat", "iFac_17764_5_0.001000.mat");
-
-  double subMatNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, 0, 10000, 0, 10000);
-  double matNonObsRMSE    = bestModel.subMatKnownRankNonObsErr(data, 0, params.nUsers, 
-                                                                    0, params.nItems);
   std::string prefix(params.prefix);
   bestModel.save(prefix);
+  
+  //bestModel.load("sub_uFac_20000_50.001000.mat", "sub_iFac_17764_5_0.001000.mat");
+
+  double subMatNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, 0, 10000, 0, 10000);
+  std::cout << "\nsubMatNonObs (0, 10000, 0, 10000) RMSE: " << subMatNonObsRMSE;
+  
+  subMatNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, 10000, 20000, 0, 10000);
+  std::cout << "\nsubMatNonObs (10000, 20000, 0, 10000) RMSE: " << subMatNonObsRMSE;
+  
+  subMatNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, 0, 10000, 10000, 17764);
+  std::cout << "\nsubMatNonObs (0, 10000, 10000, 20000) RMSE: " << subMatNonObsRMSE;
+  
+  subMatNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, 10000, 20000, 10000, 17764);
+  std::cout << "\nsubMatNonObs (10000, 20000, 10000, 20000) RMSE: " << subMatNonObsRMSE;
+  
+  double matNonObsRMSE    = bestModel.subMatKnownRankNonObsErr(data, 0, params.nUsers, 
+                                                                    0, params.nItems);
 
   std::cout << "\nsubMatNonObs RMSE: " << subMatNonObsRMSE;
   std::cout << "\nmatNonObs RMSE: " << matNonObsRMSE;

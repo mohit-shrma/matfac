@@ -5,10 +5,13 @@
 #include <vector>
 #include <set>
 #include <cstdio>
+#include <utility>
 #include "io.h"
 #include "model.h"
-#include "svd.h"
-#include "svdLapack.h"
+//#include "svd.h"
+//#include "svdLapack.h"
+#include "svdFrmsvdlib.h"
+
 
 class ModelMF : public Model {
 
@@ -17,6 +20,8 @@ class ModelMF : public Model {
     ModelMF(const Params& params) : Model(params) {}
     virtual void train(const Data& data, Model& bestModel) ;
     virtual void subTrain(const Data& data, Model& bestModel,
+                        int uStart, int uEnd, int iStart, int iEnd);
+    virtual void fixTrain(const Data& data, Model& bestModel,
                         int uStart, int uEnd, int iStart, int iEnd);
     virtual void subExTrain(const Data& data, Model& bestModel,
                         int uStart, int uEnd, int iStart, int iEnd);

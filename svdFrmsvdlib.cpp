@@ -6,11 +6,9 @@ void svdFrmSvdlibCSR(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& 
   int nnz = 0;
   int u, i, j, ii, item, jj;
   for (u = 0; u < mat->nrows; u++) {
-    for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
-      nnz += mat->rowptr[u+1] - mat->rowptr[u];
-    }
+    nnz += mat->rowptr[u+1] - mat->rowptr[u];
   }
-  std::cout << "\nsvd mat nnz: " << nnz;
+  std::cout << "\nsvd mat nnz: " << nnz << std::endl;
  
   std::unique_ptr<smat> ipMat(new smat());
   std::unique_ptr<long[]> pointr(new long[mat->ncols+1]);

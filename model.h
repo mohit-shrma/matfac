@@ -43,6 +43,10 @@ class Model {
       std::cerr<< "\nsubTrain not in base class";
     };
     
+    virtual void fixTrain(const Data& data, Model& bestModel,
+                        int uStart, int uEnd, int iStart, int iEnd) {
+      std::cerr<< "\nsubTrain not in base class";
+    };
     virtual void subExTrain(const Data &data, Model &bestModel,
          int uStart, int uEnd, int iStart, int iEnd) {
       std::cerr << "\nsubExTrain not in base class";
