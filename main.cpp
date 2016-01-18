@@ -194,37 +194,41 @@ int main(int argc , char* argv[]) {
 
   //create mf model instance
   ModelMF trainModel(params);
-  //trainModel.load("sub_uFac_20000_50.001000.mat", "sub_iFac_17764_5_0.001000.mat");
+  //trainModel.load("sub_svd_uFac_20000_5_0.001000.mat", "sub_svd_iFac_20000_5_0.001000.mat");
   //readMat(trainModel.uFac, trainModel.nUsers, trainModel.facDim, "sub_uFac_20000_50.001000.mat");
   //readMat(trainModel.iFac, trainModel.nItems, trainModel.facDim, "sub_iFac_17764_5_0.001000.mat");
 
   //create mf model instance to store the best model
   Model bestModel(trainModel);
-  //bestModel.load("full_uFac_20000_50.001000.mat", "full_iFac_17764_5_0.001000.mat");
+  //bestModel.load("full_svd_uFac_20000_5_0.001000.mat", "full_svd_iFac_20000_5_0.001000.mat");
+  bestModel.load("full_svd_uFac_20000_5_0.001000.mat", "full_svd_iFac_17764_5_0.001000.mat");
+  
+  int uStart = 0, uEnd = 10000;
+  int iStart = 0, iEnd = 10000;
 
   //trainModel.train(data, bestModel);
-  trainModel.subTrain(data, bestModel, 0, 10000, 0, 10000);
-  //trainModel.fixTrain(data, bestModel, 0, 10000, 0, 10000);
+  //trainModel.subTrain(data, bestModel, uStart, uEnd, iStart, iEnd);
+  //trainModel.fixTrain(data, bestModel, uStart, uEnd, iStart, iEnd);
 
-  std::string prefix(params.prefix);
-  bestModel.save(prefix);
+  //std::string prefix(params.prefix);
+  //bestModel.save(prefix);
   
   //bestModel.load("sub_uFac_20000_50.001000.mat", "sub_iFac_17764_5_0.001000.mat");
+  
+  std::cout << "\n subMat Non-Obs RMSE("<<uStart<<","<<uEnd<<","<<iStart<<","<<iEnd<<"): "
+            << bestModel.subMatKnownRankNonObsErr(data, uStart, uEnd, iStart, iEnd) 
+            << "\n subMat Non-Obs RMSE("<<uEnd<<","<<data.nUsers<<","<<iStart<<","<<iEnd<<"): "
+            << bestModel.subMatKnownRankNonObsErr(data, uEnd, data.nUsers, iStart, iEnd) 
+            << "\n subMat Non-Obs RMSE("<<uStart<<","<<uEnd<<","<<iEnd<<","<<data.nItems<<"): "
+            << bestModel.subMatKnownRankNonObsErr(data, uStart, uEnd, iEnd, data.nItems)
+            << "\n subMat Non-Obs RMSE("<<uEnd<<","<<data.nUsers<<","<<iEnd<<","<<data.nItems<<"): "
+            << bestModel.subMatKnownRankNonObsErr(data, uEnd, data.nUsers, iEnd, data.nItems)
+            << std::endl;
 
-  double subMatNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, 0, 10000, 0, 10000);
-  std::cout << "\nsubMatNonObs (0, 10000, 0, 10000) RMSE: " << subMatNonObsRMSE;
-  
-  subMatNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, 10000, 20000, 0, 10000);
-  std::cout << "\nsubMatNonObs (10000, 20000, 0, 10000) RMSE: " << subMatNonObsRMSE;
-  
-  subMatNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, 0, 10000, 10000, 17764);
-  std::cout << "\nsubMatNonObs (0, 10000, 10000, 20000) RMSE: " << subMatNonObsRMSE;
-  
-  subMatNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, 10000, 20000, 10000, 17764);
-  std::cout << "\nsubMatNonObs (10000, 20000, 10000, 20000) RMSE: " << subMatNonObsRMSE;
-  
-  double matNonObsRMSE    = bestModel.subMatKnownRankNonObsErr(data, 0, params.nUsers, 
-                                                                    0, params.nItems);
+  double subMatNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, uStart, uEnd, 
+                                                                  iStart, iEnd);
+  double matNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, 0, params.nUsers, 
+                                                                  0, params.nItems);
 
   std::cout << "\nsubMatNonObs RMSE: " << subMatNonObsRMSE;
   std::cout << "\nmatNonObs RMSE: " << matNonObsRMSE;

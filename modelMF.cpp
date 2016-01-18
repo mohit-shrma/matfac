@@ -467,7 +467,11 @@ void ModelMF::fixTrain(const Data &data, Model &bestModel, int uStart,
       itemInd = std::rand()%nUserItems; 
       item = trainMat->rowind[trainMat->rowptr[u] + itemInd];
       itemRat = trainMat->rowval[trainMat->rowptr[u] + itemInd]; 
-    
+   
+      if ((u >= uStart && u < uEnd) && (item >= iStart && item < iEnd)) {
+        continue;
+      }
+
       //std::cout << "\nGradCheck u: " << u << " item: " << item;
       //gradCheck(u, item, itemRat);
 
@@ -500,14 +504,14 @@ void ModelMF::fixTrain(const Data &data, Model &bestModel, int uStart,
       }
       std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj 
                 << " Train RMSE: " << RMSE(data.trainMat)
-                << "\n subMat Non-Obs RMSE(0,10000,0,10000): "
-                << subMatKnownRankNonObsErr(data, 0, 10000, 0, 10000) 
-                << "\n subMat Non-Obs RMSE(10000,20000,0,10000): "
-                << subMatKnownRankNonObsErr(data, 10000, 20000, 0, 10000) 
-                << "\n subMat Non-Obs RMSE(0,10000,10000,17764): "
-                << subMatKnownRankNonObsErr(data, 0, 10000, 10000, 17764)
-                << "\n subMat Non-Obs RMSE(10000,20000,10000,17764): "
-                << subMatKnownRankNonObsErr(data, 10000, 20000, 10000, 17764)
+                << "\n subMat Non-Obs RMSE("<<uStart<<","<<uEnd<<","<<iStart<<","<<iEnd<<"): "
+                << subMatKnownRankNonObsErr(data, uStart, uEnd, iStart, iEnd) 
+                << "\n subMat Non-Obs RMSE("<<uEnd<<","<<nUsers<<","<<iStart<<","<<iEnd<<"): "
+                << subMatKnownRankNonObsErr(data, uEnd, nUsers, iStart, iEnd) 
+                << "\n subMat Non-Obs RMSE("<<uStart<<","<<uEnd<<","<<iEnd<<","<<nItems<<"): "
+                << subMatKnownRankNonObsErr(data, uStart, uEnd, iEnd, nItems)
+                << "\n subMat Non-Obs RMSE("<<uEnd<<","<<nUsers<<","<<iEnd<<","<<nItems<<"): "
+                << subMatKnownRankNonObsErr(data, uEnd, nUsers, iEnd, nItems)
                 << std::endl;
       end = std::chrono::system_clock::now();  
       std::chrono::duration<double> duration =  (end - start) ;
