@@ -380,6 +380,7 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
 
 }
 
+
 //train on full but dont update passed range of users and items factors
 //start inclusive end exclusive
 void ModelMF::fixTrain(const Data &data, Model &bestModel, int uStart, 
@@ -394,7 +395,7 @@ void ModelMF::fixTrain(const Data &data, Model &bestModel, int uStart,
   int nnz = data.trainNNZ;
   int subMatNNZ = nnzSubMat(data.trainMat, uStart, uEnd, iStart, iEnd);
   nnz = nnz - subMatNNZ;
-  std::cout << "\nNNZ = " << nnz << " subMatNNZ: " << subMatNNZ;
+  std::cout << "\nTrain NNZ = " << nnz << " subMatNNZ: " << subMatNNZ;
  
   /*
   std::cout << "\nObj b4 svd: " << objective(data) 
@@ -413,7 +414,7 @@ void ModelMF::fixTrain(const Data &data, Model &bestModel, int uStart,
   std::cout << "\nsvd duration: " << durationSVD.count();
   */
 
-  int u, ii, iter, subIter, bestIter;
+  int u, iter, subIter, bestIter;
   int item, nUserItems, itemInd;
   float itemRat;
   double bestObj, prevObj;
@@ -437,23 +438,6 @@ void ModelMF::fixTrain(const Data &data, Model &bestModel, int uStart,
 
   std::chrono::time_point<std::chrono::system_clock> start, end;
 
-  //get eligible items for users
-  std::vector<std::vector<std::pair<int, float>>> eligibleItems(nUsers);
-  int uNoEligibleItems = 0;
-  for (u = 0; u < trainMat->nrows; u++) {
-    for (ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
-      item = trainMat->rowind[ii];
-      itemRat = trainMat->rowval[ii];
-      if (item < iStart || item >= iEnd) {
-        eligibleItems[u].push_back(std::make_pair(item,itemRat));
-      }
-    }
-    if (eligibleItems[u].size() == 0) {
-      uNoEligibleItems++;
-    }
-  }
-
-  std::cout << "\nUsers with no eligible items: " << uNoEligibleItems << std::endl;
 
   for (iter = 0; iter < maxIter; iter++) {  
     start = std::chrono::system_clock::now();
@@ -469,6 +453,7 @@ void ModelMF::fixTrain(const Data &data, Model &bestModel, int uStart,
       itemRat = trainMat->rowval[trainMat->rowptr[u] + itemInd]; 
    
       if ((u >= uStart && u < uEnd) && (item >= iStart && item < iEnd)) {
+        //subIter--;
         continue;
       }
 

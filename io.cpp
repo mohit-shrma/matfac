@@ -75,3 +75,31 @@ void writeCSRWSparsityStructure(gk_csr_t *mat, const char *opFileName,
 
 }
 
+
+void writeCSRWHalfSparsity(gk_csr_t *mat, const char *opFileName, int uStart,
+    int uEnd, int iStart, int iEnd) {
+  
+  int u, ii, item;
+  float rating;
+  
+  std::ofstream opFile (opFileName);
+  if (opFile.is_open()) {
+    for (u = 0; u < mat->nrows; u++) {
+      for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+        item = mat->rowind[ii];
+        rating = mat->rowval[ii];
+        if (isInsideBlock(u, item, uStart, uEnd, iStart, iEnd)) {
+          if (std::rand()%2 == 0) {
+            opFile << item << " " << rating << " ";
+          }
+        } else {
+          opFile << item << " " << rating << " ";
+        }
+      }
+      opFile << std::endl;
+    }
+    opFile.close();
+  }
+
+}
+
