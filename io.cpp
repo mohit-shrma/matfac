@@ -29,7 +29,6 @@ void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols,
     inFile.close();
   } else {
     std::cout << "\nCan't open file: " << fileName;
-    exit(0);
   }
   
 }
