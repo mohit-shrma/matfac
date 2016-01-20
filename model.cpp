@@ -15,7 +15,9 @@ void Model::save(std::string prefix) {
 
 
 void Model::load(const char* uFacName, const char *iFacName) {
+  std::cout << "\nLoading user factors: " << uFacName;
   readMat(uFac, nUsers, facDim, uFacName);
+  std::cout << "\nLoading item factors: " << iFacName;
   readMat(iFac, nItems, facDim, iFacName);
 }
 

@@ -191,24 +191,33 @@ int main(int argc , char* argv[]) {
 
   //writeCSRWSparsityStructure(data.trainMat, "songRatingsSyn.csr", data.origUFac,
   //    data.origIFac, 5);
+  //writeCSRWHalfSparsity(data.trainMat, "mat.csr", 0, 10000, 0, 10000);
+  
+  int uStart = 0, uEnd = 10000;
+  int iStart = 0, iEnd = 10000;
+
+  std::cout << "\nnnz: " << nnzSubMat(data.trainMat, 0, data.trainMat->nrows, 
+                                      0, data.trainMat->ncols)
+    << " nnz submat: " << nnzSubMat(data.trainMat, uStart, uEnd, iStart, iEnd);
 
   //create mf model instance
   ModelMF trainModel(params);
-  //trainModel.load("sub_svd_uFac_20000_5_0.001000.mat", "sub_svd_iFac_20000_5_0.001000.mat");
+  trainModel.load("sub_half_sp_uFac_20000_5_0.001000.mat", "sub_half_sp_iFac_20000_5_0.001000.mat");
   //readMat(trainModel.uFac, trainModel.nUsers, trainModel.facDim, "sub_uFac_20000_50.001000.mat");
   //readMat(trainModel.iFac, trainModel.nItems, trainModel.facDim, "sub_iFac_17764_5_0.001000.mat");
 
   //create mf model instance to store the best model
   Model bestModel(trainModel);
-  //bestModel.load("full_svd_uFac_20000_5_0.001000.mat", "full_svd_iFac_20000_5_0.001000.mat");
-  bestModel.load("full_svd_uFac_20000_5_0.001000.mat", "full_svd_iFac_17764_5_0.001000.mat");
+  //bestModel.load("fix_half_sp_uFac_20000_5_0.001000.mat", "fix_half_sp_iFac_20000_5_0.001000.mat");
+  //bestModel.load("fix_half_sp_uFac_20000_5_0.001000.mat", 
+  //    "fix_half_sp_iFac_17764_5_0.001000.mat");
+  //bestModel.load("full_half_sp_uFac_20000_5_0.001000.mat", "full_half_sp_iFac_17764_5_0.001000.mat");
+  //bestModel.load("full_svd_uFac_20000_5_0.001000.mat", "full_svd_iFac_17764_5_0.001000.mat");
   
-  int uStart = 0, uEnd = 10000;
-  int iStart = 0, iEnd = 10000;
 
   //trainModel.train(data, bestModel);
   //trainModel.subTrain(data, bestModel, uStart, uEnd, iStart, iEnd);
-  //trainModel.fixTrain(data, bestModel, uStart, uEnd, iStart, iEnd);
+  trainModel.fixTrain(data, bestModel, uStart, uEnd, iStart, iEnd);
 
   //std::string prefix(params.prefix);
   //bestModel.save(prefix);
