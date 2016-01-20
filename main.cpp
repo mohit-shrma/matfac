@@ -11,7 +11,7 @@
 
 Params parse_cmd_line(int argc, char *argv[]) {
   
-  if (argc < 17) {
+  if (argc < 19) {
     std::cout << "\nNot enough arguments";
     exit(0);
   }  
@@ -19,7 +19,7 @@ Params parse_cmd_line(int argc, char *argv[]) {
   Params params(atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), 
       atoi(argv[5]), atoi(argv[6]),
       atof(argv[7]), atof(argv[8]), atof(argv[9]), atof(argv[10]), atof(argv[11]),
-      argv[12], argv[13], argv[14], argv[15], argv[16]);
+      argv[12], argv[13], argv[14], argv[15], argv[16], argv[17], argv[18]);
 
   return params;
 }
@@ -202,27 +202,18 @@ int main(int argc , char* argv[]) {
 
   //create mf model instance
   ModelMF trainModel(params);
-  trainModel.load("sub_half_sp_uFac_20000_5_0.001000.mat", "sub_half_sp_iFac_20000_5_0.001000.mat");
-  //readMat(trainModel.uFac, trainModel.nUsers, trainModel.facDim, "sub_uFac_20000_50.001000.mat");
-  //readMat(trainModel.iFac, trainModel.nItems, trainModel.facDim, "sub_iFac_17764_5_0.001000.mat");
+  trainModel.load(params.initUFacFile, params.initIFacFile);
 
   //create mf model instance to store the best model
   Model bestModel(trainModel);
-  //bestModel.load("fix_half_sp_uFac_20000_5_0.001000.mat", "fix_half_sp_iFac_20000_5_0.001000.mat");
-  //bestModel.load("fix_half_sp_uFac_20000_5_0.001000.mat", 
-  //    "fix_half_sp_iFac_17764_5_0.001000.mat");
-  //bestModel.load("full_half_sp_uFac_20000_5_0.001000.mat", "full_half_sp_iFac_17764_5_0.001000.mat");
-  //bestModel.load("full_svd_uFac_20000_5_0.001000.mat", "full_svd_iFac_17764_5_0.001000.mat");
-  
+  bestModel.load(params.initUFacFile, params.initIFacFile);
 
   //trainModel.train(data, bestModel);
   //trainModel.subTrain(data, bestModel, uStart, uEnd, iStart, iEnd);
-  trainModel.fixTrain(data, bestModel, uStart, uEnd, iStart, iEnd);
+  //trainModel.fixTrain(data, bestModel, uStart, uEnd, iStart, iEnd);
 
   //std::string prefix(params.prefix);
   //bestModel.save(prefix);
-  
-  //bestModel.load("sub_uFac_20000_50.001000.mat", "sub_iFac_17764_5_0.001000.mat");
   
   std::cout << "\n subMat Non-Obs RMSE("<<uStart<<","<<uEnd<<","<<iStart<<","<<iEnd<<"): "
             << bestModel.subMatKnownRankNonObsErr(data, uStart, uEnd, iStart, iEnd) 
