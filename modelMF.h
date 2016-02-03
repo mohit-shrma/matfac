@@ -6,6 +6,7 @@
 #include <set>
 #include <cstdio>
 #include <utility>
+#include <unordered_set>
 #include "io.h"
 #include "model.h"
 //#include "svd.h"

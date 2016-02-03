@@ -172,6 +172,30 @@ void ModelMF::train(const Data &data, Model &bestModel) {
   prevObj = objective(data);
   std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " << RMSE(data.trainMat);
 
+
+  std::vector<std::unordered_set<int>> uISet(nUsers);
+  //sample 20% of nnz to be excluded from training
+  std::cout << "\nIgnoring ui pairs: " << nnz*0.2 << std::endl;
+  for (int i = 0; i < nnz*0.2; i++) {
+      //sample u
+      u = std::rand() % nUsers;
+      //sample item rated by user
+      nUserItems =  trainMat->rowptr[u+1] - trainMat->rowptr[u];
+      itemInd = std::rand()%nUserItems; 
+      item = trainMat->rowind[trainMat->rowptr[u] + itemInd];
+      
+      //check if item present in uIset[u]
+      auto search = uISet[u].find(item);
+      if (search != uISet[u].end()) {
+        //found and ignore the current iteration
+        continue;
+        i--;
+      }
+
+      uISet[u].insert(item);
+  }
+  int setFound  = 0;
+
   std::chrono::time_point<std::chrono::system_clock> start, end;
 
   for (iter = 0; iter < maxIter; iter++) {  
@@ -185,6 +209,17 @@ void ModelMF::train(const Data &data, Model &bestModel) {
       nUserItems =  trainMat->rowptr[u+1] - trainMat->rowptr[u];
       itemInd = std::rand()%nUserItems; 
       item = trainMat->rowind[trainMat->rowptr[u] + itemInd];
+      
+      //check if item present in uIset[u]
+      auto search = uISet[u].find(item);
+      if (search != uISet[u].end()) {
+        //found and ignore the current iteration
+        setFound++;
+        continue;
+      } else {
+        //not found
+      }
+
       itemRat = trainMat->rowval[trainMat->rowptr[u] + itemInd]; 
     
       //std::cout << "\nGradCheck u: " << u << " item: " << item;
@@ -212,7 +247,7 @@ void ModelMF::train(const Data &data, Model &bestModel) {
         break; 
       }
       std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj 
-                << " Train RMSE: " << RMSE(data.trainMat)
+                << " Train RMSE: " << RMSE(data.trainMat) << " skipped: " << setFound
                 << std::endl;
       end = std::chrono::system_clock::now();  
       std::chrono::duration<double> duration =  (end - start) ;
