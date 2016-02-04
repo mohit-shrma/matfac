@@ -184,7 +184,7 @@ int main(int argc , char* argv[]) {
   //get passed parameters
   Params params = parse_cmd_line(argc, argv);
 
-  //initialize
+  //initialize seed
   std::srand(params.seed);
 
   Data data (params);
@@ -192,7 +192,7 @@ int main(int argc , char* argv[]) {
   //writeCSRWSparsityStructure(data.trainMat, "songRatingsSyn.csr", data.origUFac,
   //    data.origIFac, 5);
   //writeCSRWHalfSparsity(data.trainMat, "mat.csr", 0, 10000, 0, 10000);
-  
+
   int uStart = 0, uEnd = 10000;
   int iStart = 0, iEnd = 10000;
 
@@ -200,40 +200,49 @@ int main(int argc , char* argv[]) {
                                       0, data.trainMat->ncols)
     << " nnz submat: " << nnzSubMat(data.trainMat, uStart, uEnd, iStart, iEnd);
 
-  //create mf model instance
-  ModelMF trainModel(params);
-  trainModel.load(params.initUFacFile, params.initIFacFile);
+  for (int i = 0; i < 5; i++) {
 
-  //create mf model instance to store the best model
-  Model bestModel(trainModel);
-  bestModel.load(params.initUFacFile, params.initIFacFile);
+    //change seed
+    std::srand(params.seed + i);
 
-  //trainModel.train(data, bestModel);
-  //trainModel.subTrain(data, bestModel, uStart, uEnd, iStart, iEnd);
-  //trainModel.fixTrain(data, bestModel, uStart, uEnd, iStart, iEnd);
+    //create mf model instance
+    ModelMF trainModel(params);
+    //trainModel.load(params.initUFacFile, params.initIFacFile);
 
-  //std::string prefix(params.prefix);
-  //bestModel.save(prefix);
-  
-  std::cout << "\n subMat Non-Obs RMSE("<<uStart<<","<<uEnd<<","<<iStart<<","<<iEnd<<"): "
-            << bestModel.subMatKnownRankNonObsErr(data, uStart, uEnd, iStart, iEnd) 
-            << "\n subMat Non-Obs RMSE("<<uEnd<<","<<data.nUsers<<","<<iStart<<","<<iEnd<<"): "
-            << bestModel.subMatKnownRankNonObsErr(data, uEnd, data.nUsers, iStart, iEnd) 
-            << "\n subMat Non-Obs RMSE("<<uStart<<","<<uEnd<<","<<iEnd<<","<<data.nItems<<"): "
-            << bestModel.subMatKnownRankNonObsErr(data, uStart, uEnd, iEnd, data.nItems)
-            << "\n subMat Non-Obs RMSE("<<uEnd<<","<<data.nUsers<<","<<iEnd<<","<<data.nItems<<"): "
-            << bestModel.subMatKnownRankNonObsErr(data, uEnd, data.nUsers, iEnd, data.nItems)
-            << std::endl;
+    //create mf model instance to store the best model
+    ModelMF bestModel(trainModel);
+    //bestModel.load(params.initUFacFile, params.initIFacFile);
+    
+    trainModel.train(data, bestModel);
+    //trainModel.subTrain(data, bestModel, uStart, uEnd, iStart, iEnd);
+    //trainModel.fixTrain(data, bestModel, uStart, uEnd, iStart, iEnd);
 
-  double subMatNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, uStart, uEnd, 
-                                                                  iStart, iEnd);
-  double matNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, 0, params.nUsers, 
-                                                                  0, params.nItems);
+    std::string prefix(params.prefix);
+    bestModel.save(prefix + "_" + std::to_string(i) + " ");
+   
+    /*
+    std::cout << "\n subMat Non-Obs RMSE("<<uStart<<","<<uEnd<<","<<iStart<<","<<iEnd<<"): "
+              << bestModel.subMatKnownRankNonObsErr(data, uStart, uEnd, iStart, iEnd) 
+              << "\n subMat Non-Obs RMSE("<<uEnd<<","<<data.nUsers<<","<<iStart<<","<<iEnd<<"): "
+              << bestModel.subMatKnownRankNonObsErr(data, uEnd, data.nUsers, iStart, iEnd) 
+              << "\n subMat Non-Obs RMSE("<<uStart<<","<<uEnd<<","<<iEnd<<","<<data.nItems<<"): "
+              << bestModel.subMatKnownRankNonObsErr(data, uStart, uEnd, iEnd, data.nItems)
+              << "\n subMat Non-Obs RMSE("<<uEnd<<","<<data.nUsers<<","<<iEnd<<","<<data.nItems<<"): "
+              << bestModel.subMatKnownRankNonObsErr(data, uEnd, data.nUsers, iEnd, data.nItems)
+              << std::endl;
+    */
+    
+    double subMatNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, uStart, uEnd, 
+                                                                    iStart, iEnd);
+    double matNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, 0, params.nUsers, 
+                                                                    0, params.nItems);
 
-  std::cout << "\nsubMatNonObs RMSE: " << subMatNonObsRMSE;
-  std::cout << "\nmatNonObs RMSE: " << matNonObsRMSE;
-  std::cout << "\nRE: " << subMatNonObsRMSE << " " << matNonObsRMSE <<  std::endl;
-  //knownLowRankEval2(data, bestModel, params); 
+    std::cout << "\nsubMatNonObs RMSE: " << subMatNonObsRMSE;
+    std::cout << "\nmatNonObs RMSE: " << matNonObsRMSE;
+    std::cout << "\nSplit: " << i << " " << subMatNonObsRMSE << " " 
+      << matNonObsRMSE <<  std::endl;
+    //knownLowRankEval2(data, bestModel, params); 
+  }
 
   return 0;
 }
