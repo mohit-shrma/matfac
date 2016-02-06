@@ -52,6 +52,17 @@ void writeMat(std::vector<std::vector<double>>& mat, int nrows, int ncols,
 }
 
 
+void writeVector(std::vector<double>& vec, const char *opFileName) {
+  std::ofstream opFile(opFileName);
+  if (opFile.is_open()) {
+    for (int i = 0; i < vec.size(); i++) {
+      opFile << vec[i] << std::endl;    
+    }
+    opFile.close();
+  }
+}
+
+
 void writeCSRWSparsityStructure(gk_csr_t *mat, const char *opFileName, 
     std::vector<std::vector<double>> uFac, 
     std::vector<std::vector<double>> iFac, int facDim) {

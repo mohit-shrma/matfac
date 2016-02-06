@@ -17,5 +17,5 @@ void writeCSRWSparsityStructure(gk_csr_t *mat, const char *opFileName,
     std::vector<std::vector<double>> iFac, int facDim);
 void writeCSRWHalfSparsity(gk_csr_t *mat, const char *opFileName, int uStart,
     int uEnd, int iStart, int iEnd);
-
+void writeVector(std::vector<double>& vec, const char *opFileName);
 
