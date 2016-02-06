@@ -1,4 +1,6 @@
 #include <vector>
+#include <functional>
+#include <algorithm>
 #include "GKlib.h"
 
 #ifndef _UTIL_H_
@@ -17,6 +19,6 @@ double dotProd(const std::vector<double> &a, const std::vector<double> &b, int s
   }
   return prod;
 }
-
+double stddev(std::vector<double> v); 
 #endif
 
