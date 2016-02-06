@@ -19,7 +19,9 @@ class ModelMF : public Model {
   public:
 
     ModelMF(const Params& params) : Model(params) {}
+    ModelMF(const Params& params, int seed) : Model(params, seed) {}
     virtual void train(const Data& data, Model& bestModel) ;
+    virtual void partialTrain(const Data& data, Model& bestModel) ;
     virtual void subTrain(const Data& data, Model& bestModel,
                         int uStart, int uEnd, int iStart, int iEnd);
     virtual void fixTrain(const Data& data, Model& bestModel,

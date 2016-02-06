@@ -129,7 +129,7 @@ void ModelMF::train(const Data &data, Model &bestModel) {
   //uFac = data.origUFac;
   //iFac = data.origIFac;
   
-  std::cout << "\nModelMF::train";
+  std::cout << "\nModelMF::train trainSeed: " << trainSeed;
   
   int nnz = data.trainNNZ;
   
@@ -140,7 +140,7 @@ void ModelMF::train(const Data &data, Model &bestModel) {
   std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
   startSVD = std::chrono::system_clock::now();
   //initialization with svd of the passed matrix
-  svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac); 
+  //svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac); 
   //svdUsingLapack(data.trainMat, facDim, uFac, iFac);
   //svdFrmCSR(data.trainMat, facDim, uFac, iFac);
   //svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
@@ -172,16 +172,131 @@ void ModelMF::train(const Data &data, Model &bestModel) {
   prevObj = objective(data);
   std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " << RMSE(data.trainMat);
 
+  //random engine
+  std::mt19937 mt(trainSeed);
+  //user dist
+  std::uniform_int_distribution<int> uDist(0, nUsers-1);
+  std::uniform_int_distribution<int> iDist(0, nItems-1);
 
+  std::chrono::time_point<std::chrono::system_clock> start, end;
+
+  for (iter = 0; iter < maxIter; iter++) {  
+    start = std::chrono::system_clock::now();
+    for (subIter = 0; subIter < nnz; subIter++) {
+      
+      //sample u
+      u = uDist(mt);
+      
+      //sample item rated by user
+      nUserItems =  trainMat->rowptr[u+1] - trainMat->rowptr[u];
+      itemInd = iDist(mt)%nUserItems; 
+      item = trainMat->rowind[trainMat->rowptr[u] + itemInd];
+      itemRat = trainMat->rowval[trainMat->rowptr[u] + itemInd]; 
+    
+      //std::cout << "\nGradCheck u: " << u << " item: " << item;
+      //gradCheck(u, item, itemRat);
+
+      //compute user gradient
+      computeUGrad(u, item, itemRat, uGrad);
+
+      //update user
+      //updateAdaptiveFac(uFac[u], uGrad, uGradsAcc[u]); 
+      updateFac(uFac[u], uGrad); 
+
+      //compute item gradient
+      computeIGrad(u, item, itemRat, iGrad);
+
+      //update item
+      //updateAdaptiveFac(iFac[item], iGrad, iGradsAcc[item]);
+      updateFac(iFac[item], iGrad);
+
+    }
+
+    //check objective
+    if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
+      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj)) {
+        break; 
+      }
+      std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj 
+                << " Train RMSE: " << RMSE(data.trainMat) 
+                << std::endl;
+      end = std::chrono::system_clock::now();  
+      std::chrono::duration<double> duration =  (end - start) ;
+      std::cout << "\nsub duration: " << duration.count();
+    }
+  
+  }
+  
+  //std::cout << "\nNum Iter: " << iter << " Best Iter: " << bestIter
+  //  << " Best obj: " << std::scientific << bestObj ;
+
+}
+
+
+void ModelMF::partialTrain(const Data &data, Model &bestModel) {
+
+  //copy passed known factors
+  //uFac = data.origUFac;
+  //iFac = data.origIFac;
+  
+  std::cout << "\nModelMF::partialTrain trainSeed: " << trainSeed;
+
+  int nnz = data.trainNNZ;
+  
+  std::cout << "\nObj b4 svd: " << objective(data) 
+    << " Train RMSE: " << RMSE(data.trainMat) 
+    << " Train nnz: " << nnz << std::endl;
+  
+  std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
+  startSVD = std::chrono::system_clock::now();
+  //initialization with svd of the passed matrix
+  //svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac); 
+  //svdUsingLapack(data.trainMat, facDim, uFac, iFac);
+  //svdFrmCSR(data.trainMat, facDim, uFac, iFac);
+  //svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
+  
+  endSVD = std::chrono::system_clock::now();
+  std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
+  std::cout << "\nsvd duration: " << durationSVD.count();
+
+  int u, iter, subIter, bestIter;
+  int item, nUserItems, itemInd;
+  float itemRat;
+  double bestObj, prevObj;
+
+  gk_csr_t *trainMat = data.trainMat;
+
+  //array to hold user and item gradients
+  std::vector<double> uGrad (facDim, 0);
+  std::vector<double> iGrad (facDim, 0);
+ 
+  //vector to hold user gradient accumulation
+  std::vector<std::vector<double>> uGradsAcc (nUsers, 
+      std::vector<double>(facDim,0)); 
+
+  //vector to hold item gradient accumulation
+  std::vector<std::vector<double>> iGradsAcc (nItems, 
+      std::vector<double>(facDim,0)); 
+
+  //std::cout << "\nNNZ = " << nnz;
+  prevObj = objective(data);
+  std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " << RMSE(data.trainMat);
+
+  //random engine
+  std::mt19937 mt(trainSeed);
+  //user dist
+  std::uniform_int_distribution<int> uDist(0, nUsers-1);
+  std::uniform_int_distribution<int> iDist(0, nItems-1);
+  
   std::vector<std::unordered_set<int>> uISet(nUsers);
   //sample 20% of nnz to be excluded from training
   std::cout << "\nIgnoring ui pairs: " << nnz*0.2 << std::endl;
   for (int i = 0; i < nnz*0.2; i++) {
       //sample u
-      u = std::rand() % nUsers;
+      u  = uDist(mt); 
       //sample item rated by user
       nUserItems =  trainMat->rowptr[u+1] - trainMat->rowptr[u];
-      itemInd = std::rand()%nUserItems; 
+      itemInd = iDist(mt)%nUserItems;
       item = trainMat->rowind[trainMat->rowptr[u] + itemInd];
       
       //check if item present in uIset[u]
@@ -194,20 +309,20 @@ void ModelMF::train(const Data &data, Model &bestModel) {
 
       uISet[u].insert(item);
   }
-  int setFound  = 0;
 
   std::chrono::time_point<std::chrono::system_clock> start, end;
 
   for (iter = 0; iter < maxIter; iter++) {  
+    int setFound  = 0;
     start = std::chrono::system_clock::now();
     for (subIter = 0; subIter < nnz; subIter++) {
       
       //sample u
-      u = std::rand() % nUsers;
+      u = uDist(mt);
       
       //sample item rated by user
       nUserItems =  trainMat->rowptr[u+1] - trainMat->rowptr[u];
-      itemInd = std::rand()%nUserItems; 
+      itemInd = iDist(mt)%nUserItems; 
       item = trainMat->rowind[trainMat->rowptr[u] + itemInd];
       
       //check if item present in uIset[u]
