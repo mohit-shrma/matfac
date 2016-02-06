@@ -45,6 +45,11 @@ double Model::RMSE(gk_csr_t *mat) {
 }
 
 
+double Model::estRating(int user, int item) {
+  return dotProd(uFac[user], iFac[item], facDim);
+}
+
+
 //compute RMSE with in the submatrix
 double Model::subMatRMSE(gk_csr_t *mat, int uStart, int uEnd, 
     int iStart, int iEnd) {
@@ -517,7 +522,8 @@ Model::Model(const Params& params) {
   learnRate = params.learnRate;
   rhoRMS    = params.rhoRMS;
   maxIter   = params.maxIter;
-
+  trainSeed = -1;
+ 
   //init user latent factors
   uFac.assign(nUsers, std::vector<double>(facDim, 0));
   for (auto& uf: uFac) {
@@ -550,7 +556,8 @@ Model::Model(int p_nUsers, int p_nItems, const Params& params) {
   learnRate = params.learnRate;
   rhoRMS    = params.rhoRMS;
   maxIter   = params.maxIter;
-
+  trainSeed = -1;
+  
   //init user latent factors
   uFac.assign(nUsers, std::vector<double>(facDim, 0));
   for (auto& uf: uFac) {
@@ -568,5 +575,17 @@ Model::Model(int p_nUsers, int p_nItems, const Params& params) {
   }
   
 }
+
+
+Model::Model(const Params& params, int seed) : Model(params) {
+  trainSeed = seed;
+}
+
+
+
+
+
+
+
 
 

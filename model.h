@@ -8,6 +8,7 @@
 #include <set>
 #include <chrono>
 #include <string>
+#include <random>
 #include "util.h"
 #include "const.h"
 #include "GKlib.h"
@@ -19,6 +20,7 @@ class Model {
     int nUsers;
     int nItems;
     int facDim;
+    int trainSeed;
     float learnRate;
     float rhoRMS;
     int maxIter;
@@ -29,12 +31,15 @@ class Model {
 
     //declare constructor
     Model(const Params& params);
-
     Model(int nUsers, int nItems, const Params& params);
+    Model(const Params& params, int seed);
 
     //declare virtual method for train
     virtual void train(const Data& data, Model& bestModel) {
       std::cerr<< "\nTraining not in base class";
+    };
+    virtual void partialTrain(const Data& data, Model& bestModel) {
+      std::cerr<< "\nPartial Training not in base class" << std::endl;
     };
 
     //virtual method for training on a part of submatrix
@@ -78,6 +83,7 @@ class Model {
     double subMatKnownRankNonObsErrWSet(const Data& data, int uStart, int uEnd,
       int iStart, int iEnd, std::set<int> exUSet, std::set<int> exISet);
     double fullRMSE(const Data& data);
+    double estRating(int user, int item);
     void save(std::string prefix);
     void load(const char* uFacName, const char *iFacName);
 };
