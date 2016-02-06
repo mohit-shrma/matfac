@@ -8,6 +8,8 @@
 #include "modelMF.h"
 #include "modelMFWtReg.h"
 #include "modelMFWtRegArb.h"
+#include "confCompute.h"
+
 
 Params parse_cmd_line(int argc, char *argv[]) {
   
@@ -179,6 +181,76 @@ void knownLowRankEval2(Data& data, Model& bestModel, Params& params) {
 }
 
 
+void computeConf(Data& data, Params& params) {
+
+  ModelMF fullModel(params, params.seed);
+  svdFrmSvdlibCSR(data.trainMat, fullModel.facDim, fullModel.uFac, 
+      fullModel.iFac); 
+  
+  int nThreads = 5;
+  
+  std::vector<std::thread> threads(nThreads);
+  
+  std::vector<std::shared_ptr<ModelMF>> trainModels;
+  std::vector<std::shared_ptr<Model>> pbestModels;
+  
+  for (int thInd = 0; thInd < nThreads; thInd++) {
+    int seed = params.seed + thInd + 1;
+    std::shared_ptr<ModelMF> p(new ModelMF(params, seed));
+    p->uFac = fullModel.uFac;
+    p->iFac = fullModel.iFac;
+    trainModels.push_back(p);
+    std::shared_ptr<Model> p2(new Model(params, seed));
+    pbestModels.push_back(p2);
+    //invoke training on thread
+    std::cout << "\nInvoking thread: " << thInd << std::endl;  
+    threads[thInd] = std::thread(&ModelMF::partialTrain, 
+        trainModels[thInd], std::ref(data), 
+        std::ref(*pbestModels[thInd]));
+  }
+
+  //train full model in main thread
+  ModelMF fullBestModel(fullModel);
+  std::cout << "\nStarting full model train...";
+  fullModel.train(data, fullBestModel);
+
+  std::cout << "\nWaiting for threads to finish...";
+  //wait for threads to finish
+  std::for_each(threads.begin(), threads.end(), 
+      std::mem_fn(&std::thread::join));
+
+  std::cout << "\nFinished all threads.";
+
+  std::cout << "\nModels save...";
+  std::vector<Model> bestModels;
+  //save the best models
+  for (int thInd = 0; thInd < nThreads; thInd++) {
+    int seed = params.seed + thInd + 1;
+    std::string prefix(params.prefix);
+    prefix = prefix + "_partial_" + std::to_string(seed); 
+    pbestModels[thInd]->save(prefix);
+    bestModels.push_back(*pbestModels[thInd]);
+  }
+  //save the best full model
+  std::string prefix(params.prefix);
+  prefix = prefix + "_full";
+  fullBestModel.save(prefix);
+
+
+  ModelMF origModel(params, params.seed);
+  origModel.load(params.origUFacFile, params.origIFacFile);
+
+  //compute confidence using the best models for 10 buckets
+  std::vector<double> confRMSEs = confBucketRMSEs(origModel, fullModel, 
+      bestModels, params.nUsers, params.nItems, 10);
+  //TODO:
+  //std::cout << "\nConfidence bucket RMSEs: " << confRMSEs;
+  std::cout << "\nwriting confidence bucket RMSEs" << std::endl;
+  prefix = std::string(params.prefix) + "_conf_bucket.txt";
+  writeVector(confRMSEs, prefix.c_str());
+}
+
+
 int main(int argc , char* argv[]) {
 
   //get passed parameters
@@ -189,10 +261,13 @@ int main(int argc , char* argv[]) {
 
   Data data (params);
 
+  computeConf(data, params);
+
   //writeCSRWSparsityStructure(data.trainMat, "songRatingsSyn.csr", data.origUFac,
   //    data.origIFac, 5);
   //writeCSRWHalfSparsity(data.trainMat, "mat.csr", 0, 10000, 0, 10000);
 
+  /*
   int uStart = 0, uEnd = 10000;
   int iStart = 0, iEnd = 10000;
 
@@ -200,13 +275,9 @@ int main(int argc , char* argv[]) {
                                       0, data.trainMat->ncols)
     << " nnz submat: " << nnzSubMat(data.trainMat, uStart, uEnd, iStart, iEnd);
 
-  for (int i = 0; i < 5; i++) {
-
-    //change seed
-    std::srand(params.seed + i);
 
     //create mf model instance
-    ModelMF trainModel(params);
+    ModelMF trainModel(params, params.seed);
     //trainModel.load(params.initUFacFile, params.initIFacFile);
 
     //create mf model instance to store the best model
@@ -217,10 +288,10 @@ int main(int argc , char* argv[]) {
     //trainModel.subTrain(data, bestModel, uStart, uEnd, iStart, iEnd);
     //trainModel.fixTrain(data, bestModel, uStart, uEnd, iStart, iEnd);
 
-    std::string prefix(params.prefix);
-    bestModel.save(prefix + "_" + std::to_string(i) + " ");
-   
-    /*
+    //std::string prefix(params.prefix);
+    //bestModel.save(prefix);
+  */  
+  /*
     std::cout << "\n subMat Non-Obs RMSE("<<uStart<<","<<uEnd<<","<<iStart<<","<<iEnd<<"): "
               << bestModel.subMatKnownRankNonObsErr(data, uStart, uEnd, iStart, iEnd) 
               << "\n subMat Non-Obs RMSE("<<uEnd<<","<<data.nUsers<<","<<iStart<<","<<iEnd<<"): "
@@ -231,7 +302,7 @@ int main(int argc , char* argv[]) {
               << bestModel.subMatKnownRankNonObsErr(data, uEnd, data.nUsers, iEnd, data.nItems)
               << std::endl;
     */
-    
+    /*
     double subMatNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, uStart, uEnd, 
                                                                     iStart, iEnd);
     double matNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, 0, params.nUsers, 
@@ -239,11 +310,10 @@ int main(int argc , char* argv[]) {
 
     std::cout << "\nsubMatNonObs RMSE: " << subMatNonObsRMSE;
     std::cout << "\nmatNonObs RMSE: " << matNonObsRMSE;
-    std::cout << "\nSplit: " << i << " " << subMatNonObsRMSE << " " 
+    std::cout << "\nResult: " << " " << subMatNonObsRMSE << " " 
       << matNonObsRMSE <<  std::endl;
     //knownLowRankEval2(data, bestModel, params); 
-  }
-
+  */
   return 0;
 }
 
