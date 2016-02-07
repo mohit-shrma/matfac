@@ -1,6 +1,7 @@
 #include <vector>
 #include <functional>
 #include <algorithm>
+#include <cmath>
 #include "GKlib.h"
 
 #ifndef _UTIL_H_
