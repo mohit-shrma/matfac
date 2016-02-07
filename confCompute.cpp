@@ -5,17 +5,13 @@ double confScore(int user, int item, std::vector<Model>& models) {
   int nModels = models.size();
   std::vector<double> predRats(nModels);
   for (int i = 0; i < nModels; i++) {
-    predRats.push_back(models[i].estRating(user, item));
+    predRats[i] = models[i].estRating(user, item);
   }
   //compute std dev in pred rats
   double std = stddev(predRats);
   double score = -1.0;
   if (0 != std) {
     score = 1.0/std;
-  }
-  if (-1.0 == score) {
-    //std::cerr << "\n conf score: " << score << " " << user << " " << item
-    //  << std::endl;
   }
   return score;
 }
@@ -32,7 +28,7 @@ void updateBuckets(int user, std::vector<double>& bucketScores,
     
     //sort items by DECREASING order in score
     std::sort(itemScores.begin(), itemScores.end(), comparePair);  
-
+   
     for (int bInd = 0; bInd < nBuckets; bInd++) {
       int start = bInd*nItemsPerBuck;
       int end = (bInd+1)*nItemsPerBuck;
@@ -60,7 +56,7 @@ std::vector<double> confBucketRMSEs(Model& origModel, Model& fullModel,
   std::vector<double> bucketScores(nBuckets, 0.0);
   std::vector<double> bucketNNZ(nBuckets, 0.0);
   double score;
-  std::vector<std::pair<int, double>> itemScores(nItems);
+  std::vector<std::pair<int, double>> itemScores;
   
   for (int user = 0; user < nUsers; user++) {
     itemScores.clear();
@@ -73,6 +69,14 @@ std::vector<double> confBucketRMSEs(Model& origModel, Model& fullModel,
     //add RMSEs to bucket as per ranking by itemscores
     updateBuckets(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,
         nBuckets, nItemsPerBuck, nItems);
+   
+    /*
+    if (0 == user%1000) {
+      std::cout << "\n buckScores u: " << user;
+      dispVector(bucketScores);
+    }
+    */
+  
   }
 
   for (int i = 0; i < nBuckets; i++) {
@@ -89,9 +93,9 @@ std::vector<double> pprBucketRMSEs(Model& origModel, Model& fullModel, int nUser
   int nItemsPerBuck = nItems/nBuckets;
   std::vector<double> bucketScores(nBuckets, 0.0);
   std::vector<double> bucketNNZ(nBuckets, 0.0);
-  std::vector<std::pair<int, double>> itemScores(nItems);
   float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
   
+  std::vector<std::pair<int, double>> itemScores;
   for (int user = 0; user < nUsers; user++) {
     memset(pr, 0, sizeof(float)*graphMat->nrows);
     pr[user] = 1.0;
@@ -100,7 +104,7 @@ std::vector<double> pprBucketRMSEs(Model& origModel, Model& fullModel, int nUser
     gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
 
     //get pr score of items
-    std::vector<std::pair<int, double>> itemScores;
+    itemScores.clear();
     for (int i = nUsers; i < nUsers + nItems; i++) {
       itemScores.push_back(std::make_pair(i - nUsers, pr[i]));
     }

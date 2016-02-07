@@ -5,9 +5,9 @@
 #include <vector>
 #include <algorithm>
 #include <tuple>
+#include <cmath>
 
 double confScore(int user, int item, std::vector<Model>& models);
-
 std::vector<double> confBucketRMSEs(Model& origModel, Model& fullModel,
     std::vector<Model>& models,
     int nUsers, int nItems, int nBuckets);

@@ -63,6 +63,15 @@ void writeVector(std::vector<double>& vec, const char *opFileName) {
 }
 
 
+void dispVector(std::vector<double>& vec) {
+  std::cout << "\n";
+  for (int i = 0; i < vec.size(); i++) {
+    std::cout << vec[i] << " ";
+  }
+  std::cout << std::endl;
+}
+
+
 void writeCSRWSparsityStructure(gk_csr_t *mat, const char *opFileName, 
     std::vector<std::vector<double>> uFac, 
     std::vector<std::vector<double>> iFac, int facDim) {

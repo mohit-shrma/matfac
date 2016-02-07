@@ -6,8 +6,6 @@
 #include "util.h"
 #include "datastruct.h"
 #include "modelMF.h"
-#include "modelMFWtReg.h"
-#include "modelMFWtRegArb.h"
 #include "confCompute.h"
 
 
@@ -251,6 +249,35 @@ void computeConf(Data& data, Params& params) {
 }
 
 
+
+void computeConfScores(Data& data, Params& params) {
+ 
+  std::vector<Model> bestModels;
+  bestModels.push_back(Model(params, "multi5k_partial_2_uFac_20000_5_0.001000.mat",
+        "multi5k_partial_2_iFac_17764_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multi5k_partial_3_uFac_20000_5_0.001000.mat",
+        "multi5k_partial_3_iFac_17764_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multi5k_partial_4_uFac_20000_5_0.001000.mat",
+        "multi5k_partial_4_iFac_17764_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multi5k_partial_5_uFac_20000_5_0.001000.mat",
+        "multi5k_partial_5_iFac_17764_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multi5k_partial_6_uFac_20000_5_0.001000.mat",
+        "multi5k_partial_6_iFac_17764_5_0.001000.mat", params.seed));
+
+  std::cout << "\nnBestModels: " << bestModels.size();
+
+  Model fullModel(params, "multi5k_full_uFac_20000_5_0.001000.mat",
+      "multi5k_full_iFac_17764_5_0.001000.mat", params.seed);
+  Model origModel(params, params.seed);
+  origModel.load(params.origUFacFile, params.origIFacFile);
+
+  std::vector<double> confRMSEs = confBucketRMSEs(origModel, fullModel, 
+      bestModels, params.nUsers, params.nItems, 10);
+  dispVector(confRMSEs);
+}
+
+
+
 int main(int argc , char* argv[]) {
 
   //get passed parameters
@@ -261,7 +288,8 @@ int main(int argc , char* argv[]) {
 
   Data data (params);
 
-  computeConf(data, params);
+  //computeConf(data, params);
+  computeConfScores(data, params);
 
   //writeCSRWSparsityStructure(data.trainMat, "songRatingsSyn.csr", data.origUFac,
   //    data.origIFac, 5);

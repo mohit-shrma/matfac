@@ -7,12 +7,19 @@ def computeConf(u, item, uFacs, iFacs):
   for m in range(nModels):
     uFac = uFacs[m]
     iFac = iFacs[m]
-    predRat.append(np.dot(uFac[user], iFac[item]))
+    predRat.append(np.dot(uFac[u], iFac[item]))
   std = np.std(predRat)
   confScore = -1
   if 0 != std:
     confScore = 1.0/std
   return confScore
+
+
+def infCheck(x):
+  for i in range(len(x)):
+    if np.inf == x[i]:
+      x[i] = -1
+  return x
 
 
 def computeConfBuckRMSE(confScoreFName, uFac, iFac, origUFac, origIFac, 
@@ -25,9 +32,10 @@ def computeConfBuckRMSE(confScoreFName, uFac, iFac, origUFac, origIFac,
     for line in f:
       cols = line.strip().split()
       itemConfScores = map(float, cols)
+      #check for inf and conv it to -1 if found
+      itemConfScores = infCheck(itemConfScores)
       itemScores = zip(itemConfScores, range(nItems))
       itemScores.sort(reverse=True)
-      #print 'len conf items: ', len(itemScores)
       for bInd in range(nBuckets):
         start = bInd*nItemsPerBuck
         end = (bInd+1)*nItemsPerBuck
@@ -42,15 +50,21 @@ def computeConfBuckRMSE(confScoreFName, uFac, iFac, origUFac, origIFac,
           bucketScores[bInd] += se
           bucketNNZ[bInd] += 1
       if u%1000 == 0:
-        print 'Done...', u
+        print 'Done...', u, bucketScores
+        #print 'Top item confscore:', itemScores[:10]
       u += 1
+
+  print 'bucketScores: ', bucketScores
+  print 'bucketNNZ: ', bucketNNZ
+  
   for i in range(nBuckets):
     bucketScores[i] = np.sqrt(bucketScores[i]/bucketNNZ[i])
+  
   print 'bucketScores: ', bucketScores
 
 
 def computeConfBuckRMSEFrmModels(uFacs, iFacs, origUFac, origIFac, 
-    nUsers, nItems, nBuckets):
+    uFac, iFac, nUsers, nItems, nBuckets):
   
   nItemsPerBuck = nItems/nBuckets
   bucketScores = [0 for i in range(nBuckets)]
@@ -79,8 +93,8 @@ def computeConfBuckRMSEFrmModels(uFacs, iFacs, origUFac, origIFac,
         bucketNNZ[bInd] += 1
 
     if u%1000 == 0:
-      print 'Done...', u
-
+      print 'Done...', u, bucketScores
+      print 'Top item scores: ', itemScores[:10]
   for i in range(nBuckets):
     bucketScores[i] = np.sqrt(bucketScores[i]/bucketNNZ[i])
   
@@ -101,7 +115,9 @@ def computeConfs(uFacs, iFacs, nUsers, nItems, opPrefix):
           predRats.append(rating)
         #std dev of the predicted rating
         stdRat = np.std(predRats)
-        conf = 1.0/stdRat
+        conf = -1
+        if 0 != stdRat:
+          conf = 1.0/stdRat
         g.write(str(conf) + ' ')
       g.write('\n')
       if u % 100 == 0:
@@ -215,10 +231,11 @@ def main():
 
   #computeConfs(uFacs, iFacs, nUsers, nItems, opPrefix)
   #computeConfsWPR(uFacs, iFacs, nUsers, nItems, prFName, 10, opPrefix)
-  #computeConfBuckRMSE(confScoreFName, uFac, iFac, origUFac, origIFac, nUsers,
-  #    nItems, 10)
-  computeConfBuckRMSEFrmModels(uFacs, iFacs, origUFac, origIFac, nUsers, 
-    nItems, 10)
+  computeConfBuckRMSE(confScoreFName, uFac, iFac, origUFac, origIFac, nUsers,
+      nItems, 10)
+  #computeConfBuckRMSEFrmModels(uFacs, iFacs, origUFac, origIFac, uFac, iFac,
+  #    nUsers, nItems, 10)
+
 
 if __name__ == '__main__':
   main()

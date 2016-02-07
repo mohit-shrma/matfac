@@ -541,39 +541,12 @@ Model::Model(const Params& params) {
     }
   }
   
-
-
 }
 
 
-Model::Model(int p_nUsers, int p_nItems, const Params& params) {
-
+Model::Model(int p_nUsers, int p_nItems, const Params& params):Model(params) {
   nUsers    = p_nUsers;
   nItems    = p_nItems;
-  facDim    = params.facDim;
-  uReg      = params.uReg;
-  iReg      = params.iReg;
-  learnRate = params.learnRate;
-  rhoRMS    = params.rhoRMS;
-  maxIter   = params.maxIter;
-  trainSeed = -1;
-  
-  //init user latent factors
-  uFac.assign(nUsers, std::vector<double>(facDim, 0));
-  for (auto& uf: uFac) {
-    for (auto& v: uf) {
-      v = (double)std::rand() / (double) (1.0 + RAND_MAX);    
-    }
-  }
-
-  //init item latent factors
-  iFac.assign(nItems, std::vector<double>(facDim, 0));
-  for (auto& itemf: iFac) {
-    for (auto& v: itemf) {
-      v = (double)std::rand() / (double) (1.0 + RAND_MAX);
-    }
-  }
-  
 }
 
 
@@ -582,6 +555,13 @@ Model::Model(const Params& params, int seed) : Model(params) {
 }
 
 
+Model::Model(const Params& params, const char* uFacName, const char* iFacName,
+    int seed):Model(params, seed) {
+  std::cout << "\nLoading user factors: " << uFacName;
+  readMat(uFac, nUsers, facDim, uFacName);
+  std::cout << "\nLoading item factors: " << iFacName;
+  readMat(iFac, nItems, facDim, iFacName);
+}
 
 
 

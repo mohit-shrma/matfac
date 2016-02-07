@@ -33,6 +33,8 @@ class Model {
     Model(const Params& params);
     Model(int nUsers, int nItems, const Params& params);
     Model(const Params& params, int seed);
+    Model(const Params& params, const char*uFacName, const char* iFacName, 
+        int seed);
 
     //declare virtual method for train
     virtual void train(const Data& data, Model& bestModel) {

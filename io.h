@@ -8,6 +8,7 @@
 #include "datastruct.h"
 #include "util.h"
 
+void dispVector(std::vector<double>& vec); 
 void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
     const char *fileName);
 void writeMat(std::vector<std::vector<double>>& mat, int nrows, int ncols,
