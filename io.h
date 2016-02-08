@@ -19,4 +19,5 @@ void writeCSRWSparsityStructure(gk_csr_t *mat, const char *opFileName,
 void writeCSRWHalfSparsity(gk_csr_t *mat, const char *opFileName, int uStart,
     int uEnd, int iStart, int iEnd);
 void writeVector(std::vector<double>& vec, const char *opFileName);
+bool isFileExist(const char *fileName);
 

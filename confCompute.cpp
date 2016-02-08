@@ -112,6 +112,11 @@ std::vector<double> pprBucketRMSEs(Model& origModel, Model& fullModel, int nUser
     //add RMSEs to bucket as per ranking by itemscores
     updateBuckets(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,
         nBuckets, nItemsPerBuck, nItems);
+    
+    if (user % 100 == 0) {
+      std::cout<< "\n" << user << " Done..." << std::endl;
+    }
+  
   }
   
   free(pr);
@@ -121,11 +126,6 @@ std::vector<double> pprBucketRMSEs(Model& origModel, Model& fullModel, int nUser
   }
   return bucketScores;
 }
-
-
-
-
-
 
 
 

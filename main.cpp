@@ -11,7 +11,7 @@
 
 Params parse_cmd_line(int argc, char *argv[]) {
   
-  if (argc < 19) {
+  if (argc < 20) {
     std::cout << "\nNot enough arguments";
     exit(0);
   }  
@@ -19,7 +19,7 @@ Params parse_cmd_line(int argc, char *argv[]) {
   Params params(atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), 
       atoi(argv[5]), atoi(argv[6]),
       atof(argv[7]), atof(argv[8]), atof(argv[9]), atof(argv[10]), atof(argv[11]),
-      argv[12], argv[13], argv[14], argv[15], argv[16], argv[17], argv[18]);
+      argv[12], argv[13], argv[14], argv[15], argv[16], argv[17], argv[18], argv[19]);
 
   return params;
 }
@@ -234,40 +234,53 @@ void computeConf(Data& data, Params& params) {
   prefix = prefix + "_full";
   fullBestModel.save(prefix);
 
-
   ModelMF origModel(params, params.seed);
   origModel.load(params.origUFacFile, params.origIFacFile);
 
   //compute confidence using the best models for 10 buckets
   std::vector<double> confRMSEs = confBucketRMSEs(origModel, fullModel, 
       bestModels, params.nUsers, params.nItems, 10);
-  //TODO:
-  //std::cout << "\nConfidence bucket RMSEs: " << confRMSEs;
+  std::cout << "\nConfidence bucket RMSEs: ";
+  dispVector(confRMSEs);
   std::cout << "\nwriting confidence bucket RMSEs" << std::endl;
   prefix = std::string(params.prefix) + "_conf_bucket.txt";
   writeVector(confRMSEs, prefix.c_str());
 }
 
 
+void computePRScores(Data& data, Params& params) {
+  Model fullModel(params, "nf_fix_1.0_mat_uFac_20000_5_0.001000.mat",
+      "nf_fix_1.0_mat_iFac_17764_5_0.001000.mat", params.seed);
+  Model origModel(params, params.seed);
+  origModel.load(params.origUFacFile, params.origIFacFile);
+  //NOTE: using params.alpha as (1 - restartProb)
+  std::vector<double> pprRMSEs = pprBucketRMSEs(origModel, fullModel, 
+    params.nUsers, params.nItems, params.alpha, params.maxIter, 
+    data.graphMat, 10);
+  dispVector(pprRMSEs);
+}
+
 
 void computeConfScores(Data& data, Params& params) {
  
   std::vector<Model> bestModels;
-  bestModels.push_back(Model(params, "multi5k_partial_2_uFac_20000_5_0.001000.mat",
-        "multi5k_partial_2_iFac_17764_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "multi5k_partial_3_uFac_20000_5_0.001000.mat",
-        "multi5k_partial_3_iFac_17764_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "multi5k_partial_4_uFac_20000_5_0.001000.mat",
-        "multi5k_partial_4_iFac_17764_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "multi5k_partial_5_uFac_20000_5_0.001000.mat",
-        "multi5k_partial_5_iFac_17764_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "multi5k_partial_6_uFac_20000_5_0.001000.mat",
-        "multi5k_partial_6_iFac_17764_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "conf_0_uFac_20000_5_0.001000.mat",
+        "conf_0_iFac_20000_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "conf_1_uFac_20000_5_0.001000.mat",
+        "conf_1_iFac_20000_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "conf_2_uFac_20000_5_0.001000.mat",
+        "conf_2_iFac_20000_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "conf6_uFac_20000_5_0.001000.mat",
+        "conf6_iFac_20000_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "conf7_uFac_20000_5_0.001000.mat",
+        "conf7_iFac_20000_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "conf8_uFac_20000_5_0.001000.mat",
+        "conf8_iFac_20000_5_0.001000.mat", params.seed));
 
   std::cout << "\nnBestModels: " << bestModels.size();
 
-  Model fullModel(params, "multi5k_full_uFac_20000_5_0.001000.mat",
-      "multi5k_full_iFac_17764_5_0.001000.mat", params.seed);
+  Model fullModel(params, "y_fix_1.0_mat_uFac_20000_5_0.001000.mat",
+      "y_fix_1.0_mat_iFac_20000_5_0.001000.mat", params.seed);
   Model origModel(params, params.seed);
   origModel.load(params.origUFacFile, params.origIFacFile);
 
@@ -288,10 +301,11 @@ int main(int argc , char* argv[]) {
 
   Data data (params);
 
-  //computeConf(data, params);
-  computeConfScores(data, params);
+  computeConf(data, params);
+  //computeConfScores(data, params);
+  //computePRScores(data, params);
 
-  //writeCSRWSparsityStructure(data.trainMat, "songRatingsSyn.csr", data.origUFac,
+  //writeCSRWSparsityStructure(data.trainMat, "mlrand_20kX8324_syn.csr", data.origUFac,
   //    data.origIFac, 5);
   //writeCSRWHalfSparsity(data.trainMat, "mat.csr", 0, 10000, 0, 10000);
 

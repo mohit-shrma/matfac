@@ -25,6 +25,7 @@ class Params {
     float alpha;
     char *trainMatFile;
     char *testMatFile;
+    char *graphMatFile;
     char *origUFacFile;
     char *origIFacFile;
     char *initUFacFile;
@@ -35,7 +36,8 @@ class Params {
         int p_origFacDim, int p_seed,
         float p_uReg, float p_iReg,  float p_learnRate, float p_rhoRMS, 
         float p_alpha,
-        char *p_trainMatFile, char *p_testMatFile, char *p_origUFacFile, 
+        char *p_trainMatFile, char *p_testMatFile, char *p_graphMatFile,
+        char *p_origUFacFile, 
         char *p_origIFacFile, char *p_initUFacFile, char *p_initIFacFile,
         char *p_prefix)
       : nUsers(p_nUsers), nItems(p_nItems), facDim(p_facDim), maxIter(p_maxIter),
@@ -43,6 +45,7 @@ class Params {
       uReg(p_uReg), iReg(p_iReg), learnRate(p_learnRate), rhoRMS(p_rhoRMS), 
       alpha(p_alpha),
       trainMatFile(p_trainMatFile), testMatFile(p_testMatFile), 
+      graphMatFile(p_graphMatFile),
       origUFacFile(p_origUFacFile), origIFacFile(p_origIFacFile), 
       initUFacFile(p_initUFacFile), initIFacFile(p_initIFacFile),
       prefix(p_prefix){}
@@ -56,7 +59,8 @@ class Params {
   public:
     gk_csr_t *trainMat;
     gk_csr_t *testMat;
-    
+    gk_csr_t *graphMat;
+
     std::vector<std::vector<double>> origUFac;
     std::vector<std::vector<double>> origIFac;
     
@@ -131,7 +135,14 @@ class Params {
         testMat = gk_csr_Read(params.testMatFile, GK_CSR_FMT_CSR, 1, 0);
         gk_csr_CreateIndex(testMat, GK_CSR_COL);
       }
-
+      
+      graphMat = NULL;
+      if (NULL != params.graphMatFile && isFileExist(params.graphMatFile)) {
+        std::cout << "\nReading graph mat file... 0-indexed no val";
+        graphMat = gk_csr_Read(params.graphMatFile, GK_CSR_FMT_CSR, 0, 0);
+        std::cout << "\ngraph nrows: " << graphMat->nrows << " ncols: " 
+          << graphMat->ncols;
+      }
     }
 
 
@@ -143,6 +154,10 @@ class Params {
 
       if (NULL != testMat) {
         gk_csr_Free(&testMat);
+      }
+      
+      if (NULL != graphMat) {
+        gk_csr_Free(&graphMat);
       }
 
     }
