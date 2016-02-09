@@ -217,7 +217,8 @@ void ModelMF::train(const Data &data, Model &bestModel) {
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj)) {
         break; 
       }
-      std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj 
+      std::cout << "\nModelMF::train trainSeed: " << trainSeed
+                << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
                 << " Train RMSE: " << RMSE(data.trainMat) 
                 << std::endl;
       end = std::chrono::system_clock::now();  
@@ -361,7 +362,8 @@ void ModelMF::partialTrain(const Data &data, Model &bestModel) {
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj)) {
         break; 
       }
-      std::cout << "\nIter: " << iter << " Objective: " << std::scientific << prevObj 
+      std::cout << "\nModelMF::partialTrain trainSeed: " << trainSeed
+                << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
                 << " Train RMSE: " << RMSE(data.trainMat) << " skipped: " << setFound
                 << std::endl;
       end = std::chrono::system_clock::now();  

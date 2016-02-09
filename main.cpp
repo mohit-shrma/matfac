@@ -249,8 +249,8 @@ void computeConf(Data& data, Params& params) {
 
 
 void computePRScores(Data& data, Params& params) {
-  Model fullModel(params, "multiconf_full_uFac_13097_5_0.001000.mat",
-      "multiconf_full_iFac_11077_5_0.001000.mat", params.seed);
+  Model fullModel(params, params.seed);
+  fullModel.load(params.initUFacFile, params.initIFacFile);
   Model origModel(params, params.seed);
   origModel.load(params.origUFacFile, params.origIFacFile);
   //NOTE: using params.alpha as (1 - restartProb)
@@ -262,40 +262,56 @@ void computePRScores(Data& data, Params& params) {
   dispVector(pprRMSEs);
 }
 
+
 void computePRScores2(Data& data, Params& params) {
-  Model fullModel(params, "multiconf_full_uFac_13097_5_0.001000.mat",
-      "multiconf_full_iFac_11077_5_0.001000.mat", params.seed);
+  Model fullModel(params, params.seed);
+  fullModel.load(params.initUFacFile, params.initIFacFile);
   Model origModel(params, params.seed);
   origModel.load(params.origUFacFile, params.origIFacFile);
   //NOTE: using params.alpha as (1 - restartProb)
   std::vector<double> pprRMSEs = pprBucketRMSEsFrmPR(origModel, fullModel, 
     params.nUsers, params.nItems, 
-    data.graphMat, 10, "amzn_13097X11077_syn.ppr");
+    data.graphMat, 10, "prItems_0.8.txt");
   std::string prefix = std::string(params.prefix) + "_ppr2conf_bucket.txt";
   writeVector(pprRMSEs, prefix.c_str());
   dispVector(pprRMSEs);
 }
 
+
+void computeOptScores(Data& data, Params& params) {
+  
+  Model fullModel(params, params.seed);
+  fullModel.load(params.initUFacFile, params.initIFacFile);
+  Model origModel(params, params.seed);
+  origModel.load(params.origUFacFile, params.origIFacFile);
+  
+  std::vector<double> confRMSEs = confOptBucketRMSEs(origModel, fullModel, 
+    params.nUsers, params.nItems, 10);
+
+  std::string prefix = std::string(params.prefix) + "_optconf_bucket.txt";
+  writeVector(confRMSEs, prefix.c_str());
+  dispVector(confRMSEs);
+}
+
+
 void computeConfScores(Data& data, Params& params) {
  
   std::vector<Model> bestModels;
-  bestModels.push_back(Model(params, "conf_0_uFac_20000_5_0.001000.mat",
-        "conf_0_iFac_20000_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "conf_1_uFac_20000_5_0.001000.mat",
-        "conf_1_iFac_20000_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "conf_2_uFac_20000_5_0.001000.mat",
-        "conf_2_iFac_20000_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "conf6_uFac_20000_5_0.001000.mat",
-        "conf6_iFac_20000_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "conf7_uFac_20000_5_0.001000.mat",
-        "conf7_iFac_20000_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "conf8_uFac_20000_5_0.001000.mat",
-        "conf8_iFac_20000_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "",
+        "", params.seed));
+  bestModels.push_back(Model(params, "",
+        "", params.seed));
+  bestModels.push_back(Model(params, "",
+        "", params.seed));
+  bestModels.push_back(Model(params, "",
+        "", params.seed));
+  bestModels.push_back(Model(params, "",
+        "", params.seed));
 
   std::cout << "\nnBestModels: " << bestModels.size();
 
-  Model fullModel(params, "y_fix_1.0_mat_uFac_20000_5_0.001000.mat",
-      "y_fix_1.0_mat_iFac_20000_5_0.001000.mat", params.seed);
+  Model fullModel(params, params.seed);
+  fullModel.load(params.initUFacFile, params.initIFacFile);
   Model origModel(params, params.seed);
   origModel.load(params.origUFacFile, params.origIFacFile);
 
@@ -315,9 +331,10 @@ int main(int argc , char* argv[]) {
 
   Data data (params);
 
-  //computeConf(data, params);
+  computeConf(data, params);
   //computeConfScores(data, params);
-  computePRScores2(data, params);
+  //computePRScores2(data, params);
+  //computeOptScores(data, params);
 
   //writeCSRWSparsityStructure(data.trainMat, "mlrand_20kX8324_syn.csr", data.origUFac,
   //    data.origIFac, 5);
