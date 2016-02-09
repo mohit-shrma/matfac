@@ -179,6 +179,8 @@ std::vector<double> pprBucketRMSEsFrmPR(Model& origModel, Model& fullModel, int 
     }
    
     inFile.close();
+  } else {
+    std::cerr << "\nFailed to open file: " << prFName << std::endl;
   }
 
   
