@@ -128,5 +128,63 @@ std::vector<double> pprBucketRMSEs(Model& origModel, Model& fullModel, int nUser
 }
 
 
+std::vector<double> pprBucketRMSEsFrmPR(Model& origModel, Model& fullModel, int nUsers, 
+    int nItems, gk_csr_t *graphMat, int nBuckets, const char* prFName) {
+  
+  int nItemsPerBuck = nItems/nBuckets;
+  std::vector<double> bucketScores(nBuckets, 0.0);
+  std::vector<double> bucketNNZ(nBuckets, 0.0);
+  
+  std::vector<std::pair<int, double>> itemScores;
+  std::vector<int> items;
+  std::vector<double> scores;
+  std::ifstream inFile (prFName);
+  std::string line, token;
+  std::string delimiter = " ";
+  size_t pos;
+
+  if (inFile.is_open()) {
+
+    for (int user = 0; user < nUsers; user++) {
+     
+      getline(inFile, line);
+      
+      items.clear();
+      scores.clear();
+      itemScores.clear();
+
+      //split the line
+      for (int i = 0; i < nItems; i++) {
+        pos = line.find(delimiter);
+        token = line.substr(0, pos);
+        items.push_back(std::stoi(token));
+        line.erase(0, pos + delimiter.length());
+        pos = line.find(delimiter);
+        token = line.substr(0, pos);
+        scores.push_back(std::stod(token));
+        line.erase(0, pos + delimiter.length());
+      
+        itemScores.push_back(std::make_pair(items[i], scores[i]));
+      }
+
+      //add RMSEs to bucket as per ranking by itemscores
+      updateBuckets(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,
+          nBuckets, nItemsPerBuck, nItems);
+      
+      if (user % 100 == 0) {
+        std::cout<< "\n" << user << " Done..." << std::endl;
+      }
+    
+    }
+   
+    inFile.close();
+  }
+
+  
+  for (int i = 0; i < nBuckets; i++) {
+    bucketScores[i] = sqrt(bucketScores[i]/bucketNNZ[i]);
+  }
+  return bucketScores;
+}
 
 

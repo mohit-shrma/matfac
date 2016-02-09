@@ -13,4 +13,6 @@ std::vector<double> confBucketRMSEs(Model& origModel, Model& fullModel,
     int nUsers, int nItems, int nBuckets);
 std::vector<double> pprBucketRMSEs(Model& origModel, Model& fullModel, int nUsers, 
     int nItems, float lambda, int max_niter, gk_csr_t *graphMat, int nBuckets);
+std::vector<double> pprBucketRMSEsFrmPR(Model& origModel, Model& fullModel, int nUsers, 
+    int nItems, gk_csr_t *graphMat, int nBuckets, const char* prFName);
 #endif
