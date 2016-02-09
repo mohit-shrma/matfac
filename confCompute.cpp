@@ -57,7 +57,7 @@ std::vector<double> confBucketRMSEs(Model& origModel, Model& fullModel,
   std::vector<double> bucketNNZ(nBuckets, 0.0);
   double score;
   std::vector<std::pair<int, double>> itemScores;
-  
+  std::cout << "\nconfBucketRMSEs: \n"; 
   for (int user = 0; user < nUsers; user++) {
     itemScores.clear();
     for (int item = 0; item < nItems; item++) {
@@ -70,12 +70,64 @@ std::vector<double> confBucketRMSEs(Model& origModel, Model& fullModel,
     updateBuckets(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,
         nBuckets, nItemsPerBuck, nItems);
    
-    /*
     if (0 == user%1000) {
-      std::cout << "\n buckScores u: " << user;
-      dispVector(bucketScores);
+      std::cout << " u: " << user << std::endl;
     }
-    */
+  
+  }
+
+  for (int i = 0; i < nBuckets; i++) {
+    bucketScores[i] = sqrt(bucketScores[i]/bucketNNZ[i]);
+  }
+  return bucketScores;
+}
+
+
+std::vector<double> confOptBucketRMSEs(Model& origModel, Model& fullModel,
+    int nUsers, int nItems, int nBuckets) {
+  
+  int nItemsPerBuck = nItems/nBuckets;
+  std::vector<double> bucketScores(nBuckets, 0.0);
+  std::vector<double> bucketNNZ(nBuckets, 0.0);
+  double score;
+  std::vector<std::pair<int, double>> itemScores;
+ 
+  //function to sort pairs in ascending order
+  auto comparePair = [](std::pair<int, double> a, std::pair<int, double> b) { 
+    return a.second < b.second; 
+  };
+
+  std::cout << "\nconfOptBucketRMSEs: \n"; 
+  for (int user = 0; user < nUsers; user++) {
+    itemScores.clear();
+    for (int item = 0; item < nItems; item++) {
+      //compute SE score
+      double r_ui = origModel.estRating(user, item);
+      double r_ui_est = fullModel.estRating(user, item);
+      score = (r_ui - r_ui_est)*(r_ui - r_ui_est);
+      itemScores.push_back(std::make_pair(item, score));
+    }
+
+    //sort scores in ascending order
+    std::sort(itemScores.begin(), itemScores.end(), comparePair);
+
+    //update buckets with scores
+    for (int bInd = 0; bInd < nBuckets; bInd++) {
+      int start = bInd*nItemsPerBuck;
+      int end = (bInd+1)*nItemsPerBuck;
+      if (bInd == nBuckets-1 || end > nItems) {
+        end = nItems;
+      }
+      for (int j = start; j < end; j++) {
+        //add square err for item to bucket
+        bucketScores[bInd] += itemScores[j].second;
+        bucketNNZ[bInd] += 1;
+      }
+    }
+   
+    if (0 == user%1000) {
+      std::cout << " u: " << user << std::endl;
+    }
   
   }
 
@@ -136,35 +188,33 @@ std::vector<double> pprBucketRMSEsFrmPR(Model& origModel, Model& fullModel, int 
   std::vector<double> bucketNNZ(nBuckets, 0.0);
   
   std::vector<std::pair<int, double>> itemScores;
-  std::vector<int> items;
-  std::vector<double> scores;
   std::ifstream inFile (prFName);
   std::string line, token;
   std::string delimiter = " ";
   size_t pos;
+  int item;
+  double score;
 
   if (inFile.is_open()) {
-
+    std::cout << "\npprBucketRMSEsFrmPR: \n";
     for (int user = 0; user < nUsers; user++) {
      
       getline(inFile, line);
       
-      items.clear();
-      scores.clear();
       itemScores.clear();
 
       //split the line
       for (int i = 0; i < nItems; i++) {
         pos = line.find(delimiter);
         token = line.substr(0, pos);
-        items.push_back(std::stoi(token)-nUsers);
+        item = std::stoi(token)-nUsers; 
         line.erase(0, pos + delimiter.length());
         pos = line.find(delimiter);
         token = line.substr(0, pos);
-        scores.push_back(std::stod(token));
+        score = std::stod(token);
         line.erase(0, pos + delimiter.length());
       
-        itemScores.push_back(std::make_pair(items[i], scores[i]));
+        itemScores.push_back(std::make_pair(item, score));
       }
 
 
@@ -172,8 +222,8 @@ std::vector<double> pprBucketRMSEsFrmPR(Model& origModel, Model& fullModel, int 
       updateBuckets(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,
           nBuckets, nItemsPerBuck, nItems);
       
-      if (user % 100 == 0) {
-        std::cout<< "\n" << user << " Done..." << std::endl;
+      if (user % 1000 == 0) {
+        std::cout<< " u: " << user << std::endl;
       }
     
     }
