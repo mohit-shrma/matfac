@@ -157,7 +157,7 @@ std::vector<double> pprBucketRMSEsFrmPR(Model& origModel, Model& fullModel, int 
       for (int i = 0; i < nItems; i++) {
         pos = line.find(delimiter);
         token = line.substr(0, pos);
-        items.push_back(std::stoi(token));
+        items.push_back(std::stoi(token)-nUsers);
         line.erase(0, pos + delimiter.length());
         pos = line.find(delimiter);
         token = line.substr(0, pos);
@@ -166,6 +166,7 @@ std::vector<double> pprBucketRMSEsFrmPR(Model& origModel, Model& fullModel, int 
       
         itemScores.push_back(std::make_pair(items[i], scores[i]));
       }
+
 
       //add RMSEs to bucket as per ranking by itemscores
       updateBuckets(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,

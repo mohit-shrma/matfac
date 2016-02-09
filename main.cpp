@@ -249,17 +249,32 @@ void computeConf(Data& data, Params& params) {
 
 
 void computePRScores(Data& data, Params& params) {
-  Model fullModel(params, "nf_fix_1.0_mat_uFac_20000_5_0.001000.mat",
-      "nf_fix_1.0_mat_iFac_17764_5_0.001000.mat", params.seed);
+  Model fullModel(params, "multiconf_full_uFac_13097_5_0.001000.mat",
+      "multiconf_full_iFac_11077_5_0.001000.mat", params.seed);
   Model origModel(params, params.seed);
   origModel.load(params.origUFacFile, params.origIFacFile);
   //NOTE: using params.alpha as (1 - restartProb)
   std::vector<double> pprRMSEs = pprBucketRMSEs(origModel, fullModel, 
     params.nUsers, params.nItems, params.alpha, params.maxIter, 
     data.graphMat, 10);
+  std::string prefix = std::string(params.prefix) + "_pprconf_bucket.txt";
+  writeVector(pprRMSEs, prefix.c_str());
   dispVector(pprRMSEs);
 }
 
+void computePRScores2(Data& data, Params& params) {
+  Model fullModel(params, "multiconf_full_uFac_13097_5_0.001000.mat",
+      "multiconf_full_iFac_11077_5_0.001000.mat", params.seed);
+  Model origModel(params, params.seed);
+  origModel.load(params.origUFacFile, params.origIFacFile);
+  //NOTE: using params.alpha as (1 - restartProb)
+  std::vector<double> pprRMSEs = pprBucketRMSEsFrmPR(origModel, fullModel, 
+    params.nUsers, params.nItems, 
+    data.graphMat, 10, "amzn_13097X11077_syn.ppr");
+  std::string prefix = std::string(params.prefix) + "_ppr2conf_bucket.txt";
+  writeVector(pprRMSEs, prefix.c_str());
+  dispVector(pprRMSEs);
+}
 
 void computeConfScores(Data& data, Params& params) {
  
@@ -290,7 +305,6 @@ void computeConfScores(Data& data, Params& params) {
 }
 
 
-
 int main(int argc , char* argv[]) {
 
   //get passed parameters
@@ -301,9 +315,9 @@ int main(int argc , char* argv[]) {
 
   Data data (params);
 
-  computeConf(data, params);
+  //computeConf(data, params);
   //computeConfScores(data, params);
-  //computePRScores(data, params);
+  computePRScores2(data, params);
 
   //writeCSRWSparsityStructure(data.trainMat, "mlrand_20kX8324_syn.csr", data.origUFac,
   //    data.origIFac, 5);
