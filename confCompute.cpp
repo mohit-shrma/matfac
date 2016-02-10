@@ -180,6 +180,67 @@ std::vector<double> pprBucketRMSEs(Model& origModel, Model& fullModel, int nUser
 }
 
 
+std::vector<double> gprBucketRMSEs(Model& origModel, Model& fullModel, int nUsers, 
+    int nItems, float lambda, int max_niter, gk_csr_t *graphMat, int nBuckets) {
+  
+  int nItemsPerBuck = nItems/nBuckets;
+  std::vector<double> bucketScores(nBuckets, 0.0);
+  std::vector<double> bucketNNZ(nBuckets, 0.0);
+  std::vector<std::pair<int, double>> itemScores;
+
+  float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
+  memset(pr, 0, sizeof(float)*graphMat->nrows);
+  //assign all users equal restart probability
+  for (int user = 0; user < nUsers; user++) {
+    pr[user] = 1.0/nUsers;
+  }
+  
+  //run global page rank on the graph w.r.t. users
+  gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
+
+  //get pr score of items
+  for (int i = nUsers; i < nUsers + nItems; i++) {
+    itemScores.push_back(std::make_pair(i - nUsers, pr[i]));
+  }
+
+  //sort items by global page rank
+  auto comparePair = [](std::pair<int, double> a, std::pair<int, double> b) { 
+    return a.second > b.second; 
+  };
+  
+  //sort items by DECREASING order in score
+  std::sort(itemScores.begin(), itemScores.end(), comparePair);  
+
+  //add RMSEs to bucket as per ranking by itemscores
+  for (int user = 0; user < nUsers; user++) {
+    for (int bInd = 0; bInd < nBuckets; bInd++) {
+      int start = bInd*nItemsPerBuck;
+      int end = (bInd+1)*nItemsPerBuck;
+      if (bInd == nBuckets-1 || end > nItems) {
+        end = nItems;
+      }
+      for (int j = start; j < end; j++) {
+        int item = itemScores[j].first;
+        //compute square err for item
+        double r_ui = origModel.estRating(user, item);
+        double r_ui_est = fullModel.estRating(user, item);
+        double se = (r_ui - r_ui_est)*(r_ui - r_ui_est);
+        bucketScores[bInd] += se;
+        bucketNNZ[bInd] += 1;
+      }
+    }
+  }
+
+  for (int i = 0; i < nBuckets; i++) {
+    bucketScores[i] = sqrt(bucketScores[i]/bucketNNZ[i]);
+  }
+    
+  free(pr);
+  
+  return bucketScores;
+}
+
+
 std::vector<double> pprBucketRMSEsFrmPR(Model& origModel, Model& fullModel, int nUsers, 
     int nItems, gk_csr_t *graphMat, int nBuckets, const char* prFName) {
   
