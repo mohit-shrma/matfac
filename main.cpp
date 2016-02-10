@@ -238,13 +238,30 @@ void computeConf(Data& data, Params& params) {
   origModel.load(params.origUFacFile, params.origIFacFile);
 
   //compute confidence using the best models for 10 buckets
-  std::vector<double> confRMSEs = confBucketRMSEs(origModel, fullModel, 
+  std::vector<double> confRMSEs = confBucketRMSEs(origModel, fullBestModel, 
       bestModels, params.nUsers, params.nItems, 10);
   std::cout << "\nConfidence bucket RMSEs: ";
   dispVector(confRMSEs);
-  std::cout << "\nwriting confidence bucket RMSEs" << std::endl;
-  prefix = std::string(params.prefix) + "_conf_bucket.txt";
+  prefix = std::string(params.prefix) + "_mconf_bucket.txt";
   writeVector(confRMSEs, prefix.c_str());
+
+  //compute global page rank confidence
+  //NOTE: using params.alpha as (1 - restartProb)
+  std::vector<double> gprRMSEs = gprBucketRMSEs(origModel, fullBestModel, 
+    params.nUsers, params.nItems, params.alpha, params.maxIter, 
+    data.graphMat, 10);
+  prefix = std::string(params.prefix) + "_gprconf_bucket.txt";
+  writeVector(gprRMSEs, prefix.c_str());
+  std::cout << "\nGPR confidence RMSEs:";
+  dispVector(gprRMSEs);
+
+  //compute optimal confidence
+  std::vector<double> optRMSEs = confOptBucketRMSEs(origModel, fullBestModel, 
+    params.nUsers, params.nItems, 10);
+  prefix = std::string(params.prefix) + "_optconf_bucket.txt";
+  writeVector(optRMSEs, prefix.c_str());
+  std::cout << "\nOptimal confidence RMSEs:";
+  dispVector(optRMSEs);
 }
 
 
@@ -348,10 +365,10 @@ int main(int argc , char* argv[]) {
 
   Data data (params);
 
-  //computeConf(data, params);
+  computeConf(data, params);
   //computeConfScores(data, params);
   //computePRScores2(data, params);
-  computeGPRScores(data, params);
+  //computeGPRScores(data, params);
   //computeOptScores(data, params);
 
   //writeCSRWSparsityStructure(data.trainMat, "flix_u51_i20_23465X11134_syn.csr", 
