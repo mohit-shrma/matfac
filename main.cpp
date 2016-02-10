@@ -263,6 +263,21 @@ void computePRScores(Data& data, Params& params) {
 }
 
 
+void computeGPRScores(Data& data, Params& params) {
+  Model fullModel(params, params.seed);
+  fullModel.load(params.initUFacFile, params.initIFacFile);
+  Model origModel(params, params.seed);
+  origModel.load(params.origUFacFile, params.origIFacFile);
+  //NOTE: using params.alpha as (1 - restartProb)
+  std::vector<double> pprRMSEs = gprBucketRMSEs(origModel, fullModel, 
+    params.nUsers, params.nItems, params.alpha, params.maxIter, 
+    data.graphMat, 10);
+  std::string prefix = std::string(params.prefix) + "_gprconf_bucket.txt";
+  writeVector(pprRMSEs, prefix.c_str());
+  dispVector(pprRMSEs);
+}
+
+
 void computePRScores2(Data& data, Params& params) {
   Model fullModel(params, params.seed);
   fullModel.load(params.initUFacFile, params.initIFacFile);
@@ -318,6 +333,8 @@ void computeConfScores(Data& data, Params& params) {
   std::vector<double> confRMSEs = confBucketRMSEs(origModel, fullModel, 
       bestModels, params.nUsers, params.nItems, 10);
   dispVector(confRMSEs);
+  std::string prefix = std::string(params.prefix) + "_conf_bucket.txt";
+  writeVector(confRMSEs, prefix.c_str());
 }
 
 
@@ -331,13 +348,14 @@ int main(int argc , char* argv[]) {
 
   Data data (params);
 
-  computeConf(data, params);
+  //computeConf(data, params);
   //computeConfScores(data, params);
   //computePRScores2(data, params);
+  computeGPRScores(data, params);
   //computeOptScores(data, params);
 
-  //writeCSRWSparsityStructure(data.trainMat, "mlrand_20kX8324_syn.csr", data.origUFac,
-  //    data.origIFac, 5);
+  //writeCSRWSparsityStructure(data.trainMat, "flix_u51_i20_23465X11134_syn.csr", 
+  //    data.origUFac, data.origIFac, 5);
   //writeCSRWHalfSparsity(data.trainMat, "mat.csr", 0, 10000, 0, 10000);
 
   /*
