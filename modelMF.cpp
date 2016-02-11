@@ -179,6 +179,9 @@ void ModelMF::train(const Data &data, Model &bestModel) {
   std::uniform_int_distribution<int> iDist(0, nItems-1);
 
   std::chrono::time_point<std::chrono::system_clock> start, end;
+  
+  std::vector<std::unordered_set<int>> uISet(nUsers);
+  genStats(trainMat, uISet, std::to_string(trainSeed));
 
   for (iter = 0; iter < maxIter; iter++) {  
     start = std::chrono::system_clock::now();
@@ -310,6 +313,8 @@ void ModelMF::partialTrain(const Data &data, Model &bestModel) {
 
       uISet[u].insert(item);
   }
+
+  genStats(trainMat, uISet, std::to_string(trainSeed));
 
   std::chrono::time_point<std::chrono::system_clock> start, end;
 

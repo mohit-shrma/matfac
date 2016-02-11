@@ -1,6 +1,8 @@
 #include <vector>
 #include <functional>
 #include <algorithm>
+#include <unordered_set>
+#include <iostream>
 #include <cmath>
 #include "GKlib.h"
 
@@ -20,6 +22,10 @@ double dotProd(const std::vector<double> &a, const std::vector<double> &b, int s
   }
   return prod;
 }
-double stddev(std::vector<double> v); 
+double stddev(std::vector<double> v);
+
+void genStats(gk_csr_t *mat, 
+    std::vector<std::unordered_set<int>> uISetIgnore, std::string opPrefix);
+
 #endif
 
