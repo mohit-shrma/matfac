@@ -95,7 +95,7 @@ void genStats(gk_csr_t *mat,
   std::vector<int> iUserCount(nItems, 0);
   std::vector<int> iUserIgCount(nItems, 0);
 
-  for (int u = 0; u < mat->nrows; u++) {
+  for  (int u = 0; u < mat->nrows; u++) {
     for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
       int item = mat->rowind[ii];
       uItemCount[u] += 1;
@@ -109,8 +109,8 @@ void genStats(gk_csr_t *mat,
         iUserIgCount[item] += 1;
       } else {
         igNNZ++;
-      }
-    }
+       }
+    } 
   }
   
   int minUserRatCount = minVec(uItemCount);
@@ -177,5 +177,41 @@ void genStats(gk_csr_t *mat,
     << nItemsWithMaxRatcount << " opPrefix: " << opPrefix;
 }
 
+
+
+void getInvalidUsersItems(gk_csr_t *mat, 
+    std::vector<std::unordered_set<int>>& uISetIgnore,
+    std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems) {
+  
+  std::vector<int> uItemCount (mat->nrows, 0);
+  std::vector<int> iUserCount (mat->ncols, 0);
+  for (int u = 0; u < mat->nrows; u++) {
+    for (int ii = 0; ii < mat->rowptr[u]; ii++) {
+      int item = mat->rowind[ii];
+      //check if not in ignore u, item pair
+      auto search = uISetIgnore[u].find(item);
+      if (search == uISetIgnore[u].end()) {
+        //not found in ignored pairs
+        uItemCount[u] += 1;
+        iUserCount[item] += 1;
+      }
+    }
+  }
+
+  //find the users with no ratings
+  for (int u = 0; u < mat->nrows; u++) {
+    if (0 == uItemCount[u]) {
+      invalidUsers.insert(u);
+    }
+  }
+
+  //find the items with no ratings
+  for (int item = 0; item < mat->ncols; item++) {
+    if (0 == iUserCount[item]) {
+      invalidItems.insert(item);
+    }
+  }
+}
 
 

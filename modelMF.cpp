@@ -237,7 +237,9 @@ void ModelMF::train(const Data &data, Model &bestModel) {
 }
 
 
-void ModelMF::partialTrain(const Data &data, Model &bestModel) {
+void ModelMF::partialTrain(const Data &data, Model &bestModel, 
+    std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems) {
 
   //copy passed known factors
   //uFac = data.origUFac;
@@ -315,6 +317,7 @@ void ModelMF::partialTrain(const Data &data, Model &bestModel) {
   }
 
   genStats(trainMat, uISet, std::to_string(trainSeed));
+  getInvalidUsersItems(trainMat, uISet, invalidUsers, invalidItems);
 
   std::chrono::time_point<std::chrono::system_clock> start, end;
 

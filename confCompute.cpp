@@ -83,6 +83,58 @@ std::vector<double> confBucketRMSEs(Model& origModel, Model& fullModel,
 }
 
 
+std::vector<double> confBucketRMSEsWInval(Model& origModel, Model& fullModel,
+    std::vector<Model>& models, int nUsers, int nItems, int nBuckets,
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems) {
+  
+  int nInvalItems = invalItems.size();
+  int nItemsPerBuck = (nItems-nInvalItems)/nBuckets;
+  
+  std::cout << "\nnItemsPerBuck: " << nItemsPerBuck;
+
+  std::vector<double> bucketScores(nBuckets, 0.0);
+  std::vector<double> bucketNNZ(nBuckets, 0.0);
+  double score;
+  std::vector<std::pair<int, double>> itemScores;
+  std::cout << "\nconfBucketRMSEs: \n"; 
+  for (int user = 0; user < nUsers; user++) {
+    //skip if user is invalid
+    auto search = invalUsers.find(user);
+    if (search != invalUsers.end()) {
+      //found n skip
+      continue;
+    }
+
+    itemScores.clear();
+    for (int item = 0; item < nItems; item++) {
+      //skip item if invalid
+      auto search = invalItems.find(item);
+      if (search != invalItems.end()) {
+        //found n skip
+        continue;
+      }
+      //compute confidence score
+      score = confScore(user, item, models);
+      itemScores.push_back(std::make_pair(item, score));
+    }
+    
+    //add RMSEs to bucket as per ranking by itemscores
+    updateBuckets(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,
+        nBuckets, nItemsPerBuck, nItems-nInvalItems);
+   
+    if (0 == user%1000) {
+      std::cout << " u: " << user << std::endl;
+    }
+  
+  }
+
+  for (int i = 0; i < nBuckets; i++) {
+    bucketScores[i] = sqrt(bucketScores[i]/bucketNNZ[i]);
+  }
+  return bucketScores;
+}
+
+
 std::vector<double> confOptBucketRMSEs(Model& origModel, Model& fullModel,
     int nUsers, int nItems, int nBuckets) {
   

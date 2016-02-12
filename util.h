@@ -27,5 +27,9 @@ double stddev(std::vector<double> v);
 void genStats(gk_csr_t *mat, 
     std::vector<std::unordered_set<int>> uISetIgnore, std::string opPrefix);
 
+void getInvalidUsersItems(gk_csr_t *mat, 
+    std::vector<std::unordered_set<int>>& uISetIgnore,
+    std::unordered_set<int>& uSet,
+    std::unordered_set<int>& itemSet);
 #endif
 

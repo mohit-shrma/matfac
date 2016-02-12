@@ -40,7 +40,9 @@ class Model {
     virtual void train(const Data& data, Model& bestModel) {
       std::cerr<< "\nTraining not in base class";
     };
-    virtual void partialTrain(const Data& data, Model& bestModel) {
+    virtual void partialTrain(const Data& data, Model& bestModel,
+        std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems) {
       std::cerr<< "\nPartial Training not in base class" << std::endl;
     };
 

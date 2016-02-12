@@ -191,7 +191,9 @@ void computeConf(Data& data, Params& params) {
   
   std::vector<std::shared_ptr<ModelMF>> trainModels;
   std::vector<std::shared_ptr<Model>> pbestModels;
-  
+  std::vector<std::unordered_set<int>> mInvalUsers (nThreads);
+  std::vector<std::unordered_set<int>> mInvalItems (nThreads);
+
   for (int thInd = 0; thInd < nThreads; thInd++) {
     int seed = params.seed + thInd + 1;
     std::shared_ptr<ModelMF> p(new ModelMF(params, seed));
@@ -204,8 +206,12 @@ void computeConf(Data& data, Params& params) {
     std::cout << "\nInvoking thread: " << thInd << std::endl;  
     threads[thInd] = std::thread(&ModelMF::partialTrain, 
         trainModels[thInd], std::ref(data), 
-        std::ref(*pbestModels[thInd]));
+        std::ref(*pbestModels[thInd]), std::ref(mInvalUsers[thInd]),
+        std::ref(mInvalItems[thInd]));
   }
+
+
+
 
   //train full model in main thread
   ModelMF fullBestModel(fullModel);
@@ -237,6 +243,27 @@ void computeConf(Data& data, Params& params) {
   ModelMF origModel(params, params.seed);
   origModel.load(params.origUFacFile, params.origIFacFile);
 
+  std::unordered_set<int> invalidUsers;
+  std::unordered_set<int> invalidItems;
+  
+  //find all invalid users
+  for (int thInd = 0; thInd < nThreads; thInd++) {
+    for (const auto& elem: mInvalUsers[thInd]) {
+      invalidUsers.insert(elem);
+    }
+  }
+  
+  //find all invalid items
+  for (int thInd = 0; thInd < nThreads; thInd++) {
+    for (const auto& elem: mInvalItems[thInd]) {
+      invalidItems.insert(elem);
+    }
+  }
+
+  std::cout << "\nTotal invalid users: " << invalidUsers.size();
+  std::cout << "\nTotal invalid items: " << invalidItems.size();
+
+  
   //compute confidence using the best models for 10 buckets
   std::vector<double> confRMSEs = confBucketRMSEs(origModel, fullBestModel, 
       bestModels, params.nUsers, params.nItems, 10);
@@ -365,14 +392,14 @@ int main(int argc , char* argv[]) {
 
   Data data (params);
 
-  computeConf(data, params);
+  //computeConf(data, params);
   //computeConfScores(data, params);
   //computePRScores2(data, params);
   //computeGPRScores(data, params);
   //computeOptScores(data, params);
 
-  //writeCSRWSparsityStructure(data.trainMat, "flix_u51_i20_23465X11134_syn.csr", 
-  //    data.origUFac, data.origIFac, 5);
+  writeCSRWSparsityStructure(data.trainMat, "ml_rand_100KX22895_u1_i1.syn.csr", 
+      data.origUFac, data.origIFac, 5);
   //writeCSRWHalfSparsity(data.trainMat, "mat.csr", 0, 10000, 0, 10000);
 
   /*
