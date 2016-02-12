@@ -187,7 +187,7 @@ void getInvalidUsersItems(gk_csr_t *mat,
   std::vector<int> uItemCount (mat->nrows, 0);
   std::vector<int> iUserCount (mat->ncols, 0);
   for (int u = 0; u < mat->nrows; u++) {
-    for (int ii = 0; ii < mat->rowptr[u]; ii++) {
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
       int item = mat->rowind[ii];
       //check if not in ignore u, item pair
       auto search = uISetIgnore[u].find(item);

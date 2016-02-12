@@ -319,6 +319,11 @@ void ModelMF::partialTrain(const Data &data, Model &bestModel,
   genStats(trainMat, uISet, std::to_string(trainSeed));
   getInvalidUsersItems(trainMat, uISet, invalidUsers, invalidItems);
 
+  std::cout << "\nModelMF::partialTrain trainSeed: " << trainSeed 
+    << " invalidUsers: " << invalidUsers.size()
+    << " invalidItems: " << invalidItems.size() << std::endl;
+  
+
   std::chrono::time_point<std::chrono::system_clock> start, end;
 
   for (iter = 0; iter < maxIter; iter++) {  
