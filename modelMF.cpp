@@ -333,20 +333,24 @@ void ModelMF::partialTrain(const Data &data, Model &bestModel,
       
       //sample u
       u = uDist(mt);
-      
+      //skip if u in invalidUsers    
+      auto search = invalidUsers.find(u);
+      if (search != invalidUsers.end()) {
+        //found and skip
+        continue;
+      }
+
       //sample item rated by user
       nUserItems =  trainMat->rowptr[u+1] - trainMat->rowptr[u];
       itemInd = iDist(mt)%nUserItems; 
       item = trainMat->rowind[trainMat->rowptr[u] + itemInd];
       
       //check if item present in uIset[u]
-      auto search = uISet[u].find(item);
+      search = uISet[u].find(item);
       if (search != uISet[u].end()) {
         //found and ignore the current iteration
         setFound++;
         continue;
-      } else {
-        //not found
       }
 
       itemRat = trainMat->rowval[trainMat->rowptr[u] + itemInd]; 
