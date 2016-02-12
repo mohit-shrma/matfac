@@ -300,6 +300,65 @@ std::vector<double> pprBucketRMSEs(Model& origModel, Model& fullModel, int nUser
 }
 
 
+std::vector<double> pprBucketRMSEsWInVal(Model& origModel, Model& fullModel, int nUsers, 
+    int nItems, float lambda, int max_niter, gk_csr_t *graphMat, int nBuckets, 
+    std::unordered_set<int> invalUsers, std::unordered_set<int> invalItems) {
+  
+  int nInvalItems = invalItems.size();
+  int nItemsPerBuck = (nItems-nInvalItems)/nBuckets;
+  std::vector<double> bucketScores(nBuckets, 0.0);
+  std::vector<double> bucketNNZ(nBuckets, 0.0);
+  float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
+  
+  std::vector<std::pair<int, double>> itemScores;
+  std::cout << "\npprBucketRMSEsWInVal: " << std::endl;
+  for (int user = 0; user < nUsers; user++) {
+    //skip if user is invalid
+    auto search = invalUsers.find(user);
+    if (search != invalUsers.end()) {
+      //found n skip
+      continue;
+    }
+
+    memset(pr, 0, sizeof(float)*graphMat->nrows);
+    pr[user] = 1.0;
+    
+    //run personalized page rank on the graph w.r.t. u
+    gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
+
+    //get pr score of items
+    itemScores.clear();
+    for (int i = nUsers; i < nUsers + nItems; i++) {
+      int item = i - nUsers;
+      //skip if item is invalid
+      search = invalItems.find(item);
+      if (search != invalItems.end()) {
+        //found, invalid, skip
+        continue;
+      }
+
+      itemScores.push_back(std::make_pair(item, pr[i]));
+    }
+
+    //add RMSEs to bucket as per ranking by itemscores
+    updateBuckets(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,
+        nBuckets, nItemsPerBuck, nItems);
+    
+    if (user % 1000 == 0) {
+      std::cout<< user << " Done..." << std::endl;
+    }
+  
+  }
+  
+  free(pr);
+  
+  for (int i = 0; i < nBuckets; i++) {
+    bucketScores[i] = sqrt(bucketScores[i]/bucketNNZ[i]);
+  }
+  return bucketScores;
+}
+
+
 std::vector<double> gprBucketRMSEs(Model& origModel, Model& fullModel, int nUsers, 
     int nItems, float lambda, int max_niter, gk_csr_t *graphMat, int nBuckets) {
   
@@ -478,6 +537,81 @@ std::vector<double> pprBucketRMSEsFrmPR(Model& origModel, Model& fullModel, int 
       //add RMSEs to bucket as per ranking by itemscores
       updateBuckets(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,
           nBuckets, nItemsPerBuck, nItems);
+      
+      if (user % 1000 == 0) {
+        std::cout<< " u: " << user << std::endl;
+      }
+    
+    }
+   
+    inFile.close();
+  } else {
+    std::cerr << "\nFailed to open file: " << prFName << std::endl;
+  }
+
+  
+  for (int i = 0; i < nBuckets; i++) {
+    bucketScores[i] = sqrt(bucketScores[i]/bucketNNZ[i]);
+  }
+  return bucketScores;
+}
+
+
+std::vector<double> pprBucketRMSEsFrmPRWInVal(Model& origModel, Model& fullModel, int nUsers, 
+    int nItems, gk_csr_t *graphMat, int nBuckets, const char* prFName,
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems) {
+  
+  int nInvalItems = invalItems.size(); 
+  int nItemsPerBuck = (nItems- nInvalItems)/nBuckets;
+  std::vector<double> bucketScores(nBuckets, 0.0);
+  std::vector<double> bucketNNZ(nBuckets, 0.0);
+  
+  std::vector<std::pair<int, double>> itemScores;
+  std::ifstream inFile (prFName);
+  std::string line, token;
+  std::string delimiter = " ";
+  size_t pos;
+  int item;
+  double score;
+
+  if (inFile.is_open()) {
+    std::cout << "\npprBucketRMSEsFrmPR: \n";
+    for (int user = 0; user < nUsers; user++) {
+      
+      //read prank items of the current user
+      getline(inFile, line);
+      
+      //skip if user is invalid
+      auto search = invalUsers.find(user);
+      if (search != invalUsers.end()) {
+        //found n skip
+        continue;
+      }
+
+      itemScores.clear();
+
+      //split the line
+      for (int i = 0; i < nItems; i++) {
+        pos = line.find(delimiter);
+        token = line.substr(0, pos);
+        item = std::stoi(token)-nUsers; 
+        line.erase(0, pos + delimiter.length());
+        pos = line.find(delimiter);
+        token = line.substr(0, pos);
+        score = std::stod(token);
+        line.erase(0, pos + delimiter.length());
+        
+        //insert only if item is valid
+        search = invalItems.find(item);
+        if (search == invalItems.end()) {
+          //notfound, valid item, insert
+          itemScores.push_back(std::make_pair(item, score));
+        }
+      }
+
+      //add RMSEs to bucket as per ranking by itemscores
+      updateBuckets(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,
+          nBuckets, nItemsPerBuck, nItems-nInvalItems);
       
       if (user % 1000 == 0) {
         std::cout<< " u: " << user << std::endl;

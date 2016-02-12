@@ -259,7 +259,6 @@ void computeConf(Data& data, Params& params) {
 
   std::cout << "\nTotal invalid users: " << invalidUsers.size();
   std::cout << "\nTotal invalid items: " << invalidItems.size();
-
   
   //compute confidence using the best models for 10 buckets
   std::vector<double> confRMSEs = confBucketRMSEsWInval(origModel, fullBestModel, 
@@ -272,7 +271,7 @@ void computeConf(Data& data, Params& params) {
   //compute global page rank confidence
   //NOTE: using params.alpha as (1 - restartProb)
   std::vector<double> gprRMSEs = gprBucketRMSEsWInVal(origModel, fullBestModel, 
-    params.nUsers, params.nItems, params.alpha, params.maxIter, 
+    params.nUsers, params.nItems, params.alpha, MAX_PR_ITER, 
     data.graphMat, 10, invalidUsers, invalidItems);
   prefix = std::string(params.prefix) + "_gprconf_bucket.txt";
   writeVector(gprRMSEs, prefix.c_str());
@@ -286,6 +285,16 @@ void computeConf(Data& data, Params& params) {
   writeVector(optRMSEs, prefix.c_str());
   std::cout << "\nOptimal confidence RMSEs:";
   dispVector(optRMSEs);
+
+  //compute ppr confidence
+  std::vector<double> pprRMSEs = pprBucketRMSEsWInVal(origModel, fullBestModel, 
+    params.nUsers, params.nItems, params.alpha, MAX_PR_ITER, 
+    data.graphMat, 10, invalidUsers, invalidItems);
+  prefix = std::string(params.prefix) + "_pprconf_bucket.txt";
+  writeVector(pprRMSEs, prefix.c_str());
+  std::cout << "\nPPR confidence RMSEs:";
+  dispVector(pprRMSEs);
+
 }
 
 

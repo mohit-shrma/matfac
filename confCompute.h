@@ -23,6 +23,12 @@ std::vector<double> gprBucketRMSEsWInVal(Model& origModel, Model& fullModel, int
     std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems);
 std::vector<double> pprBucketRMSEsFrmPR(Model& origModel, Model& fullModel, int nUsers, 
     int nItems, gk_csr_t *graphMat, int nBuckets, const char* prFName);
+std::vector<double> pprBucketRMSEsFrmPRWInVal(Model& origModel, Model& fullModel, int nUsers, 
+    int nItems, gk_csr_t *graphMat, int nBuckets, const char* prFName,
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems);
+std::vector<double> pprBucketRMSEsWInVal(Model& origModel, Model& fullModel, int nUsers, 
+    int nItems, float lambda, int max_niter, gk_csr_t *graphMat, int nBuckets, 
+    std::unordered_set<int> invalUsers, std::unordered_set<int> invalItems);
 std::vector<double> confOptBucketRMSEs(Model& origModel, Model& fullModel,
     int nUsers, int nItems, int nBuckets);
 std::vector<double> confOptBucketRMSEsWInVal(Model& origModel, Model& fullModel,
