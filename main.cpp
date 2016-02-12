@@ -210,9 +210,6 @@ void computeConf(Data& data, Params& params) {
         std::ref(mInvalItems[thInd]));
   }
 
-
-
-
   //train full model in main thread
   ModelMF fullBestModel(fullModel);
   std::cout << "\nStarting full model train...";
@@ -265,8 +262,8 @@ void computeConf(Data& data, Params& params) {
 
   
   //compute confidence using the best models for 10 buckets
-  std::vector<double> confRMSEs = confBucketRMSEs(origModel, fullBestModel, 
-      bestModels, params.nUsers, params.nItems, 10);
+  std::vector<double> confRMSEs = confBucketRMSEsWInval(origModel, fullBestModel, 
+      bestModels, params.nUsers, params.nItems, 10, invalidUsers, invalidItems);
   std::cout << "\nConfidence bucket RMSEs: ";
   dispVector(confRMSEs);
   prefix = std::string(params.prefix) + "_mconf_bucket.txt";
@@ -274,17 +271,17 @@ void computeConf(Data& data, Params& params) {
 
   //compute global page rank confidence
   //NOTE: using params.alpha as (1 - restartProb)
-  std::vector<double> gprRMSEs = gprBucketRMSEs(origModel, fullBestModel, 
+  std::vector<double> gprRMSEs = gprBucketRMSEsWInVal(origModel, fullBestModel, 
     params.nUsers, params.nItems, params.alpha, params.maxIter, 
-    data.graphMat, 10);
+    data.graphMat, 10, invalidUsers, invalidItems);
   prefix = std::string(params.prefix) + "_gprconf_bucket.txt";
   writeVector(gprRMSEs, prefix.c_str());
   std::cout << "\nGPR confidence RMSEs:";
   dispVector(gprRMSEs);
 
   //compute optimal confidence
-  std::vector<double> optRMSEs = confOptBucketRMSEs(origModel, fullBestModel, 
-    params.nUsers, params.nItems, 10);
+  std::vector<double> optRMSEs = confOptBucketRMSEsWInVal(origModel, fullBestModel, 
+    params.nUsers, params.nItems, 10, invalidUsers, invalidItems);
   prefix = std::string(params.prefix) + "_optconf_bucket.txt";
   writeVector(optRMSEs, prefix.c_str());
   std::cout << "\nOptimal confidence RMSEs:";
@@ -392,14 +389,14 @@ int main(int argc , char* argv[]) {
 
   Data data (params);
 
-  //computeConf(data, params);
+  computeConf(data, params);
   //computeConfScores(data, params);
   //computePRScores2(data, params);
   //computeGPRScores(data, params);
   //computeOptScores(data, params);
 
-  writeCSRWSparsityStructure(data.trainMat, "ml_rand_100KX22895_u1_i1.syn.csr", 
-      data.origUFac, data.origIFac, 5);
+  //writeCSRWSparsityStructure(data.trainMat, "ml_rand_100KX22895_u1_i1.syn.csr", 
+  //    data.origUFac, data.origIFac, 5);
   //writeCSRWHalfSparsity(data.trainMat, "mat.csr", 0, 10000, 0, 10000);
 
   /*
