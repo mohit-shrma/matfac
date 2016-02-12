@@ -305,7 +305,7 @@ void computePRScores(Data& data, Params& params) {
   origModel.load(params.origUFacFile, params.origIFacFile);
   //NOTE: using params.alpha as (1 - restartProb)
   std::vector<double> pprRMSEs = pprBucketRMSEs(origModel, fullModel, 
-    params.nUsers, params.nItems, params.alpha, params.maxIter, 
+    params.nUsers, params.nItems, params.alpha, MAX_PR_ITER, 
     data.graphMat, 10);
   std::string prefix = std::string(params.prefix) + "_pprconf_bucket.txt";
   writeVector(pprRMSEs, prefix.c_str());
@@ -320,7 +320,7 @@ void computeGPRScores(Data& data, Params& params) {
   origModel.load(params.origUFacFile, params.origIFacFile);
   //NOTE: using params.alpha as (1 - restartProb)
   std::vector<double> pprRMSEs = gprBucketRMSEs(origModel, fullModel, 
-    params.nUsers, params.nItems, params.alpha, params.maxIter, 
+    params.nUsers, params.nItems, params.alpha, MAX_PR_ITER, 
     data.graphMat, 10);
   std::string prefix = std::string(params.prefix) + "_gprconf_bucket.txt";
   writeVector(pprRMSEs, prefix.c_str());
