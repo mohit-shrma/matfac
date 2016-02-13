@@ -34,6 +34,16 @@ int nnzSubMat(gk_csr_t *mat, int uStart, int uEnd, int iStart, int iEnd) {
 }
 
 
+
+int getNNZ(gk_csr_t *mat) {
+  int nnz = 0;
+  for (int u = 0; u < mat->nrows; u++) {
+    nnz += mat->rowptr[u+1] - mat->rowptr[u];
+  }
+  return nnz;
+}
+
+
 //check if (u, item) is present inside the passed block
 //includes start but exclude end
 bool isInsideBlock(int u, int item, int uStart, int uEnd, int iStart, 

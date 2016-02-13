@@ -3,6 +3,7 @@
 #include <future>
 #include <chrono>
 #include <thread>
+#include "io.h"
 #include "util.h"
 #include "datastruct.h"
 #include "modelMF.h"
@@ -250,6 +251,11 @@ void computeConf(Data& data, Params& params) {
     }
   }
   
+  std::cout << "\nTotal invalid users: " << invalidUsers.size();
+  //write out invalid users
+  prefix = std::string(params.prefix) + "_invalUsers.txt";
+  writeContainer(begin(invalidUsers), end(invalidUsers), prefix.c_str());
+  
   //find all invalid items
   for (int thInd = 0; thInd < nThreads; thInd++) {
     for (const auto& elem: mInvalItems[thInd]) {
@@ -257,9 +263,11 @@ void computeConf(Data& data, Params& params) {
     }
   }
 
-  std::cout << "\nTotal invalid users: " << invalidUsers.size();
   std::cout << "\nTotal invalid items: " << invalidItems.size();
-  
+  //write out invalid items
+  prefix = std::string(params.prefix) + "_invalItems.txt";
+  writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
+
   //compute confidence using the best models for 10 buckets
   std::vector<double> confRMSEs = confBucketRMSEsWInval(origModel, fullBestModel, 
       bestModels, params.nUsers, params.nItems, 10, invalidUsers, invalidItems);
@@ -294,8 +302,127 @@ void computeConf(Data& data, Params& params) {
   writeVector(pprRMSEs, prefix.c_str());
   std::cout << "\nPPR confidence RMSEs:";
   dispVector(pprRMSEs);
-
 }
+
+
+void computeConfCurve(Data& data, Params& params) {
+
+  ModelMF fullModel(params, params.seed);
+  svdFrmSvdlibCSR(data.trainMat, fullModel.facDim, fullModel.uFac, 
+      fullModel.iFac); 
+  
+  int nThreads = 5;
+  
+  std::vector<std::thread> threads(nThreads);
+  
+  std::vector<std::shared_ptr<ModelMF>> trainModels;
+  std::vector<std::shared_ptr<Model>> pbestModels;
+  std::vector<std::unordered_set<int>> mInvalUsers (nThreads);
+  std::vector<std::unordered_set<int>> mInvalItems (nThreads);
+
+  for (int thInd = 0; thInd < nThreads; thInd++) {
+    int seed = params.seed + thInd + 1;
+    std::shared_ptr<ModelMF> p(new ModelMF(params, seed));
+    p->uFac = fullModel.uFac;
+    p->iFac = fullModel.iFac;
+    trainModels.push_back(p);
+    std::shared_ptr<Model> p2(new Model(params, seed));
+    pbestModels.push_back(p2);
+    //invoke training on thread
+    std::cout << "\nInvoking thread: " << thInd << std::endl;  
+    threads[thInd] = std::thread(&ModelMF::partialTrain, 
+        trainModels[thInd], std::ref(data), 
+        std::ref(*pbestModels[thInd]), std::ref(mInvalUsers[thInd]),
+        std::ref(mInvalItems[thInd]));
+  }
+
+  //train full model in main thread
+  ModelMF fullBestModel(fullModel);
+  std::cout << "\nStarting full model train...";
+  fullModel.train(data, fullBestModel);
+
+  std::cout << "\nWaiting for threads to finish...";
+  //wait for threads to finish
+  std::for_each(threads.begin(), threads.end(), 
+      std::mem_fn(&std::thread::join));
+
+  std::cout << "\nFinished all threads.";
+
+  std::cout << "\nModels save...";
+  std::vector<Model> bestModels;
+  //save the best models
+  for (int thInd = 0; thInd < nThreads; thInd++) {
+    int seed = params.seed + thInd + 1;
+    std::string prefix(params.prefix);
+    prefix = prefix + "_partial_" + std::to_string(seed); 
+    pbestModels[thInd]->save(prefix);
+    bestModels.push_back(*pbestModels[thInd]);
+  }
+  //save the best full model
+  std::string prefix(params.prefix);
+  prefix = prefix + "_full";
+  fullBestModel.save(prefix);
+
+  ModelMF origModel(params, params.seed);
+  origModel.load(params.origUFacFile, params.origIFacFile);
+
+  std::unordered_set<int> invalidUsers;
+  std::unordered_set<int> invalidItems;
+  
+  //find all invalid users
+  for (int thInd = 0; thInd < nThreads; thInd++) {
+    for (const auto& elem: mInvalUsers[thInd]) {
+      invalidUsers.insert(elem);
+    }
+  }
+  
+  std::cout << "\nTotal invalid users: " << invalidUsers.size();
+  //write out invalid users
+  prefix = std::string(params.prefix) + "_invalUsers.txt";
+  writeContainer(begin(invalidUsers), end(invalidUsers), prefix.c_str());
+  
+  //find all invalid items
+  for (int thInd = 0; thInd < nThreads; thInd++) {
+    for (const auto& elem: mInvalItems[thInd]) {
+      invalidItems.insert(elem);
+    }
+  }
+
+  std::cout << "\nTotal invalid items: " << invalidItems.size();
+  //write out invalid items
+  prefix = std::string(params.prefix) + "_invalItems.txt";
+  writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
+
+  //compute confidence using the best models for 10 buckets
+  std::vector<double> confRMSEs = computeModConf(data.testMat, bestModels, 
+      invalidUsers, invalidItems, origModel, 
+      fullBestModel, 10, 0.05);
+  std::cout << "\nConfidence bucket RMSEs: ";
+  dispVector(confRMSEs);
+  prefix = std::string(params.prefix) + "_mconf_bucket.txt";
+  writeVector(confRMSEs, prefix.c_str());
+
+  //compute global page rank confidence
+  //NOTE: using params.alpha as (1 - restartProb)
+  std::vector<double> gprRMSEs = computeGPRConf(data.testMat, data.graphMat,
+      invalidUsers, invalidItems, params.alpha, MAX_PR_ITER, origModel, 
+      fullBestModel, 10, 0.05);
+  prefix = std::string(params.prefix) + "_gprconf_bucket.txt";
+  writeVector(gprRMSEs, prefix.c_str());
+  std::cout << "\nGPR confidence RMSEs:";
+  dispVector(gprRMSEs);
+
+
+  //compute ppr confidence
+  std::vector<double> pprRMSEs = computePPRConf(data.testMat, data.graphMat,
+      invalidUsers, invalidItems, params.alpha, MAX_PR_ITER, origModel, 
+      fullBestModel, 10, 0.05);
+  prefix = std::string(params.prefix) + "_pprconf_bucket.txt";
+  writeVector(pprRMSEs, prefix.c_str());
+  std::cout << "\nPPR confidence RMSEs:";
+  dispVector(pprRMSEs);
+}
+
 
 
 void computePRScores(Data& data, Params& params) {
@@ -362,17 +489,17 @@ void computeOptScores(Data& data, Params& params) {
 void computeConfScores(Data& data, Params& params) {
  
   std::vector<Model> bestModels;
-  bestModels.push_back(Model(params, "",
-        "", params.seed));
-  bestModels.push_back(Model(params, "",
-        "", params.seed));
-  bestModels.push_back(Model(params, "",
-        "", params.seed));
-  bestModels.push_back(Model(params, "",
-        "", params.seed));
-  bestModels.push_back(Model(params, "",
-        "", params.seed));
-
+  bestModels.push_back(Model(params, "multiconf_partial_2_uFac_50000_5_0.001000.mat",
+        "multiconf_partial_2_iFac_19964_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multiconf_partial_3_uFac_50000_5_0.001000.mat",
+        "multiconf_partial_3_iFac_19964_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multiconf_partial_4_uFac_50000_5_0.001000.mat",
+        "multiconf_partial_4_iFac_19964_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multiconf_partial_5_uFac_50000_5_0.001000.mat",
+        "multiconf_partial_5_iFac_19964_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multiconf_partial_6_uFac_50000_5_0.001000.mat",
+        "multiconf_partial_6_iFac_19964_5_0.001000.mat", params.seed));
+  
   std::cout << "\nnBestModels: " << bestModels.size();
 
   Model fullModel(params, params.seed);
@@ -380,10 +507,28 @@ void computeConfScores(Data& data, Params& params) {
   Model origModel(params, params.seed);
   origModel.load(params.origUFacFile, params.origIFacFile);
 
-  std::vector<double> confRMSEs = confBucketRMSEs(origModel, fullModel, 
-      bestModels, params.nUsers, params.nItems, 10);
+  std::vector<int> invalUsersVec = readVector("tempInval_invalUsers.txt");
+  std::vector<int> invalItemsVec = readVector("tempInval_invalItems.txt");
+
+
+  std::cout << "\nnInvalidUsers: " << invalUsersVec.size();
+  std::cout << "\nnInvalidItems: " << invalItemsVec.size() <<std::endl;
+
+  std::unordered_set<int> invalUsers;
+  for (auto v: invalUsersVec) {
+    invalUsers.insert(v);
+  }
+
+  std::unordered_set<int> invalItems;
+  for (auto v: invalItems) {
+    invalItems.insert(v);
+  }
+
+  std::string prefix = std::string(params.prefix) + "_mConfs.txt";
+  std::vector<double> confRMSEs = confBucketRMSEsWInvalOpPerUser(origModel, fullModel, 
+      bestModels, params.nUsers, params.nItems, 10, invalUsers, invalItems, prefix);
   dispVector(confRMSEs);
-  std::string prefix = std::string(params.prefix) + "_conf_bucket.txt";
+  prefix = std::string(params.prefix) + "_conf_bucket.txt";
   writeVector(confRMSEs, prefix.c_str());
 }
 
@@ -398,13 +543,16 @@ int main(int argc , char* argv[]) {
 
   Data data (params);
 
-  computeConf(data, params);
+  //computeConf(data, params);
+  computeConfCurve(data, params);
   //computeConfScores(data, params);
   //computePRScores2(data, params);
   //computeGPRScores(data, params);
   //computeOptScores(data, params);
 
-  //writeCSRWSparsityStructure(data.trainMat, "ml_rand_100KX22895_u1_i1.syn.csr", 
+  //writeTrainTestMat(data.trainMat, "ratings_u20_i20_706X1248.syn.train.csr", 
+  //    "ratings_u20_i20_706X1248.syn.test.csr", 0.1, params.seed);
+  //writeCSRWSparsityStructure(data.trainMat, "ratings_u20_i20_706X1248.syn.csr", 
   //    data.origUFac, data.origIFac, 5);
   //writeCSRWHalfSparsity(data.trainMat, "mat.csr", 0, 10000, 0, 10000);
 

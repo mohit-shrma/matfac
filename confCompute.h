@@ -7,6 +7,8 @@
 #include <tuple>
 #include <cmath>
 
+#define PROGU 100
+
 double confScore(int user, int item, std::vector<Model>& models);
 std::vector<double> confBucketRMSEs(Model& origModel, Model& fullModel,
     std::vector<Model>& models,
@@ -34,5 +36,25 @@ std::vector<double> confOptBucketRMSEs(Model& origModel, Model& fullModel,
 std::vector<double> confOptBucketRMSEsWInVal(Model& origModel, Model& fullModel,
     int nUsers, int nItems, int nBuckets, std::unordered_set<int>& invalUsers,
     std::unordered_set<int>& invalItems) ;
+std::vector<double> confBucketRMSEsWInvalOpPerUser(Model& origModel, Model& fullModel,
+    std::vector<Model>& models, int nUsers, int nItems, int nBuckets,
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems,
+    std::string opFileName);
+std::vector<double> genConfidenceCurve(
+    std::vector<std::tuple<int, int, double>> matConfScores, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha);
+
+std::vector<double> computeModConf(gk_csr_t* mat, 
+    std::vector<Model>& models, std::unordered_set<int>& invalUsers,
+    std::unordered_set<int>& invalItems, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha);
+std::vector<double> computeGPRConf(gk_csr_t* mat, 
+    gk_csr_t* graphMat, std::unordered_set<int>& invalUsers,
+    std::unordered_set<int>& invalItems, float lambda, int max_niter, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha);
+std::vector<double> computePPRConf(gk_csr_t* mat, 
+    gk_csr_t* graphMat, std::unordered_set<int>& invalUsers,
+    std::unordered_set<int>& invalItems, float lambda, int max_niter, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha);
 
 #endif

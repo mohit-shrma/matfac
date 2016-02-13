@@ -1,3 +1,6 @@
+#ifndef _IO_H_
+#define _IO_H_
+
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -5,7 +8,6 @@
 #include <cstdlib>
 #include <cassert>
 #include "GKlib.h"
-#include "datastruct.h"
 #include "util.h"
 
 void dispVector(std::vector<double>& vec); 
@@ -19,5 +21,30 @@ void writeCSRWSparsityStructure(gk_csr_t *mat, const char *opFileName,
 void writeCSRWHalfSparsity(gk_csr_t *mat, const char *opFileName, int uStart,
     int uEnd, int iStart, int iEnd);
 void writeVector(std::vector<double>& vec, const char *opFileName);
+
+std::vector<int> readVector(const char *ipFileName);
+void writeTrainTestMat(gk_csr_t *mat,  const char* trainFileName, 
+     const char* testFileName, float testPc, int seed);
+
 bool isFileExist(const char *fileName);
 
+template <typename Iter>
+void writeContainer(Iter it, Iter end, const char *opFileName) {
+  std::ofstream opFile(opFileName);
+  if (opFile.is_open()) {
+    for (; it != end; ++it) {
+      opFile << *it << std::endl;
+    }
+    opFile.close();
+  }
+}
+
+
+template <typename Iter>
+void dispContainer(Iter it, Iter end) {
+    for (; it != end; ++it) {
+      std::cout << *it << std::endl;
+    }
+}
+
+#endif
