@@ -153,14 +153,6 @@ std::vector<double> computePPRConf(gk_csr_t* mat,
   double score;
   int nUsers = mat->nrows;
   float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
-  memset(pr, 0, sizeof(float)*graphMat->nrows);
-  //assign all users equal restart probability
-  for (int u = 0; u < nUsers; u++) {
-    pr[u] = 1.0/nUsers;
-  }
-  
-  //run global page rank on the graph w.r.t. users
-  gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
   
   for (int u = 0 ; u < mat->nrows; u++) {
     //ignore if invalid user
@@ -193,8 +185,6 @@ std::vector<double> computePPRConf(gk_csr_t* mat,
   free(pr);
   return genConfidenceCurve(matConfScores, origModel, fullModel, nBuckets, alpha);
 }
-
-
 
 
 void updateBuckets(int user, std::vector<double>& bucketScores, 

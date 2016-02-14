@@ -394,35 +394,35 @@ void computeConfCurve(Data& data, Params& params) {
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
 
   //compute confidence using the best models for 10 buckets
-  std::vector<double> confRMSEs = computeModConf(data.testMat, bestModels, 
+  std::vector<double> confCurve = computeModConf(data.testMat, bestModels, 
       invalidUsers, invalidItems, origModel, 
       fullBestModel, 10, 0.05);
-  std::cout << "\nConfidence bucket RMSEs: ";
-  dispVector(confRMSEs);
+  std::cout << "\nConfidence bucket Curve: ";
+  dispVector(confCurve);
   prefix = std::string(params.prefix) + "_mconf_bucket.txt";
-  writeVector(confRMSEs, prefix.c_str());
+  writeVector(confCurve, prefix.c_str());
 
   //compute global page rank confidence
   //NOTE: using params.alpha as (1 - restartProb)
-  std::vector<double> gprRMSEs = computeGPRConf(data.testMat, data.graphMat,
+  std::vector<double> gprCurve = computeGPRConf(data.testMat, data.graphMat,
       invalidUsers, invalidItems, params.alpha, MAX_PR_ITER, origModel, 
       fullBestModel, 10, 0.05);
   prefix = std::string(params.prefix) + "_gprconf_bucket.txt";
-  writeVector(gprRMSEs, prefix.c_str());
-  std::cout << "\nGPR confidence RMSEs:";
-  dispVector(gprRMSEs);
-
+  writeVector(gprCurve, prefix.c_str());
+  std::cout << "\nGPR confidence Curve:";
+  dispVector(gprCurve);
 
   //compute ppr confidence
-  std::vector<double> pprRMSEs = computePPRConf(data.testMat, data.graphMat,
+  /*
+  std::vector<double> pprCurve = computePPRConf(data.testMat, data.graphMat,
       invalidUsers, invalidItems, params.alpha, MAX_PR_ITER, origModel, 
       fullBestModel, 10, 0.05);
   prefix = std::string(params.prefix) + "_pprconf_bucket.txt";
-  writeVector(pprRMSEs, prefix.c_str());
-  std::cout << "\nPPR confidence RMSEs:";
-  dispVector(pprRMSEs);
+  writeVector(pprCurve, prefix.c_str());
+  std::cout << "\nPPR confidence Curve:";
+  dispVector(pprCurve);
+  */
 }
-
 
 
 void computePRScores(Data& data, Params& params) {
