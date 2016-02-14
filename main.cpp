@@ -367,7 +367,6 @@ void computeConfCurve(Data& data, Params& params) {
 
   ModelMF origModel(params, params.seed);
   origModel.load(params.origUFacFile, params.origIFacFile);
-
   
   //find all invalid users
   for (int thInd = 0; thInd < nThreads; thInd++) {
@@ -533,6 +532,64 @@ void computeConfScores(Data& data, Params& params) {
 }
 
 
+void computeConfCurvesFrmModel(Data& data, Params& params) {
+ 
+  std::vector<Model> bestModels;
+  bestModels.push_back(Model(params, "multiconf_partial_2_uFac_50000_5_0.001000.mat",
+        "multiconf_partial_2_iFac_19964_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multiconf_partial_3_uFac_50000_5_0.001000.mat",
+        "multiconf_partial_3_iFac_19964_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multiconf_partial_4_uFac_50000_5_0.001000.mat",
+        "multiconf_partial_4_iFac_19964_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multiconf_partial_5_uFac_50000_5_0.001000.mat",
+        "multiconf_partial_5_iFac_19964_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multiconf_partial_6_uFac_50000_5_0.001000.mat",
+        "multiconf_partial_6_iFac_19964_5_0.001000.mat", params.seed));
+  
+  std::cout << "\nnBestModels: " << bestModels.size();
+
+  Model fullModel(params, params.seed);
+  fullModel.load(params.initUFacFile, params.initIFacFile);
+  Model origModel(params, params.seed);
+  origModel.load(params.origUFacFile, params.origIFacFile);
+
+  std::vector<int> invalUsersVec = readVector("tempInval_invalUsers.txt");
+  std::vector<int> invalItemsVec = readVector("tempInval_invalItems.txt");
+
+
+  std::cout << "\nnInvalidUsers: " << invalUsersVec.size();
+  std::cout << "\nnInvalidItems: " << invalItemsVec.size() <<std::endl;
+
+  std::unordered_set<int> invalUsers;
+  for (auto v: invalUsersVec) {
+    invalUsers.insert(v);
+  }
+
+  std::unordered_set<int> invalItems;
+  for (auto v: invalItems) {
+    invalItems.insert(v);
+  }
+
+  std::vector<double> confCurve = computeModConf(data.testMat, bestModels, 
+      invalUsers, invalItems, origModel, 
+      fullModel, 10, 0.05);
+  dispVector(confCurve);
+  std::string prefix = std::string(params.prefix) + "_conf_bucket.txt";
+  writeVector(confCurve, prefix.c_str());
+
+  //compute global page rank confidence
+  //NOTE: using params.alpha as (1 - restartProb)
+  std::vector<double> gprCurve = computeGPRConf(data.testMat, data.graphMat,
+      invalUsers, invalItems, params.alpha, MAX_PR_ITER, origModel, 
+      fullModel, 10, 0.05);
+  prefix = std::string(params.prefix) + "_gprconf_bucket.txt";
+  writeVector(gprCurve, prefix.c_str());
+  std::cout << "\nGPR confidence Curve:";
+  dispVector(gprCurve);
+
+}
+
+
 int main(int argc , char* argv[]) {
 
   //get passed parameters
@@ -544,7 +601,8 @@ int main(int argc , char* argv[]) {
   Data data (params);
 
   //computeConf(data, params);
-  computeConfCurve(data, params);
+  //computeConfCurve(data, params);
+  computeConfCurvesFrmModel(data, params);
   //computeConfScores(data, params);
   //computePRScores2(data, params);
   //computeGPRScores(data, params);
