@@ -7,6 +7,7 @@
 #include <string>
 #include <cstdlib>
 #include <cassert>
+#include <random>
 #include "GKlib.h"
 #include "util.h"
 

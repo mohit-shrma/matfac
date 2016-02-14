@@ -21,7 +21,9 @@ class ModelMF : public Model {
 
     ModelMF(const Params& params) : Model(params) {}
     ModelMF(const Params& params, int seed) : Model(params, seed) {}
-    virtual void train(const Data& data, Model& bestModel) ;
+    virtual void train(const Data& data, Model& bestModel,
+        std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems) ;
     virtual void partialTrain(const Data& data, Model& bestModel, 
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems) ;
@@ -39,8 +41,6 @@ class ModelMF : public Model {
         std::vector<double> &gradAcc);
     void updateFac(std::vector<double> &fac, std::vector<double> &grad);
     void gradCheck(int u, int item, float r_ui);
-
-
 };
 
 

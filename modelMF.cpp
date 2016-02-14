@@ -123,7 +123,9 @@ void ModelMF::gradCheck(int u, int item, float r_ui) {
 }
 
 
-void ModelMF::train(const Data &data, Model &bestModel) {
+void ModelMF::train(const Data &data, Model &bestModel, 
+    std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems) {
 
   //copy passed known factors
   //uFac = data.origUFac;
@@ -182,6 +184,11 @@ void ModelMF::train(const Data &data, Model &bestModel) {
   
   std::vector<std::unordered_set<int>> uISet(nUsers);
   genStats(trainMat, uISet, std::to_string(trainSeed));
+  getInvalidUsersItems(trainMat, uISet, invalidUsers, invalidItems);
+  
+  std::cout << "\nModelMF::train trainSeed: " << trainSeed 
+    << " invalidUsers: " << invalidUsers.size()
+    << " invalidItems: " << invalidItems.size() << std::endl;
 
   for (iter = 0; iter < maxIter; iter++) {  
     start = std::chrono::system_clock::now();
@@ -322,7 +329,6 @@ void ModelMF::partialTrain(const Data &data, Model &bestModel,
   std::cout << "\nModelMF::partialTrain trainSeed: " << trainSeed 
     << " invalidUsers: " << invalidUsers.size()
     << " invalidItems: " << invalidItems.size() << std::endl;
-  
 
   std::chrono::time_point<std::chrono::system_clock> start, end;
 

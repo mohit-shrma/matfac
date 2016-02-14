@@ -214,7 +214,9 @@ void computeConf(Data& data, Params& params) {
   //train full model in main thread
   ModelMF fullBestModel(fullModel);
   std::cout << "\nStarting full model train...";
-  fullModel.train(data, fullBestModel);
+  std::unordered_set<int> invalidUsers;
+  std::unordered_set<int> invalidItems;
+  fullModel.train(data, fullBestModel, invalidUsers, invalidItems);
 
   std::cout << "\nWaiting for threads to finish...";
   //wait for threads to finish
@@ -241,8 +243,6 @@ void computeConf(Data& data, Params& params) {
   ModelMF origModel(params, params.seed);
   origModel.load(params.origUFacFile, params.origIFacFile);
 
-  std::unordered_set<int> invalidUsers;
-  std::unordered_set<int> invalidItems;
   
   //find all invalid users
   for (int thInd = 0; thInd < nThreads; thInd++) {
@@ -338,8 +338,10 @@ void computeConfCurve(Data& data, Params& params) {
 
   //train full model in main thread
   ModelMF fullBestModel(fullModel);
+  std::unordered_set<int> invalidUsers;
+  std::unordered_set<int> invalidItems;
   std::cout << "\nStarting full model train...";
-  fullModel.train(data, fullBestModel);
+  fullModel.train(data, fullBestModel, invalidUsers, invalidItems);
 
   std::cout << "\nWaiting for threads to finish...";
   //wait for threads to finish
@@ -366,8 +368,6 @@ void computeConfCurve(Data& data, Params& params) {
   ModelMF origModel(params, params.seed);
   origModel.load(params.origUFacFile, params.origIFacFile);
 
-  std::unordered_set<int> invalidUsers;
-  std::unordered_set<int> invalidItems;
   
   //find all invalid users
   for (int thInd = 0; thInd < nThreads; thInd++) {

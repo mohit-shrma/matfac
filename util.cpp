@@ -34,7 +34,6 @@ int nnzSubMat(gk_csr_t *mat, int uStart, int uEnd, int iStart, int iEnd) {
 }
 
 
-
 int getNNZ(gk_csr_t *mat) {
   int nnz = 0;
   for (int u = 0; u < mat->nrows; u++) {
@@ -186,7 +185,6 @@ void genStats(gk_csr_t *mat,
   std::cout << "\nnItems with maxRatCount(" << maxItemIgRatCount << "): "
     << nItemsWithMaxRatcount << " opPrefix: " << opPrefix;
 }
-
 
 
 void getInvalidUsersItems(gk_csr_t *mat, 
