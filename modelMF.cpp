@@ -207,6 +207,12 @@ void ModelMF::train(const Data &data, Model &bestModel,
       nUserItems =  trainMat->rowptr[u+1] - trainMat->rowptr[u];
       itemInd = iDist(mt)%nUserItems; 
       item = trainMat->rowind[trainMat->rowptr[u] + itemInd];
+      search = invalidItems.find(item);
+      if (search != invalidItems.end()) {
+        //found and skip
+        continue;
+      }
+      
       itemRat = trainMat->rowval[trainMat->rowptr[u] + itemInd]; 
     
       //std::cout << "\nGradCheck u: " << u << " item: " << item;
@@ -315,6 +321,10 @@ void ModelMF::partialTrain(const Data &data, Model &bestModel,
       u  = uDist(mt); 
       //sample item rated by user
       nUserItems =  trainMat->rowptr[u+1] - trainMat->rowptr[u];
+      if (0 == nUserItems) {
+        i--;
+        continue;
+      }
       itemInd = iDist(mt)%nUserItems;
       item = trainMat->rowind[trainMat->rowptr[u] + itemInd];
       
@@ -322,8 +332,8 @@ void ModelMF::partialTrain(const Data &data, Model &bestModel,
       auto search = uISet[u].find(item);
       if (search != uISet[u].end()) {
         //found and ignore the current iteration
-        continue;
         i--;
+        continue;
       }
 
       uISet[u].insert(item);

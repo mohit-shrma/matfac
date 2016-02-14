@@ -601,15 +601,15 @@ int main(int argc , char* argv[]) {
   Data data (params);
 
   //computeConf(data, params);
-  //computeConfCurve(data, params);
-  computeConfCurvesFrmModel(data, params);
+  computeConfCurve(data, params);
+  //computeConfCurvesFrmModel(data, params);
   //computeConfScores(data, params);
   //computePRScores2(data, params);
   //computeGPRScores(data, params);
   //computeOptScores(data, params);
 
-  //writeTrainTestMat(data.trainMat, "ratings_u20_i20_706X1248.syn.train.csr", 
-  //    "ratings_u20_i20_706X1248.syn.test.csr", 0.1, params.seed);
+  //writeTrainTestMat(data.trainMat, "ml_rand_50kX19964_u1_i1.train.csr", 
+  //    "ml_rand_50kX19964_u1_i1.test.csr", 0.1, params.seed);
   //writeCSRWSparsityStructure(data.trainMat, "ratings_u20_i20_706X1248.syn.csr", 
   //    data.origUFac, data.origIFac, 5);
   //writeCSRWHalfSparsity(data.trainMat, "mat.csr", 0, 10000, 0, 10000);
