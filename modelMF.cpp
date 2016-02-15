@@ -246,6 +246,9 @@ void ModelMF::train(const Data &data, Model &bestModel,
       end = std::chrono::system_clock::now();  
       std::chrono::duration<double> duration =  (end - start) ;
       std::cout << "\nsub duration: " << duration.count();
+      //save best model found till now
+      std::string modelFName = "ModelFull_" + std::to_string(trainSeed);
+      bestModel.save(modelFName);
     }
   
   }
@@ -408,6 +411,9 @@ void ModelMF::partialTrain(const Data &data, Model &bestModel,
       end = std::chrono::system_clock::now();  
       std::chrono::duration<double> duration =  (end - start) ;
       std::cout << "\nsub duration: " << duration.count();
+      //save best model found till now
+      std::string modelFName = "ModelPartial_" + std::to_string(trainSeed);
+      bestModel.save(modelFName);
     }
   
   }

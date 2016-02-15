@@ -398,7 +398,7 @@ void computeConfCurve(Data& data, Params& params) {
       fullBestModel, 10, 0.05);
   std::cout << "\nConfidence bucket Curve: ";
   dispVector(confCurve);
-  prefix = std::string(params.prefix) + "_mconf_bucket.txt";
+  prefix = std::string(params.prefix) + "_mconf_curve.txt";
   writeVector(confCurve, prefix.c_str());
 
   //compute global page rank confidence
@@ -406,7 +406,7 @@ void computeConfCurve(Data& data, Params& params) {
   std::vector<double> gprCurve = computeGPRConf(data.testMat, data.graphMat,
       invalidUsers, invalidItems, params.alpha, MAX_PR_ITER, origModel, 
       fullBestModel, 10, 0.05);
-  prefix = std::string(params.prefix) + "_gprconf_bucket.txt";
+  prefix = std::string(params.prefix) + "_gprconf_curve.txt";
   writeVector(gprCurve, prefix.c_str());
   std::cout << "\nGPR confidence Curve:";
   dispVector(gprCurve);
@@ -416,7 +416,7 @@ void computeConfCurve(Data& data, Params& params) {
   std::vector<double> pprCurve = computePPRConf(data.testMat, data.graphMat,
       invalidUsers, invalidItems, params.alpha, MAX_PR_ITER, origModel, 
       fullBestModel, 10, 0.05);
-  prefix = std::string(params.prefix) + "_pprconf_bucket.txt";
+  prefix = std::string(params.prefix) + "_pprconf_curve.txt";
   writeVector(pprCurve, prefix.c_str());
   std::cout << "\nPPR confidence Curve:";
   dispVector(pprCurve);
@@ -608,8 +608,8 @@ int main(int argc , char* argv[]) {
   //computeGPRScores(data, params);
   //computeOptScores(data, params);
 
-  //writeTrainTestMat(data.trainMat, "ml_rand_50kX19964_u1_i1.train.csr", 
-  //    "ml_rand_50kX19964_u1_i1.test.csr", 0.1, params.seed);
+  //writeTrainTestMat(data.trainMat, "amzn_13097X11077_syn.train.csr", 
+  //    "amzn_13097X11077_syn.test.csr", 0.1, params.seed);
   //writeCSRWSparsityStructure(data.trainMat, "ratings_u20_i20_706X1248.syn.csr", 
   //    data.origUFac, data.origIFac, 5);
   //writeCSRWHalfSparsity(data.trainMat, "mat.csr", 0, 10000, 0, 10000);
