@@ -32,6 +32,7 @@ std::vector<double> genConfidenceCurve(
   //sort in descending order of confidence
   std::sort(matConfScores.begin(), matConfScores.end(), compareTriplets);
   
+  std::vector<double> widths;
   for (int bInd = 0; bInd < nBuckets; bInd++) {
     int start = bInd*nItemsPerBuck;
     int end = (bInd+1)*nItemsPerBuck;
@@ -42,7 +43,7 @@ std::vector<double> genConfidenceCurve(
     //find half-width of the confidence-interval for bin
     //S.T. (1-alpha)fraction of predicted ratings are with in +- w of actual
     //ratings
-    std::vector<double> widths;
+    widths.clear();
     for (int j = start; j < end; j++) {
       int user = std::get<0>(matConfScores[j]);
       int item = std::get<1>(matConfScores[j]);
@@ -56,7 +57,8 @@ std::vector<double> genConfidenceCurve(
     std::sort(widths.begin(), widths.end());
     binWidths.push_back(widths[(1-alpha)*widths.size()]);
   }
-    
+
+
   return binWidths;
 }
 
@@ -92,6 +94,120 @@ std::vector<double> computeModConf(gk_csr_t* mat,
     }
 
   }
+  return genConfidenceCurve(matConfScores, origModel, fullModel, nBuckets, alpha);
+}
+
+
+//compute confidence on pairs which are not in training
+std::vector<double> computeMissingModConf(gk_csr_t* trainMat, 
+    std::vector<Model>& models, std::unordered_set<int>& invalUsers,
+    std::unordered_set<int>& invalItems, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha) {
+  
+  std::vector<std::tuple<int, int, double>> matConfScores;
+  double score;
+  std::unordered_set<int> trainItemSet;
+
+  for (int u = 0 ; u < trainMat->nrows; u++) {
+    
+    //ignore if invalid user
+    //skip if user is invalid
+    auto search = invalUsers.find(u);
+    if (search != invalUsers.end()) {
+      //found n skip
+      continue;
+    }
+    
+    trainItemSet.clear();
+    for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+      int item = trainMat->rowind[ii];
+      trainItemSet.insert(item);
+    }
+
+    for (int item = 0; item < trainMat->ncols; item++) {
+      
+      //ignore if invalid item
+      search = invalItems.find(item);
+      if (search != invalItems.end()) {
+        //found n skip
+        continue;
+      }
+
+      //ignore if item present in users' training set
+      search = trainItemSet.find(item);
+      if (search != trainItemSet.end()) {
+        //found n skip
+        continue;
+      }
+
+      score = confScore(u, item, models);
+      matConfScores.push_back(std::make_tuple(u, item, score));
+    }
+
+  }
+  return genConfidenceCurve(matConfScores, origModel, fullModel, nBuckets, alpha);
+}
+
+
+std::vector<double> computeMissingGPRConf(gk_csr_t* trainMat, 
+    gk_csr_t* graphMat, std::unordered_set<int>& invalUsers,
+    std::unordered_set<int>& invalItems, float lambda, int max_niter, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha) {
+  
+  std::vector<std::tuple<int, int, double>> matConfScores;
+  double score;
+  std::unordered_set<int> trainItemSet;
+  int nUsers = trainMat->nrows;
+
+  float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
+  memset(pr, 0, sizeof(float)*graphMat->nrows);
+  //assign all users equal restart probability
+  for (int user = 0; user < nUsers; user++) {
+    pr[user] = 1.0/nUsers;
+  }
+  
+  //run global page rank on the graph w.r.t. users
+  gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
+  
+  for (int u = 0 ; u < trainMat->nrows; u++) {
+    
+    //ignore if invalid user
+    //skip if user is invalid
+    auto search = invalUsers.find(u);
+    if (search != invalUsers.end()) {
+      //found n skip
+      continue;
+    }
+      
+    trainItemSet.clear();
+    for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+      int item = trainMat->rowind[ii];
+      trainItemSet.insert(item);
+    }
+
+    for (int item = 0; item < trainMat->ncols; item++) {
+      //ignore if invalid item
+      search = invalItems.find(item);
+      if (search != invalItems.end()) {
+        //found n skip
+        continue;
+      }
+      
+      //ignore if item present in users' training set
+      search = trainItemSet.find(item);
+      if (search != trainItemSet.end()) {
+        //found n skip
+        continue;
+      }
+
+      score = pr[nUsers + item];
+      matConfScores.push_back(std::make_tuple(u, item, score));
+    }
+
+  }
+
+
+  free(pr);
   return genConfidenceCurve(matConfScores, origModel, fullModel, nBuckets, alpha);
 }
 

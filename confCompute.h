@@ -56,5 +56,12 @@ std::vector<double> computePPRConf(gk_csr_t* mat,
     gk_csr_t* graphMat, std::unordered_set<int>& invalUsers,
     std::unordered_set<int>& invalItems, float lambda, int max_niter, Model& origModel,
     Model& fullModel, int nBuckets, float alpha);
-
+std::vector<double> computeMissingGPRConf(gk_csr_t* trainMat, 
+    gk_csr_t* graphMat, std::unordered_set<int>& invalUsers,
+    std::unordered_set<int>& invalItems, float lambda, int max_niter, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha);
+std::vector<double> computeMissingModConf(gk_csr_t* trainMat, 
+    std::vector<Model>& models, std::unordered_set<int>& invalUsers,
+    std::unordered_set<int>& invalItems, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha);
 #endif
