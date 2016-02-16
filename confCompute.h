@@ -7,7 +7,8 @@
 #include <tuple>
 #include <cmath>
 
-#define PROGU 100
+#define PROGU 1000
+#define MAX_MISS_RATS 200000
 
 double confScore(int user, int item, std::vector<Model>& models);
 std::vector<double> confBucketRMSEs(Model& origModel, Model& fullModel,
@@ -43,7 +44,6 @@ std::vector<double> confBucketRMSEsWInvalOpPerUser(Model& origModel, Model& full
 std::vector<double> genConfidenceCurve(
     std::vector<std::tuple<int, int, double>> matConfScores, Model& origModel,
     Model& fullModel, int nBuckets, float alpha);
-
 std::vector<double> computeModConf(gk_csr_t* mat, 
     std::vector<Model>& models, std::unordered_set<int>& invalUsers,
     std::unordered_set<int>& invalItems, Model& origModel,
@@ -68,9 +68,22 @@ std::vector<double> computeMissingPPRConf(gk_csr_t* trainMat,
     gk_csr_t* graphMat, std::unordered_set<int>& invalUsers,
     std::unordered_set<int>& invalItems, float lambda, int max_niter, Model& origModel,
     Model& fullModel, int nBuckets, float alpha);
-
 std::vector<double> computeMissingPPRConfExt(gk_csr_t* trainMat, 
     gk_csr_t* graphMat, std::unordered_set<int>& invalUsers,
     std::unordered_set<int>& invalItems, float lambda, int max_niter, Model& origModel,
     Model& fullModel, int nBuckets, float alpha, const char* prFName);
+std::vector<double> computeMissingPPRConfExtSamp(gk_csr_t* trainMat, 
+    gk_csr_t* graphMat, std::unordered_set<int>& invalUsers,
+    std::unordered_set<int>& invalItems, float lambda, int max_niter, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha, const char* prFName, int seed);
+std::vector<double> computeMissingGPRConfSamp(gk_csr_t* trainMat, 
+    gk_csr_t* graphMat, std::unordered_set<int>& invalUsers,
+    std::unordered_set<int>& invalItems, float lambda, int max_niter, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha, int seed);
+std::vector<double> computeMissingModConfSamp(gk_csr_t* trainMat, 
+    std::vector<Model>& models, std::unordered_set<int>& invalUsers,
+    std::unordered_set<int>& invalItems, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha, int seed);
 #endif
+
+

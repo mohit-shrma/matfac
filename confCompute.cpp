@@ -23,6 +23,7 @@ std::vector<double> genConfidenceCurve(
   
   std::vector<double> binWidths;
   int nScores = matConfScores.size();
+  std::cout << "\nnScores: " << nScores << std::endl;
   int nItemsPerBuck = nScores/nBuckets;
   auto compareTriplets = [] (std::tuple<int, int, double> a, 
                               std::tuple<int, int, double> b) {
@@ -149,6 +150,69 @@ std::vector<double> computeMissingModConf(gk_csr_t* trainMat,
 }
 
 
+std::vector<double> computeMissingModConfSamp(gk_csr_t* trainMat, 
+    std::vector<Model>& models, std::unordered_set<int>& invalUsers,
+    std::unordered_set<int>& invalItems, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha, int seed) {
+  
+  std::vector<std::tuple<int, int, double>> matConfScores;
+  double score;
+  int nUsers = trainMat->nrows;
+  int nItems = trainMat->ncols;
+  std::vector<std::unordered_set<int>> uTrItemSet(nUsers);
+  
+  int trNNz = 0;
+  for (int u = 0 ; u < trainMat->nrows; u++) {
+    for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+      int item = trainMat->rowind[ii];
+      uTrItemSet[u].insert(item);
+      trNNz++;
+    }
+  } 
+
+  int nScores = std::min(MAX_MISS_RATS, nUsers*nItems/2);
+  std::cout << "\nnScores: " << nScores << std::endl;
+
+  //random engine
+  std::mt19937 mt(seed);
+  //user dist
+  std::uniform_int_distribution<int> uDist(0, nUsers-1);
+  std::uniform_int_distribution<int> iDist(0, nItems-1);
+
+  while (matConfScores.size() < nScores) {
+    //sample u
+    int user = uDist(mt);
+    //skip if user is invalid
+    auto search = invalUsers.find(user);
+    if (search != invalUsers.end()) {
+      //found n skip
+      continue;
+    }
+
+    //sample item
+    int item = iDist(mt);
+    //ignore if invalid item
+    search = invalItems.find(item);
+    if (search != invalItems.end()) {
+      //found n skip
+      continue;
+    }
+
+    //ignore if item in training set
+    search = uTrItemSet[user].find(item);
+    if (search != uTrItemSet[user].end()) {
+      //found n skip
+      continue;
+    }
+
+    score = confScore(user, item, models);
+    matConfScores.push_back(std::make_tuple(user, item, score));
+  }
+
+  return genConfidenceCurve(matConfScores, origModel, fullModel, nBuckets, alpha);
+}
+
+
 std::vector<double> computeMissingGPRConf(gk_csr_t* trainMat, 
     gk_csr_t* graphMat, std::unordered_set<int>& invalUsers,
     std::unordered_set<int>& invalItems, float lambda, int max_niter, Model& origModel,
@@ -204,6 +268,81 @@ std::vector<double> computeMissingGPRConf(gk_csr_t* trainMat,
       matConfScores.push_back(std::make_tuple(u, item, score));
     }
 
+  }
+
+
+  free(pr);
+  return genConfidenceCurve(matConfScores, origModel, fullModel, nBuckets, alpha);
+}
+
+
+std::vector<double> computeMissingGPRConfSamp(gk_csr_t* trainMat, 
+    gk_csr_t* graphMat, std::unordered_set<int>& invalUsers,
+    std::unordered_set<int>& invalItems, float lambda, int max_niter, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha, int seed) {
+  
+  std::vector<std::tuple<int, int, double>> matConfScores;
+  double score;
+  int nUsers = trainMat->nrows;
+  int nItems = trainMat->ncols;
+  std::vector<std::unordered_set<int>> uTrItemSet(nUsers);
+
+  int trNNz = 0;
+  for (int u = 0 ; u < trainMat->nrows; u++) {
+    for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+      int item = trainMat->rowind[ii];
+      uTrItemSet[u].insert(item);
+      trNNz++;
+    }
+  }
+
+  int nScores = std::min(MAX_MISS_RATS, nUsers*nItems/2);
+  std::cout << "\nnScores: " << nScores << std::endl;
+ 
+  float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
+  memset(pr, 0, sizeof(float)*graphMat->nrows);
+  //assign all users equal restart probability
+  for (int user = 0; user < nUsers; user++) {
+    pr[user] = 1.0/nUsers;
+  }
+  
+  //run global page rank on the graph w.r.t. users
+  gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
+ 
+   //random engine
+  std::mt19937 mt(seed);
+  //user dist
+  std::uniform_int_distribution<int> uDist(0, nUsers-1);
+  std::uniform_int_distribution<int> iDist(0, nItems-1);
+  
+  while (matConfScores.size() < nScores) {
+    //sample u
+    int user = uDist(mt);
+    //skip if user is invalid
+    auto search = invalUsers.find(user);
+    if (search != invalUsers.end()) {
+      //found n skip
+      continue;
+    }
+
+    //sample item
+    int item = iDist(mt);
+    //ignore if invalid item
+    search = invalItems.find(item);
+    if (search != invalItems.end()) {
+      //found n skip
+      continue;
+    }
+
+    //ignore if item in training set
+    search = uTrItemSet[user].find(item);
+    if (search != uTrItemSet[user].end()) {
+      //found n skip
+      continue;
+    }
+
+    score = pr[nUsers + item];
+    matConfScores.push_back(std::make_tuple(user, item, score));
   }
 
 
@@ -400,15 +539,12 @@ std::vector<double> computeMissingPPRConfExt(gk_csr_t* trainMat,
         trainItemSet.insert(item);
       }
 
-      for (int item = 0; item < trainMat->ncols; item++) {
+      for (int i = 0; i < trainMat->ncols; i++) {
         
         //split the line
         pos = line.find(delimiter);
         token = line.substr(0, pos);
-        int itm = std::stoi(token)-nUsers; 
-        if (itm != item) {
-          std::cerr << "\nitem: " << item << " dont match itm: " << itm;
-        }
+        int item = std::stoi(token)-nUsers; 
         
         line.erase(0, pos + delimiter.length());
         
@@ -432,6 +568,123 @@ std::vector<double> computeMissingPPRConfExt(gk_csr_t* trainMat,
         score = pr[nUsers + item];
         matConfScores.push_back(std::make_tuple(u, item, score));
       }
+    }
+
+  } else {
+    std::cerr << "\nCan't open file: " << prFName;
+  }
+
+  free(pr);
+  return genConfidenceCurve(matConfScores, origModel, fullModel, nBuckets, 
+      alpha);
+}
+
+
+std::vector<double> computeMissingPPRConfExtSamp(gk_csr_t* trainMat, 
+    gk_csr_t* graphMat, std::unordered_set<int>& invalUsers,
+    std::unordered_set<int>& invalItems, float lambda, int max_niter, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha, const char* prFName, int seed) {
+  
+  std::vector<std::tuple<int, int, double>> matConfScores;
+  std::ifstream inFile (prFName);
+  std::string line, token;
+  std::string delimiter = " ";
+  size_t pos;
+  double score;
+  int nUsers = trainMat->nrows;
+  int nItems = trainMat->ncols;
+  std::vector<std::unordered_set<int>> uTrItemSet(nUsers);
+  
+  int trNNz = 0;
+  for (int u = 0 ; u < trainMat->nrows; u++) {
+    for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+      int item = trainMat->rowind[ii];
+      uTrItemSet[u].insert(item);
+      trNNz++;
+    }
+  }
+  
+  
+  int nScores = std::min(MAX_MISS_RATS, nUsers*nItems/2);
+  int nScoresPerUser = nScores/(nUsers - invalUsers.size());
+  
+  std::cout << "\nnScores: " << nScores << " nScoresPerUser: " 
+    << nScoresPerUser << std::endl;
+ 
+  float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
+ 
+  if (inFile.is_open()) {
+
+    //random engine
+    std::mt19937 mt(seed);
+    std::uniform_int_distribution<int> iDist(0, nItems-1);
+
+    for (int user = 0 ; user < trainMat->nrows; user++) {
+      
+      getline(inFile, line);
+      
+      //ignore if invalid user
+      //skip if user is invalid
+      auto search = invalUsers.find(user);
+      if (search != invalUsers.end()) {
+        //found n skip
+        continue;
+      }
+
+      memset(pr, 0, sizeof(float)*graphMat->nrows);
+      pr[user] = 1.0;
+      
+      //run personalized page rank on the graph w.r.t. u
+      gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
+      
+      //sample valid items
+      std::unordered_set<int> uValItems;
+      while (uValItems.size() < nScoresPerUser) {
+        int item = iDist(mt);
+        //ignore if invalid item
+        search = invalItems.find(item);
+        if (search != invalItems.end()) {
+          //found n skip
+          continue;
+        }
+
+        //ignore if item in training set
+        search = uTrItemSet[user].find(item);
+        if (search != uTrItemSet[user].end()) {
+          //found n skip
+          continue;
+        }
+        uValItems.insert(item);
+      }
+
+      for (int i = 0; i < trainMat->ncols; i++) {
+        
+        //split the line
+        pos = line.find(delimiter);
+        token = line.substr(0, pos);
+        int item = std::stoi(token)-nUsers; 
+        
+        line.erase(0, pos + delimiter.length());
+        
+        pos = line.find(delimiter);
+        token = line.substr(0, pos);
+        score = std::stod(token);
+        line.erase(0, pos + delimiter.length());
+ 
+        //check if item was sampled
+        search = uValItems.find(item);
+        if (search != uValItems.end()) {
+          //found
+          score = pr[nUsers + item];
+          matConfScores.push_back(std::make_tuple(user, item, score));
+        }
+        
+      }
+
+      if (user%PROGU == 0) {
+        std::cout << user << " done..." << std::endl; 
+      }
+    
     }
 
   } else {
