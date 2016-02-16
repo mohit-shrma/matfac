@@ -535,16 +535,9 @@ void computeConfScores(Data& data, Params& params) {
 void computeConfCurvesFrmModel(Data& data, Params& params) {
  
   std::vector<Model> bestModels;
-  bestModels.push_back(Model(params, "multiconf_partial_2_uFac_50000_5_0.001000.mat",
-        "multiconf_partial_2_iFac_19964_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "multiconf_partial_3_uFac_50000_5_0.001000.mat",
-        "multiconf_partial_3_iFac_19964_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "multiconf_partial_4_uFac_50000_5_0.001000.mat",
-        "multiconf_partial_4_iFac_19964_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "multiconf_partial_5_uFac_50000_5_0.001000.mat",
-        "multiconf_partial_5_iFac_19964_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "multiconf_partial_6_uFac_50000_5_0.001000.mat",
-        "multiconf_partial_6_iFac_19964_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "",
+        "", params.seed));
+
   std::cout << "\nnBestModels: " << bestModels.size();
 
   Model fullModel(params, params.seed);
@@ -590,7 +583,7 @@ void computeConfCurvesFrmModel(Data& data, Params& params) {
       invalUsers, invalItems, params.alpha, MAX_PR_ITER, origModel, 
       fullModel, 10, 0.05, "ml_rand_50kX19964_u1_i1.ppr");
   prefix = std::string(params.prefix) + "_pprconf_curve_miss.txt";
-  writeVector(gprCurve, prefix.c_str());
+  writeVector(pprCurve, prefix.c_str());
   std::cout << "\nPPR confidence Curve:";
   dispVector(pprCurve);
 
