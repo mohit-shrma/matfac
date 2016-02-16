@@ -303,6 +303,64 @@ std::vector<double> computePPRConf(gk_csr_t* mat,
 }
 
 
+std::vector<double> computeMissingPPRConf(gk_csr_t* trainMat, 
+    gk_csr_t* graphMat, std::unordered_set<int>& invalUsers,
+    std::unordered_set<int>& invalItems, float lambda, int max_niter, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha) {
+  
+  std::vector<std::tuple<int, int, double>> matConfScores;
+  double score;
+  int nUsers = trainMat->nrows;
+  std::unordered_set<int> trainItemSet;
+  float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
+  
+  for (int u = 0 ; u < trainMat->nrows; u++) {
+    //ignore if invalid user
+    //skip if user is invalid
+    auto search = invalUsers.find(u);
+    if (search != invalUsers.end()) {
+      //found n skip
+      continue;
+    }
+
+    memset(pr, 0, sizeof(float)*graphMat->nrows);
+    pr[u] = 1.0;
+    
+    //run personalized page rank on the graph w.r.t. u
+    gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
+    
+    trainItemSet.clear();
+    for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+      int item = trainMat->rowind[ii];
+      trainItemSet.insert(item);
+    }
+
+    for (int item = 0; item < trainMat->ncols; item++) {
+      //ignore if invalid item
+      search = invalItems.find(item);
+      if (search != invalItems.end()) {
+        //found n skip
+        continue;
+      }
+      //ignore if item in training set
+      search = trainItemSet.find(item);
+      if (search != trainItemSet.end()) {
+        //found n skip
+        continue;
+      }
+      score = pr[nUsers + item];
+      matConfScores.push_back(std::make_tuple(u, item, score));
+    }
+  }
+
+  free(pr);
+  return genConfidenceCurve(matConfScores, origModel, fullModel, nBuckets, 
+      alpha);
+}
+
+
+
+
 void updateBuckets(int user, std::vector<double>& bucketScores, 
     std::vector<double>& bucketNNZ, 
     std::vector<std::pair<int, double>>& itemScores, Model& origModel,
