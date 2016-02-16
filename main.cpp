@@ -535,9 +535,17 @@ void computeConfScores(Data& data, Params& params) {
 void computeConfCurvesFrmModel(Data& data, Params& params) {
  
   std::vector<Model> bestModels;
-  bestModels.push_back(Model(params, "",
-        "", params.seed));
-   std::cout << "\nnBestModels: " << bestModels.size();
+  bestModels.push_back(Model(params, "multiconf_partial_2_uFac_50000_5_0.001000.mat",
+        "multiconf_partial_2_iFac_19964_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multiconf_partial_3_uFac_50000_5_0.001000.mat",
+        "multiconf_partial_3_iFac_19964_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multiconf_partial_4_uFac_50000_5_0.001000.mat",
+        "multiconf_partial_4_iFac_19964_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multiconf_partial_5_uFac_50000_5_0.001000.mat",
+        "multiconf_partial_5_iFac_19964_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multiconf_partial_6_uFac_50000_5_0.001000.mat",
+        "multiconf_partial_6_iFac_19964_5_0.001000.mat", params.seed));
+  std::cout << "\nnBestModels: " << bestModels.size();
 
   Model fullModel(params, params.seed);
   fullModel.load(params.initUFacFile, params.initIFacFile);
@@ -565,7 +573,7 @@ void computeConfCurvesFrmModel(Data& data, Params& params) {
       fullModel, 10, 0.05);
   std::cout << "\nModels confidence Curve: ";
   dispVector(confCurve);
-  std::string prefix = std::string(params.prefix) + "_conf_bucket.txt";
+  std::string prefix = std::string(params.prefix) + "_mconf_curve_miss.txt";
   writeVector(confCurve, prefix.c_str());
 
   //compute global page rank confidence
@@ -573,10 +581,19 @@ void computeConfCurvesFrmModel(Data& data, Params& params) {
   std::vector<double> gprCurve = computeMissingGPRConf(data.trainMat, data.graphMat,
       invalUsers, invalItems, params.alpha, MAX_PR_ITER, origModel, 
       fullModel, 10, 0.05);
-  prefix = std::string(params.prefix) + "_gprconf_bucket.txt";
+  prefix = std::string(params.prefix) + "_gprconf_curve_miss.txt";
   writeVector(gprCurve, prefix.c_str());
   std::cout << "\nGPR confidence Curve:";
   dispVector(gprCurve);
+
+  std::vector<double> pprCurve = computeMissingPPRConfExt(data.trainMat, data.graphMat,
+      invalUsers, invalItems, params.alpha, MAX_PR_ITER, origModel, 
+      fullModel, 10, 0.05, "ml_rand_50kX19964_u1_i1.ppr");
+  prefix = std::string(params.prefix) + "_pprconf_curve_miss.txt";
+  writeVector(gprCurve, prefix.c_str());
+  std::cout << "\nPPR confidence Curve:";
+  dispVector(pprCurve);
+
 }
 
 
