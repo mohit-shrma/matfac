@@ -62,6 +62,9 @@ std::vector<int> readVector(const char *ipFileName) {
       }
     }
     ipFile.close();
+  } else {
+    std::cerr <<  "\nCan't open file: " << ipFileName;
+    exit(0);
   }
   return vec;
 }

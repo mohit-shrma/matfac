@@ -303,6 +303,147 @@ std::vector<double> computePPRConf(gk_csr_t* mat,
 }
 
 
+std::vector<double> computeMissingPPRConf(gk_csr_t* trainMat, 
+    gk_csr_t* graphMat, std::unordered_set<int>& invalUsers,
+    std::unordered_set<int>& invalItems, float lambda, int max_niter, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha) {
+  
+  std::vector<std::tuple<int, int, double>> matConfScores;
+  double score;
+  int nUsers = trainMat->nrows;
+  std::unordered_set<int> trainItemSet;
+  float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
+  
+  for (int u = 0 ; u < trainMat->nrows; u++) {
+    //ignore if invalid user
+    //skip if user is invalid
+    auto search = invalUsers.find(u);
+    if (search != invalUsers.end()) {
+      //found n skip
+      continue;
+    }
+
+    memset(pr, 0, sizeof(float)*graphMat->nrows);
+    pr[u] = 1.0;
+    
+    //run personalized page rank on the graph w.r.t. u
+    gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
+    
+    trainItemSet.clear();
+    for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+      int item = trainMat->rowind[ii];
+      trainItemSet.insert(item);
+    }
+
+    for (int item = 0; item < trainMat->ncols; item++) {
+      //ignore if invalid item
+      search = invalItems.find(item);
+      if (search != invalItems.end()) {
+        //found n skip
+        continue;
+      }
+      //ignore if item in training set
+      search = trainItemSet.find(item);
+      if (search != trainItemSet.end()) {
+        //found n skip
+        continue;
+      }
+      score = pr[nUsers + item];
+      matConfScores.push_back(std::make_tuple(u, item, score));
+    }
+  }
+
+  free(pr);
+  return genConfidenceCurve(matConfScores, origModel, fullModel, nBuckets, 
+      alpha);
+}
+
+
+std::vector<double> computeMissingPPRConfExt(gk_csr_t* trainMat, 
+    gk_csr_t* graphMat, std::unordered_set<int>& invalUsers,
+    std::unordered_set<int>& invalItems, float lambda, int max_niter, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha, const char* prFName) {
+  
+  std::vector<std::tuple<int, int, double>> matConfScores;
+  std::ifstream inFile (prFName);
+  std::string line, token;
+  std::string delimiter = " ";
+  size_t pos;
+  double score;
+  int nUsers = trainMat->nrows;
+  std::unordered_set<int> trainItemSet;
+  float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
+ 
+  if (inFile.is_open()) {
+
+    for (int u = 0 ; u < trainMat->nrows; u++) {
+      
+      getline(inFile, line);
+      
+      //ignore if invalid user
+      //skip if user is invalid
+      auto search = invalUsers.find(u);
+      if (search != invalUsers.end()) {
+        //found n skip
+        continue;
+      }
+
+      memset(pr, 0, sizeof(float)*graphMat->nrows);
+      pr[u] = 1.0;
+      
+      //run personalized page rank on the graph w.r.t. u
+      gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
+      
+      trainItemSet.clear();
+      for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+        int item = trainMat->rowind[ii];
+        trainItemSet.insert(item);
+      }
+
+      for (int item = 0; item < trainMat->ncols; item++) {
+        
+        //split the line
+        pos = line.find(delimiter);
+        token = line.substr(0, pos);
+        int itm = std::stoi(token)-nUsers; 
+        if (itm != item) {
+          std::cerr << "\nitem: " << item << " dont match itm: " << itm;
+        }
+        
+        line.erase(0, pos + delimiter.length());
+        
+        pos = line.find(delimiter);
+        token = line.substr(0, pos);
+        score = std::stod(token);
+        line.erase(0, pos + delimiter.length());
+ 
+        //ignore if invalid item
+        search = invalItems.find(item);
+        if (search != invalItems.end()) {
+          //found n skip
+          continue;
+        }
+        //ignore if item in training set
+        search = trainItemSet.find(item);
+        if (search != trainItemSet.end()) {
+          //found n skip
+          continue;
+        }
+        score = pr[nUsers + item];
+        matConfScores.push_back(std::make_tuple(u, item, score));
+      }
+    }
+
+  } else {
+    std::cerr << "\nCan't open file: " << prFName;
+  }
+
+  free(pr);
+  return genConfidenceCurve(matConfScores, origModel, fullModel, nBuckets, 
+      alpha);
+}
+
+
 void updateBuckets(int user, std::vector<double>& bucketScores, 
     std::vector<double>& bucketNNZ, 
     std::vector<std::pair<int, double>>& itemScores, Model& origModel,
