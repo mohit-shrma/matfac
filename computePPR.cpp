@@ -127,9 +127,9 @@ int main(int argc, char* argv[]) {
   std::cout << "\nnUsers: " << nUsers;
   std::cout << "\nnItems: " << nItems;
 
-  //writeSortedItemsByPR(graphMat, nUsers, nItems, lambda, max_niter, opFileName);
-  writeSortedItemsByGlobalPR(graphMat, nUsers, nItems, lambda, max_niter, 
-      opFileName);
+  writeSortedItemsByPR(graphMat, nUsers, nItems, lambda, max_niter, opFileName);
+  //writeSortedItemsByGlobalPR(graphMat, nUsers, nItems, lambda, max_niter, 
+  //    opFileName);
 
   gk_csr_Free(&graphMat);
   return 0;
