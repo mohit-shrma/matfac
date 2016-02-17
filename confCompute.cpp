@@ -477,7 +477,6 @@ std::vector<double> computeMissingPPRConfExt(gk_csr_t* trainMat,
   double score;
   int nUsers = trainMat->nrows;
   std::unordered_set<int> trainItemSet;
-  float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
  
   if (inFile.is_open()) {
 
@@ -493,12 +492,6 @@ std::vector<double> computeMissingPPRConfExt(gk_csr_t* trainMat,
         continue;
       }
 
-      memset(pr, 0, sizeof(float)*graphMat->nrows);
-      pr[u] = 1.0;
-      
-      //run personalized page rank on the graph w.r.t. u
-      gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
-      
       trainItemSet.clear();
       for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
         int item = trainMat->rowind[ii];
@@ -531,7 +524,6 @@ std::vector<double> computeMissingPPRConfExt(gk_csr_t* trainMat,
           //found n skip
           continue;
         }
-        score = pr[nUsers + item];
         matConfScores.push_back(std::make_tuple(u, item, score));
       }
     }
@@ -540,7 +532,6 @@ std::vector<double> computeMissingPPRConfExt(gk_csr_t* trainMat,
     std::cerr << "\nCan't open file: " << prFName;
   }
 
-  free(pr);
   return genConfidenceCurve(matConfScores, origModel, fullModel, nBuckets, 
       alpha);
 }
@@ -568,8 +559,6 @@ std::vector<double> computeMissingPPRConfExtSamp(gk_csr_t* trainMat,
   //sort testPairs in ascending order
   std::sort(testPairs.begin(), testPairs.end(), comparePairs);
 
-  float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
- 
   if (inFile.is_open()) {
 
     int testInd = 0;
@@ -591,11 +580,6 @@ std::vector<double> computeMissingPPRConfExtSamp(gk_csr_t* trainMat,
         continue;
       }
 
-      memset(pr, 0, sizeof(float)*graphMat->nrows);
-      pr[user] = 1.0;
-      
-      //run personalized page rank on the graph w.r.t. u
-      gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
       
       for (int i = 0; i < nItems; i++) {
         
@@ -615,7 +599,6 @@ std::vector<double> computeMissingPPRConfExtSamp(gk_csr_t* trainMat,
         auto search = uValItems.find(item);
         if (search != uValItems.end()) {
           //found
-          score = pr[nUsers + item];
           matConfScores.push_back(std::make_tuple(user, item, score));
         }
         
@@ -631,7 +614,6 @@ std::vector<double> computeMissingPPRConfExtSamp(gk_csr_t* trainMat,
     std::cerr << "\nCan't open file: " << prFName;
   }
 
-  free(pr);
   return genConfidenceCurve(matConfScores, origModel, fullModel, nBuckets, 
       alpha);
 }
