@@ -170,8 +170,10 @@ std::vector<double> computeMissingModConfSamp(gk_csr_t* trainMat,
     }
   } 
 
-  int nScores = std::min(MAX_MISS_RATS, nUsers*nItems/2);
-  std::cout << "\nnScores: " << nScores << std::endl;
+  double halfRatCount = ((double)nUsers*(double)nItems)/2.0;
+  int nScores = std::min((double)MAX_MISS_RATS, halfRatCount);
+  std::cout << "\nnScores: " << nScores << " halfRatCount: " << halfRatCount 
+    << " nScores: " << nScores  << std::endl;
 
   //random engine
   std::mt19937 mt(seed);
@@ -296,7 +298,8 @@ std::vector<double> computeMissingGPRConfSamp(gk_csr_t* trainMat,
     }
   }
 
-  int nScores = std::min(MAX_MISS_RATS, nUsers*nItems/2);
+  double halfRatCount = ((double)nUsers*(double)nItems)/2.0;
+  int nScores = std::min((double)MAX_MISS_RATS, halfRatCount);
   std::cout << "\nnScores: " << nScores << std::endl;
  
   float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
@@ -605,7 +608,8 @@ std::vector<double> computeMissingPPRConfExtSamp(gk_csr_t* trainMat,
   }
   
   
-  int nScores = std::min(MAX_MISS_RATS, nUsers*nItems/2);
+  double halfRatCount = ((double)nUsers*(double)nItems)/2.0;
+  int nScores = std::min((double)MAX_MISS_RATS, halfRatCount);
   int nScoresPerUser = nScores/(nUsers - invalUsers.size());
   
   std::cout << "\nnScores: " << nScores << " nScoresPerUser: " 
