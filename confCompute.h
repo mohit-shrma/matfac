@@ -2,13 +2,12 @@
 #define _CONF_COMPUTE_H_
 
 #include "model.h"
+#include "const.h"
 #include <vector>
 #include <algorithm>
 #include <tuple>
 #include <cmath>
 
-#define PROGU 1000
-#define MAX_MISS_RATS 200000
 
 double confScore(int user, int item, std::vector<Model>& models);
 std::vector<double> confBucketRMSEs(Model& origModel, Model& fullModel,
@@ -72,18 +71,21 @@ std::vector<double> computeMissingPPRConfExt(gk_csr_t* trainMat,
     gk_csr_t* graphMat, std::unordered_set<int>& invalUsers,
     std::unordered_set<int>& invalItems, float lambda, int max_niter, Model& origModel,
     Model& fullModel, int nBuckets, float alpha, const char* prFName);
+
+std::vector<double> computeMissingModConfSamp(std::vector<Model>& models,
+    Model& origModel, Model& fullModel, int nBuckets, float alpha, 
+    std::vector<std::pair<int,int>> testPairs);
+std::vector<double> computeMissingGPRConfSamp(gk_csr_t* graphMat, float lambda, 
+    int max_niter, Model& origModel, Model& fullModel, int nBuckets, 
+    float alpha, std::vector<std::pair<int,int>> testPairs, int nUsers);
 std::vector<double> computeMissingPPRConfExtSamp(gk_csr_t* trainMat, 
-    gk_csr_t* graphMat, std::unordered_set<int>& invalUsers,
-    std::unordered_set<int>& invalItems, float lambda, int max_niter, Model& origModel,
-    Model& fullModel, int nBuckets, float alpha, const char* prFName, int seed);
-std::vector<double> computeMissingGPRConfSamp(gk_csr_t* trainMat, 
-    gk_csr_t* graphMat, std::unordered_set<int>& invalUsers,
-    std::unordered_set<int>& invalItems, float lambda, int max_niter, Model& origModel,
-    Model& fullModel, int nBuckets, float alpha, int seed);
-std::vector<double> computeMissingModConfSamp(gk_csr_t* trainMat, 
-    std::vector<Model>& models, std::unordered_set<int>& invalUsers,
-    std::unordered_set<int>& invalItems, Model& origModel,
-    Model& fullModel, int nBuckets, float alpha, int seed);
+    gk_csr_t* graphMat, float lambda, int max_niter, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha, const char* prFName, 
+    std::vector<std::pair<int, int>> testPairs);
+
+std::vector<std::pair<int, int>> getTestPairs(gk_csr_t* mat, 
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems,
+    int testSize, int seed);
 #endif
 
 

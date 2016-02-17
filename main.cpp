@@ -305,125 +305,6 @@ void computeConf(Data& data, Params& params) {
 }
 
 
-void computeConfCurve(Data& data, Params& params) {
-
-  ModelMF fullModel(params, params.seed);
-  svdFrmSvdlibCSR(data.trainMat, fullModel.facDim, fullModel.uFac, 
-      fullModel.iFac); 
-  
-  int nThreads = 5;
-  
-  std::vector<std::thread> threads(nThreads);
-  
-  std::vector<std::shared_ptr<ModelMF>> trainModels;
-  std::vector<std::shared_ptr<Model>> pbestModels;
-  std::vector<std::unordered_set<int>> mInvalUsers (nThreads);
-  std::vector<std::unordered_set<int>> mInvalItems (nThreads);
-
-  for (int thInd = 0; thInd < nThreads; thInd++) {
-    int seed = params.seed + thInd + 1;
-    std::shared_ptr<ModelMF> p(new ModelMF(params, seed));
-    p->uFac = fullModel.uFac;
-    p->iFac = fullModel.iFac;
-    trainModels.push_back(p);
-    std::shared_ptr<Model> p2(new Model(params, seed));
-    pbestModels.push_back(p2);
-    //invoke training on thread
-    std::cout << "\nInvoking thread: " << thInd << std::endl;  
-    threads[thInd] = std::thread(&ModelMF::partialTrain, 
-        trainModels[thInd], std::ref(data), 
-        std::ref(*pbestModels[thInd]), std::ref(mInvalUsers[thInd]),
-        std::ref(mInvalItems[thInd]));
-  }
-
-  //train full model in main thread
-  ModelMF fullBestModel(fullModel);
-  std::unordered_set<int> invalidUsers;
-  std::unordered_set<int> invalidItems;
-  std::cout << "\nStarting full model train...";
-  fullModel.train(data, fullBestModel, invalidUsers, invalidItems);
-
-  std::cout << "\nWaiting for threads to finish...";
-  //wait for threads to finish
-  std::for_each(threads.begin(), threads.end(), 
-      std::mem_fn(&std::thread::join));
-
-  std::cout << "\nFinished all threads.";
-
-  std::cout << "\nModels save...";
-  std::vector<Model> bestModels;
-  //save the best models
-  for (int thInd = 0; thInd < nThreads; thInd++) {
-    int seed = params.seed + thInd + 1;
-    std::string prefix(params.prefix);
-    prefix = prefix + "_partial_" + std::to_string(seed); 
-    pbestModels[thInd]->save(prefix);
-    bestModels.push_back(*pbestModels[thInd]);
-  }
-  //save the best full model
-  std::string prefix(params.prefix);
-  prefix = prefix + "_full";
-  fullBestModel.save(prefix);
-
-  ModelMF origModel(params, params.seed);
-  origModel.load(params.origUFacFile, params.origIFacFile);
-  
-  //find all invalid users
-  for (int thInd = 0; thInd < nThreads; thInd++) {
-    for (const auto& elem: mInvalUsers[thInd]) {
-      invalidUsers.insert(elem);
-    }
-  }
-  
-  std::cout << "\nTotal invalid users: " << invalidUsers.size();
-  //write out invalid users
-  prefix = std::string(params.prefix) + "_invalUsers.txt";
-  writeContainer(begin(invalidUsers), end(invalidUsers), prefix.c_str());
-  
-  //find all invalid items
-  for (int thInd = 0; thInd < nThreads; thInd++) {
-    for (const auto& elem: mInvalItems[thInd]) {
-      invalidItems.insert(elem);
-    }
-  }
-
-  std::cout << "\nTotal invalid items: " << invalidItems.size();
-  //write out invalid items
-  prefix = std::string(params.prefix) + "_invalItems.txt";
-  writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
-
-  //compute confidence using the best models for 10 buckets
-  std::vector<double> confCurve = computeModConf(data.testMat, bestModels, 
-      invalidUsers, invalidItems, origModel, 
-      fullBestModel, 10, 0.05);
-  std::cout << "\nConfidence bucket Curve: ";
-  dispVector(confCurve);
-  prefix = std::string(params.prefix) + "_mconf_curve.txt";
-  writeVector(confCurve, prefix.c_str());
-
-  //compute global page rank confidence
-  //NOTE: using params.alpha as (1 - restartProb)
-  std::vector<double> gprCurve = computeGPRConf(data.testMat, data.graphMat,
-      invalidUsers, invalidItems, params.alpha, MAX_PR_ITER, origModel, 
-      fullBestModel, 10, 0.05);
-  prefix = std::string(params.prefix) + "_gprconf_curve.txt";
-  writeVector(gprCurve, prefix.c_str());
-  std::cout << "\nGPR confidence Curve:";
-  dispVector(gprCurve);
-
-  //compute ppr confidence
-  /*
-  std::vector<double> pprCurve = computePPRConf(data.testMat, data.graphMat,
-      invalidUsers, invalidItems, params.alpha, MAX_PR_ITER, origModel, 
-      fullBestModel, 10, 0.05);
-  prefix = std::string(params.prefix) + "_pprconf_curve.txt";
-  writeVector(pprCurve, prefix.c_str());
-  std::cout << "\nPPR confidence Curve:";
-  dispVector(pprCurve);
-  */
-}
-
-
 void computePRScores(Data& data, Params& params) {
   Model fullModel(params, params.seed);
   fullModel.load(params.initUFacFile, params.initIFacFile);
@@ -532,17 +413,137 @@ void computeConfScores(Data& data, Params& params) {
 }
 
 
-void computeConfCurvesFrmModel(Data& data, Params& params) {
- 
+void computeConfCurve(Data& data, Params& params) {
+  
+  int nUsers = data.trainMat->nrows;
+  int nItems = data.trainMat->ncols;
+
+  ModelMF fullModel(params, params.seed);
+  svdFrmSvdlibCSR(data.trainMat, fullModel.facDim, fullModel.uFac, 
+      fullModel.iFac); 
+  
+  int nThreads = 5;
+  
+  std::vector<std::thread> threads(nThreads);
+  
+  std::vector<std::shared_ptr<ModelMF>> trainModels;
+  std::vector<std::shared_ptr<Model>> pbestModels;
+  std::vector<std::unordered_set<int>> mInvalUsers (nThreads);
+  std::vector<std::unordered_set<int>> mInvalItems (nThreads);
+
+  for (int thInd = 0; thInd < nThreads; thInd++) {
+    int seed = params.seed + thInd + 1;
+    std::shared_ptr<ModelMF> p(new ModelMF(params, seed));
+    p->uFac = fullModel.uFac;
+    p->iFac = fullModel.iFac;
+    trainModels.push_back(p);
+    std::shared_ptr<Model> p2(new Model(params, seed));
+    pbestModels.push_back(p2);
+    //invoke training on thread
+    std::cout << "\nInvoking thread: " << thInd << std::endl;  
+    threads[thInd] = std::thread(&ModelMF::partialTrain, 
+        trainModels[thInd], std::ref(data), 
+        std::ref(*pbestModels[thInd]), std::ref(mInvalUsers[thInd]),
+        std::ref(mInvalItems[thInd]));
+  }
+
+  //train full model in main thread
+  ModelMF fullBestModel(fullModel);
+  std::unordered_set<int> invalidUsers;
+  std::unordered_set<int> invalidItems;
+  std::cout << "\nStarting full model train...";
+  fullModel.train(data, fullBestModel, invalidUsers, invalidItems);
+
+  std::cout << "\nWaiting for threads to finish...";
+  //wait for threads to finish
+  std::for_each(threads.begin(), threads.end(), 
+      std::mem_fn(&std::thread::join));
+
+  std::cout << "\nFinished all threads.";
+
+  std::cout << "\nModels save...";
   std::vector<Model> bestModels;
-  bestModels.push_back(Model(params, "",
-        "", params.seed));
-  bestModels.push_back(Model(params, "",
-        "", params.seed));
-  bestModels.push_back(Model(params, "",
-        "", params.seed));
-  bestModels.push_back(Model(params, "",
-        "", params.seed));
+  //save the best models
+  for (int thInd = 0; thInd < nThreads; thInd++) {
+    int seed = params.seed + thInd + 1;
+    std::string prefix(params.prefix);
+    prefix = prefix + "_partial_" + std::to_string(seed); 
+    pbestModels[thInd]->save(prefix);
+    bestModels.push_back(*pbestModels[thInd]);
+  }
+  //save the best full model
+  std::string prefix(params.prefix);
+  prefix = prefix + "_full";
+  fullBestModel.save(prefix);
+
+  ModelMF origModel(params, params.seed);
+  origModel.load(params.origUFacFile, params.origIFacFile);
+  
+  //find all invalid users
+  for (int thInd = 0; thInd < nThreads; thInd++) {
+    for (const auto& elem: mInvalUsers[thInd]) {
+      invalidUsers.insert(elem);
+    }
+  }
+  
+  std::cout << "\nTotal invalid users: " << invalidUsers.size();
+  //write out invalid users
+  prefix = std::string(params.prefix) + "_invalUsers.txt";
+  writeContainer(begin(invalidUsers), end(invalidUsers), prefix.c_str());
+  
+  //find all invalid items
+  for (int thInd = 0; thInd < nThreads; thInd++) {
+    for (const auto& elem: mInvalItems[thInd]) {
+      invalidItems.insert(elem);
+    }
+  }
+
+  std::cout << "\nTotal invalid items: " << invalidItems.size();
+  //write out invalid items
+  prefix = std::string(params.prefix) + "_invalItems.txt";
+  writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
+
+  double halfRatCount = ((double)nUsers*(double)nItems)/2.0;
+  int testSize = std::min((double)MAX_MISS_RATS, halfRatCount);
+  std::vector<std::pair<int, int>> testPairs = getTestPairs(data.trainMat, invalidUsers,
+      invalidItems, testSize, params.seed);
+  
+  //compute confidence using the best models for 10 buckets
+  std::vector<double> confCurve = computeMissingModConfSamp(bestModels, 
+      origModel, fullModel, 10, 0.05, testPairs);
+  std::cout << "\nConfidence bucket Curve: ";
+  dispVector(confCurve);
+  prefix = std::string(params.prefix) + "_mconf_curve.txt";
+  writeVector(confCurve, prefix.c_str());
+
+  //compute global page rank confidence
+  //NOTE: using params.alpha as (1 - restartProb)
+  std::vector<double> gprCurve = computeMissingGPRConfSamp(data.graphMat,
+      params.alpha, MAX_PR_ITER, origModel, 
+      fullModel, 10, 0.05, testPairs, nUsers);
+  prefix = std::string(params.prefix) + "_gprconf_curve.txt";
+  writeVector(gprCurve, prefix.c_str());
+  std::cout << "\nGPR confidence Curve:";
+  dispVector(gprCurve);
+
+  //compute ppr confidence
+  std::vector<double> pprCurve = computeMissingPPRConfExtSamp(data.trainMat, 
+      data.graphMat, params.alpha, MAX_PR_ITER, origModel, 
+      fullModel, 10, 0.05, ".ppr", testPairs);
+  prefix = std::string(params.prefix) + "_pprconf_curve.txt";
+  writeVector(pprCurve, prefix.c_str());
+  std::cout << "\nPPR confidence Curve:";
+  dispVector(pprCurve);
+  
+}
+
+
+void computeConfCurvesFrmModel(Data& data, Params& params) {
+  
+  int nUsers = data.trainMat->nrows;
+  int nItems = data.trainMat->ncols;
+
+  std::vector<Model> bestModels;
   bestModels.push_back(Model(params, "",
         "", params.seed));
 
@@ -569,9 +570,14 @@ void computeConfCurvesFrmModel(Data& data, Params& params) {
     invalItems.insert(v);
   }
 
-  std::vector<double> confCurve = computeMissingModConfSamp(data.trainMat, bestModels, 
-      invalUsers, invalItems, origModel, 
-      fullModel, 10, 0.05, params.seed);
+
+  double halfRatCount = ((double)nUsers*(double)nItems)/2.0;
+  int testSize = std::min((double)MAX_MISS_RATS, halfRatCount);
+  std::vector<std::pair<int, int>> testPairs = getTestPairs(data.trainMat, invalUsers,
+      invalItems, testSize, params.seed);
+
+  std::vector<double> confCurve = computeMissingModConfSamp(bestModels, 
+      origModel, fullModel, 10, 0.05, testPairs);
   std::cout << "\nModels confidence Curve: ";
   dispVector(confCurve);
   std::string prefix = std::string(params.prefix) + "_mconf_curve_miss.txt";
@@ -579,17 +585,17 @@ void computeConfCurvesFrmModel(Data& data, Params& params) {
 
   //compute global page rank confidence
   //NOTE: using params.alpha as (1 - restartProb)
-  std::vector<double> gprCurve = computeMissingGPRConfSamp(data.trainMat, data.graphMat,
-      invalUsers, invalItems, params.alpha, MAX_PR_ITER, origModel, 
-      fullModel, 10, 0.05, params.seed);
+  std::vector<double> gprCurve = computeMissingGPRConfSamp(data.graphMat,
+      params.alpha, MAX_PR_ITER, origModel, 
+      fullModel, 10, 0.05, testPairs, nUsers);
   prefix = std::string(params.prefix) + "_gprconf_curve_miss.txt";
   writeVector(gprCurve, prefix.c_str());
   std::cout << "\nGPR confidence Curve:";
   dispVector(gprCurve);
 
   std::vector<double> pprCurve = computeMissingPPRConfExtSamp(data.trainMat, data.graphMat,
-      invalUsers, invalItems, params.alpha, MAX_PR_ITER, origModel, 
-      fullModel, 10, 0.05, ".ppr", params.seed);
+      params.alpha, MAX_PR_ITER, origModel, 
+      fullModel, 10, 0.05, ".ppr", testPairs);
   prefix = std::string(params.prefix) + "_pprconf_curve_miss.txt";
   writeVector(pprCurve, prefix.c_str());
   std::cout << "\nPPR confidence Curve:";
