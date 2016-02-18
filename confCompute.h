@@ -86,6 +86,17 @@ std::vector<double> computeMissingPPRConfExtSamp(gk_csr_t* trainMat,
 std::vector<std::pair<int, int>> getTestPairs(gk_csr_t* mat, 
     std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems,
     int testSize, int seed);
+
+std::vector<double> genOptConfidenceCurve(
+    std::vector<std::pair<int, int>> testPairs, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha);
+
+std::vector<double> genItemConfCurve(std::vector<std::pair<int, int>> testPairs, 
+    Model& origModel, Model& fullModel, int nBuckets, float alpha, 
+    std::vector<double>& itemFreq);
+std::vector<double> genUserConfCurve(std::vector<std::pair<int, int>> testPairs, 
+    Model& origModel, Model& fullModel, int nBuckets, float alpha, 
+    std::vector<double>& userFreq);
 #endif
 
 

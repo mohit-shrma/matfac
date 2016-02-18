@@ -64,6 +64,144 @@ std::vector<double> genConfidenceCurve(
 }
 
 
+std::vector<double> genOptConfidenceCurve(
+    std::vector<std::pair<int, int>> testPairs, Model& origModel,
+    Model& fullModel, int nBuckets, float alpha) {
+  std::vector<double> binWidths;
+  std::vector<double> scores;
+  int nScores = testPairs.size();
+  std::cout << "\nnScores: " << nScores << std::endl;
+  int nItemsPerBuck = nScores/nBuckets;
+
+  for (auto const& testPair: testPairs) {
+    int user = testPair.first;
+    int item = testPair.second;
+    double r_ui = origModel.estRating(user, item);
+    double r_ui_est = fullModel.estRating(user, item);
+    double w = fabs(r_ui - r_ui_est);
+    scores.push_back(w);
+  }
+  
+  //sort scores in ascending order
+  std::sort(scores.begin(), scores.end());
+ 
+  std::vector<double> widths;
+  for (int bInd = 0; bInd < nBuckets; bInd++) {
+    int start = bInd*nItemsPerBuck;
+    int end = (bInd+1)*nItemsPerBuck;
+    if (bInd == nBuckets-1 || end > nScores) {
+      end = nScores;
+    }
+    //find half-width of the confidence-interval for bin
+    //S.T. (1-alpha)fraction of predicted ratings are with in +- w of actual
+    //ratings
+    widths.clear();
+    for (int j = start; j < end; j++) {
+      widths.push_back(scores[j]);
+    }
+    binWidths.push_back(widths[(1-alpha)*widths.size()]);
+  }
+
+  return binWidths;
+}
+
+
+std::vector<double> genUserConfCurve(std::vector<std::pair<int, int>> testPairs, 
+    Model& origModel, Model& fullModel, int nBuckets, float alpha, 
+    std::vector<double>& userFreq) {
+  std::vector<double> binWidths;
+  //confscore, width
+  std::vector<std::pair<double, double>> scores;
+  int nScores = testPairs.size();
+  std::cout << "\nnScores: " << nScores << std::endl;
+  int nItemsPerBuck = nScores/nBuckets;
+
+  for (auto const& testPair: testPairs) {
+    int user = testPair.first;
+    int item = testPair.second;
+    double r_ui = origModel.estRating(user, item);
+    double r_ui_est = fullModel.estRating(user, item);
+    double w = fabs(r_ui - r_ui_est);
+    scores.push_back(std::make_pair(userFreq[user], w));
+  }
+  
+  //descending order comp of confscore
+  auto comparePairs = [] (std::pair<double, double> a, 
+                          std::pair<double, double> b) {
+    return a.first > b.first;
+  };
+  //sort scores in descending order by user frequency
+  std::sort(scores.begin(), scores.end(), comparePairs);
+ 
+  std::vector<double> widths;
+  for (int bInd = 0; bInd < nBuckets; bInd++) {
+    int start = bInd*nItemsPerBuck;
+    int end = (bInd+1)*nItemsPerBuck;
+    if (bInd == nBuckets-1 || end > nScores) {
+      end = nScores;
+    }
+    //find half-width of the confidence-interval for bin
+    //S.T. (1-alpha)fraction of predicted ratings are with in +- w of actual
+    //ratings
+    widths.clear();
+    for (int j = start; j < end; j++) {
+      widths.push_back(scores[j].second);
+    }
+    binWidths.push_back(widths[(1-alpha)*widths.size()]);
+  }
+
+  return binWidths;
+}
+
+
+std::vector<double> genItemConfCurve(std::vector<std::pair<int, int>> testPairs, 
+    Model& origModel, Model& fullModel, int nBuckets, float alpha, 
+    std::vector<double>& itemFreq) {
+  std::vector<double> binWidths;
+  //confscore, width
+  std::vector<std::pair<double, double>> scores;
+  int nScores = testPairs.size();
+  std::cout << "\nnScores: " << nScores << std::endl;
+  int nItemsPerBuck = nScores/nBuckets;
+
+  for (auto const& testPair: testPairs) {
+    int user = testPair.first;
+    int item = testPair.second;
+    double r_ui = origModel.estRating(user, item);
+    double r_ui_est = fullModel.estRating(user, item);
+    double w = fabs(r_ui - r_ui_est);
+    scores.push_back(std::make_pair(itemFreq[item], w));
+  }
+  
+  //descending order comp of confscore
+  auto comparePairs = [] (std::pair<double, double> a, 
+                          std::pair<double, double> b) {
+    return a.first > b.first;
+  };
+  //sort scores in descending order by user frequency
+  std::sort(scores.begin(), scores.end(), comparePairs);
+ 
+  std::vector<double> widths;
+  for (int bInd = 0; bInd < nBuckets; bInd++) {
+    int start = bInd*nItemsPerBuck;
+    int end = (bInd+1)*nItemsPerBuck;
+    if (bInd == nBuckets-1 || end > nScores) {
+      end = nScores;
+    }
+    //find half-width of the confidence-interval for bin
+    //S.T. (1-alpha)fraction of predicted ratings are with in +- w of actual
+    //ratings
+    widths.clear();
+    for (int j = start; j < end; j++) {
+      widths.push_back(scores[j].second);
+    }
+    binWidths.push_back(widths[(1-alpha)*widths.size()]);
+  }
+
+  return binWidths;
+}
+
+
 std::vector<std::pair<int, int>> getTestPairs(gk_csr_t* mat, 
     std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems,
     int testSize, int seed) {

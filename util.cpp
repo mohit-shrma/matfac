@@ -223,3 +223,20 @@ void getInvalidUsersItems(gk_csr_t *mat,
 }
 
 
+std::pair<std::vector<double>, std::vector<double>> getRowColFreq(gk_csr_t *mat) {
+  
+  std::vector<double> rowFreq(mat->nrows, 0);
+  std::vector<double> colFreq(mat->ncols, 0);
+
+  for (int u = 0; u < mat->nrows; u++) {
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      int item = mat->rowind[ii];
+      rowFreq[u] += 1;
+      colFreq[item] += 1;
+    }
+  }
+  
+  return std::make_pair(rowFreq, colFreq);
+}
+
+

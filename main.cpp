@@ -576,12 +576,39 @@ void computeConfCurvesFrmModel(Data& data, Params& params) {
   std::vector<std::pair<int, int>> testPairs = getTestPairs(data.trainMat, invalUsers,
       invalItems, testSize, params.seed);
 
+  
   std::vector<double> confCurve = computeMissingModConfSamp(bestModels, 
       origModel, fullModel, 10, 0.05, testPairs);
   std::cout << "\nModels confidence Curve: ";
   dispVector(confCurve);
   std::string prefix = std::string(params.prefix) + "_mconf_curve_miss.txt";
   writeVector(confCurve, prefix.c_str());
+
+  std::vector<double> optConfCurve = genOptConfidenceCurve(testPairs, origModel,
+      fullModel, 10, 0.05);
+  std::cout << "\nOpt model conf curve: ";
+  dispVector(optConfCurve);
+  prefix = std::string(params.prefix) + "_optconf_curve_miss.txt";
+  writeVector(optConfCurve, prefix.c_str());
+
+  //get number of ratings per user and item, i.e. frequency
+  auto rowColFreq = getRowColFreq(data.trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+
+  std::vector<double> userConfCurve = genUserConfCurve(testPairs, origModel,
+      fullModel, 10, 0.05, userFreq);
+  std::cout << "\nuser conf curve: ";
+  dispVector(userConfCurve);
+  prefix = std::string(params.prefix) + "_userconf_curve_miss.txt";
+  writeVector(userConfCurve, prefix.c_str());
+
+  std::vector<double> itemConfCurve = genItemConfCurve(testPairs, origModel,
+      fullModel, 10, 0.05, itemFreq);
+  std::cout << "\nitem conf curve: ";
+  dispVector(itemConfCurve);
+  prefix = std::string(params.prefix) + "_itemconf_curve_miss.txt";
+  writeVector(itemConfCurve, prefix.c_str());
 
   //compute global page rank confidence
   //NOTE: using params.alpha as (1 - restartProb)
@@ -593,8 +620,8 @@ void computeConfCurvesFrmModel(Data& data, Params& params) {
   std::cout << "\nGPR confidence Curve:";
   dispVector(gprCurve);
 
-  std::vector<double> pprCurve = computeMissingPPRConfExtSamp(data.trainMat, data.graphMat,
-      params.alpha, MAX_PR_ITER, origModel, 
+  std::vector<double> pprCurve = computeMissingPPRConfExtSamp(data.trainMat, 
+      data.graphMat, params.alpha, MAX_PR_ITER, origModel, 
       fullModel, 10, 0.05, ".ppr", testPairs);
   prefix = std::string(params.prefix) + "_pprconf_curve_miss.txt";
   writeVector(pprCurve, prefix.c_str());
@@ -622,9 +649,9 @@ int main(int argc , char* argv[]) {
   //computeGPRScores(data, params);
   //computeOptScores(data, params);
 
-  //writeTrainTestMat(data.trainMat, "amzn_13097X11077_syn.train.csr", 
-  //    "amzn_13097X11077_syn.test.csr", 0.1, params.seed);
-  //writeCSRWSparsityStructure(data.trainMat, "ratings_u20_i20_706X1248.syn.csr", 
+  //writeTrainTestMat(data.trainMat, "y_u21_i20_19980X81208.syn.train.csr", 
+  //    "y_u21_i20_19980X81208.syn.test.csr", 0.1, params.seed);
+  //writeCSRWSparsityStructure(data.trainMat, "", 
   //    data.origUFac, data.origIFac, 5);
   //writeCSRWHalfSparsity(data.trainMat, "mat.csr", 0, 10000, 0, 10000);
 
