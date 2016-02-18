@@ -718,7 +718,7 @@ std::vector<double> computeMissingPPRConfExtSamp(gk_csr_t* trainMat,
         continue;
       }
 
-      
+      int foundItems = 0;   
       for (int i = 0; i < nItems; i++) {
         
         //split the line
@@ -737,9 +737,14 @@ std::vector<double> computeMissingPPRConfExtSamp(gk_csr_t* trainMat,
         auto search = uValItems.find(item);
         if (search != uValItems.end()) {
           //found
+          foundItems++;
           matConfScores.push_back(std::make_tuple(user, item, score));
         }
         
+        if (foundItems == uValItems.size()) {
+          //allvalid items found
+          break;
+        }
       }
 
       if (user%PROGU == 0) {
