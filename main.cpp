@@ -516,6 +516,32 @@ void computeConfCurve(Data& data, Params& params) {
   prefix = std::string(params.prefix) + "_mconf_curve.txt";
   writeVector(confCurve, prefix.c_str());
 
+  std::vector<double> optConfCurve = genOptConfidenceCurve(testPairs, origModel,
+      fullModel, 10, 0.05);
+  std::cout << "\nOpt model conf curve: ";
+  dispVector(optConfCurve);
+  prefix = std::string(params.prefix) + "_optconf_curve_miss.txt";
+  writeVector(optConfCurve, prefix.c_str());
+
+  //get number of ratings per user and item, i.e. frequency
+  auto rowColFreq = getRowColFreq(data.trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+
+  std::vector<double> userConfCurve = genUserConfCurve(testPairs, origModel,
+      fullModel, 10, 0.05, userFreq);
+  std::cout << "\nuser conf curve: ";
+  dispVector(userConfCurve);
+  prefix = std::string(params.prefix) + "_userconf_curve_miss.txt";
+  writeVector(userConfCurve, prefix.c_str());
+
+  std::vector<double> itemConfCurve = genItemConfCurve(testPairs, origModel,
+      fullModel, 10, 0.05, itemFreq);
+  std::cout << "\nitem conf curve: ";
+  dispVector(itemConfCurve);
+  prefix = std::string(params.prefix) + "_itemconf_curve_miss.txt";
+  writeVector(itemConfCurve, prefix.c_str());
+
   //compute global page rank confidence
   //NOTE: using params.alpha as (1 - restartProb)
   std::vector<double> gprCurve = computeMissingGPRConfSamp(data.graphMat,
