@@ -21,6 +21,8 @@ class ModelMF : public Model {
 
     ModelMF(const Params& params) : Model(params) {}
     ModelMF(const Params& params, int seed) : Model(params, seed) {}
+    ModelMF(const Params& params, const char*uFacName, const char* iFacName, 
+        int seed):Model(params, uFacName, iFacName, seed) {}
     virtual void train(const Data& data, Model& bestModel,
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems) ;
