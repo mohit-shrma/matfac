@@ -357,9 +357,9 @@ void computeConfScoresFrmModel(Data& data, Params& params) {
   writeVector(gprRMSEs, prefix.c_str());
  
   std::cout << "\nPPR confidence: ";
-  std::vector<double> pprRMSEs = pprBucketRMSEsWInVal(origModel, fullModel,
-      params.nUsers, params.nItems, params.alpha, MAX_PR_ITER, data.graphMat, 
-      10, invalUsers, invalItems);
+  std::vector<double> pprRMSEs = pprBucketRMSEsFrmPRWInVal(origModel, fullModel,
+      params.nUsers, params.nItems, data.graphMat, 10, ".ppr", invalUsers, 
+      invalItems);
   dispVector(pprRMSEs);
   prefix = std::string(params.prefix) + "_ppr_bucket.txt";
   writeVector(pprRMSEs, prefix.c_str());
