@@ -240,3 +240,32 @@ std::pair<std::vector<double>, std::vector<double>> getRowColFreq(gk_csr_t *mat)
 }
 
 
+std::vector<std::pair<int, int>> getUIPairs(gk_csr_t *mat, 
+    std::unordered_set<int>& invalidUsers, 
+    std::unordered_set<int>& invalidItems) {
+
+  std::vector<std::pair<int, int>> uiPairs;
+  for (int u = 0; u < mat->nrows; u++) {
+    //check if invalid user
+    auto search = invalidUsers.find(u);
+    if (search != invalidUsers.end()) {
+      //found n skip
+      continue;
+    }
+    
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      int item = mat->rowind[ii];
+      search = invalidItems.find(item);
+      if (search != invalidItems.end()) {
+        //found n skip
+        continue;
+      }
+      uiPairs.push_back(std::make_pair(u, item)); 
+    }
+  }
+
+  return uiPairs;
+}
+
+
+
