@@ -84,7 +84,7 @@ void writeVector(std::vector<double>& vec, const char *opFileName) {
 void dispVector(std::vector<double>& vec) {
   std::cout << "\n";
   for (int i = 0; i < vec.size(); i++) {
-    std::cout << vec[i] << " ";
+    std::cout << vec[i] << ",";
   }
   std::cout << std::endl;
 }

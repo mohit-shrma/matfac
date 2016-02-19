@@ -321,8 +321,6 @@ void computeConfScoresFrmModel(Data& data, Params& params) {
   std::vector<int> invalUsersVec = readVector("multiconf_invalUsers.txt");
   std::vector<int> invalItemsVec = readVector("multiconf_invalItems.txt");
 
-  std::cout << "\nnInvalidUsers: " << invalUsersVec.size();
-  std::cout << "\nnInvalidItems: " << invalItemsVec.size() <<std::endl;
 
   std::unordered_set<int> invalUsers;
   for (auto v: invalUsersVec) {
@@ -334,6 +332,14 @@ void computeConfScoresFrmModel(Data& data, Params& params) {
     invalItems.insert(v);
   }
 
+  std::cout << "\nnInvalidUsers: " << invalUsers.size();
+  std::cout << "\nnInvalidItems: " << invalItems.size() <<std::endl;
+  
+  //get number of ratings per user and item, i.e. frequency
+  auto rowColFreq = getRowColFreq(data.trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+  
   std::cout << "\nModel confidence: ";
   std::vector<double> confRMSEs = confBucketRMSEsWInval(origModel, fullModel, 
       bestModels, params.nUsers, params.nItems, 10, invalUsers, invalItems);
@@ -355,11 +361,20 @@ void computeConfScoresFrmModel(Data& data, Params& params) {
   dispVector(gprRMSEs);
   prefix = std::string(params.prefix) + "_gpr_bucket.txt";
   writeVector(gprRMSEs, prefix.c_str());
+
+  std::cout << "\nItem Freq confidence: ";
+  std::vector<double> itemRMSEs = itemFreqBucketRMSEsWInVal(origModel, fullModel,
+      params.nUsers, params.nItems, itemFreq, 
+      10, invalUsers, invalItems);
+  dispVector(itemRMSEs);
+  prefix = std::string(params.prefix) + "_iFreq_bucket.txt";
+  writeVector(itemRMSEs, prefix.c_str());
+ 
  
   std::cout << "\nPPR confidence: ";
   std::vector<double> pprRMSEs = pprBucketRMSEsFrmPRWInVal(origModel, fullModel,
-      params.nUsers, params.nItems, data.graphMat, 10, ".ppr", invalUsers, 
-      invalItems);
+      params.nUsers, params.nItems, data.graphMat, 10, 
+      ".ppr", invalUsers, invalItems);
   dispVector(pprRMSEs);
   prefix = std::string(params.prefix) + "_ppr_bucket.txt";
   writeVector(pprRMSEs, prefix.c_str());

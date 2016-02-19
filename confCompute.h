@@ -134,7 +134,7 @@ void updateBucketsSorted(int user, std::vector<double>& bucketScores,
     Model& fullModel, int nBuckets, int nItemsPerBuck);
 
 std::vector<double> itemFreqBucketRMSEsWInVal(Model& origModel, 
-    Model& fullModel, int nUsers, int nItems, float lambda, int max_niter, 
+    Model& fullModel, int nUsers, int nItems, 
     std::vector<double>& itemFreq, int nBuckets, 
     std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems);
 #endif

@@ -1147,13 +1147,13 @@ std::vector<double> confBucketRMSEsWInval(Model& origModel, Model& fullModel,
   int nInvalItems = invalItems.size();
   int nItemsPerBuck = (nItems-nInvalItems)/nBuckets;
   
-  std::cout << "\nnItemsPerBuck: " << nItemsPerBuck;
+  std::cout << "\nnItemsPerBuck: " << nItemsPerBuck << " nItems: " << nItems
+    << " nInvalItems: " << nInvalItems << " nBuckets: " << nBuckets;
 
   std::vector<double> bucketScores(nBuckets, 0.0);
   std::vector<double> bucketNNZ(nBuckets, 0.0);
   double score;
   std::vector<std::pair<int, double>> itemScores;
-  std::cout << "\nconfBucketRMSEs: \n"; 
   for (int user = 0; user < nUsers; user++) {
     //skip if user is invalid
     auto search = invalUsers.find(user);
@@ -1178,11 +1178,6 @@ std::vector<double> confBucketRMSEsWInval(Model& origModel, Model& fullModel,
     //add RMSEs to bucket as per ranking by itemscores
     updateBuckets(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,
         nBuckets, nItemsPerBuck, nItems-nInvalItems);
-   
-    if (0 == user % PROGU) {
-      std::cout << " u: " << user << std::endl;
-    }
-  
   }
 
   for (int i = 0; i < nBuckets; i++) {
@@ -1340,6 +1335,7 @@ std::vector<double> confOptBucketRMSEsWInVal(Model& origModel, Model& fullModel,
     std::unordered_set<int>& invalItems) {
   int nInvalItems = invalItems.size(); 
   int nItemsPerBuck = (nItems- nInvalItems)/nBuckets;
+  std::cout << "\nnItemsPerBuck: " << nItemsPerBuck;
   std::vector<double> bucketScores(nBuckets, 0.0);
   std::vector<double> bucketNNZ(nBuckets, 0.0);
   double score;
@@ -1350,7 +1346,6 @@ std::vector<double> confOptBucketRMSEsWInVal(Model& origModel, Model& fullModel,
     return a.second < b.second; 
   };
 
-  std::cout << "\nconfOptBucketRMSEs: \n"; 
   for (int user = 0; user < nUsers; user++) {
     //skip if user is invalid
     auto search = invalUsers.find(user);
@@ -1388,10 +1383,6 @@ std::vector<double> confOptBucketRMSEsWInVal(Model& origModel, Model& fullModel,
         bucketScores[bInd] += itemScores[j].second;
         bucketNNZ[bInd] += 1;
       }
-    }
-   
-    if (0 == user%PROGU) {
-      std::cout << " u: " << user << std::endl;
     }
   
   }
@@ -1634,7 +1625,7 @@ std::vector<double> gprBucketRMSEsWInVal(Model& origModel, Model& fullModel, int
 
 
 std::vector<double> itemFreqBucketRMSEsWInVal(Model& origModel, 
-    Model& fullModel, int nUsers, int nItems, float lambda, int max_niter, 
+    Model& fullModel, int nUsers, int nItems, 
     std::vector<double>& itemFreq, int nBuckets, 
     std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems) {
   
