@@ -305,6 +305,68 @@ void computeConf(Data& data, Params& params) {
 }
 
 
+void computeConfScoresFrmModel(Data& data, Params& params) {
+ 
+  std::vector<Model> bestModels;
+  bestModels.push_back(Model(params, "",
+        "", params.seed));
+  
+  std::cout << "\nnBestModels: " << bestModels.size();
+
+  Model fullModel(params, params.seed);
+  fullModel.load(params.initUFacFile, params.initIFacFile);
+  Model origModel(params, params.seed);
+  origModel.load(params.origUFacFile, params.origIFacFile);
+
+  std::vector<int> invalUsersVec = readVector("multiconf_invalUsers.txt");
+  std::vector<int> invalItemsVec = readVector("multiconf_invalItems.txt");
+
+  std::cout << "\nnInvalidUsers: " << invalUsersVec.size();
+  std::cout << "\nnInvalidItems: " << invalItemsVec.size() <<std::endl;
+
+  std::unordered_set<int> invalUsers;
+  for (auto v: invalUsersVec) {
+    invalUsers.insert(v);
+  }
+
+  std::unordered_set<int> invalItems;
+  for (auto v: invalItems) {
+    invalItems.insert(v);
+  }
+
+  std::cout << "\nModel confidence: ";
+  std::vector<double> confRMSEs = confBucketRMSEsWInval(origModel, fullModel, 
+      bestModels, params.nUsers, params.nItems, 10, invalUsers, invalItems);
+  dispVector(confRMSEs);
+  std::string prefix = std::string(params.prefix) + "_conf_bucket.txt";
+  writeVector(confRMSEs, prefix.c_str());
+
+  std::cout << "\nOptimal confidence: ";
+  std::vector<double> optRMSEs = confOptBucketRMSEsWInVal(origModel, fullModel,
+      params.nUsers, params.nItems, 10, invalUsers, invalItems);
+  dispVector(optRMSEs);
+  prefix = std::string(params.prefix) + "_opt_bucket.txt";
+  writeVector(optRMSEs, prefix.c_str());
+
+  std::cout << "\nGPR confidence: ";
+  std::vector<double> gprRMSEs = gprBucketRMSEsWInVal(origModel, fullModel,
+      params.nUsers, params.nItems, params.alpha, MAX_PR_ITER, data.graphMat, 
+      10, invalUsers, invalItems);
+  dispVector(gprRMSEs);
+  prefix = std::string(params.prefix) + "_gpr_bucket.txt";
+  writeVector(gprRMSEs, prefix.c_str());
+ 
+  std::cout << "\nPPR confidence: ";
+  std::vector<double> pprRMSEs = pprBucketRMSEsWInVal(origModel, fullModel,
+      params.nUsers, params.nItems, params.alpha, MAX_PR_ITER, data.graphMat, 
+      10, invalUsers, invalItems);
+  dispVector(pprRMSEs);
+  prefix = std::string(params.prefix) + "_ppr_bucket.txt";
+  writeVector(pprRMSEs, prefix.c_str());
+
+}
+
+
 void computePRScores(Data& data, Params& params) {
   Model fullModel(params, params.seed);
   fullModel.load(params.initUFacFile, params.initIFacFile);
@@ -363,53 +425,6 @@ void computeOptScores(Data& data, Params& params) {
   std::string prefix = std::string(params.prefix) + "_optconf_bucket.txt";
   writeVector(confRMSEs, prefix.c_str());
   dispVector(confRMSEs);
-}
-
-
-void computeConfScores(Data& data, Params& params) {
- 
-  std::vector<Model> bestModels;
-  bestModels.push_back(Model(params, "multiconf_partial_2_uFac_50000_5_0.001000.mat",
-        "multiconf_partial_2_iFac_19964_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "multiconf_partial_3_uFac_50000_5_0.001000.mat",
-        "multiconf_partial_3_iFac_19964_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "multiconf_partial_4_uFac_50000_5_0.001000.mat",
-        "multiconf_partial_4_iFac_19964_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "multiconf_partial_5_uFac_50000_5_0.001000.mat",
-        "multiconf_partial_5_iFac_19964_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "multiconf_partial_6_uFac_50000_5_0.001000.mat",
-        "multiconf_partial_6_iFac_19964_5_0.001000.mat", params.seed));
-  
-  std::cout << "\nnBestModels: " << bestModels.size();
-
-  Model fullModel(params, params.seed);
-  fullModel.load(params.initUFacFile, params.initIFacFile);
-  Model origModel(params, params.seed);
-  origModel.load(params.origUFacFile, params.origIFacFile);
-
-  std::vector<int> invalUsersVec = readVector("tempInval_invalUsers.txt");
-  std::vector<int> invalItemsVec = readVector("tempInval_invalItems.txt");
-
-
-  std::cout << "\nnInvalidUsers: " << invalUsersVec.size();
-  std::cout << "\nnInvalidItems: " << invalItemsVec.size() <<std::endl;
-
-  std::unordered_set<int> invalUsers;
-  for (auto v: invalUsersVec) {
-    invalUsers.insert(v);
-  }
-
-  std::unordered_set<int> invalItems;
-  for (auto v: invalItems) {
-    invalItems.insert(v);
-  }
-
-  std::string prefix = std::string(params.prefix) + "_mConfs.txt";
-  std::vector<double> confRMSEs = confBucketRMSEsWInvalOpPerUser(origModel, fullModel, 
-      bestModels, params.nUsers, params.nItems, 10, invalUsers, invalItems, prefix);
-  dispVector(confRMSEs);
-  prefix = std::string(params.prefix) + "_conf_bucket.txt";
-  writeVector(confRMSEs, prefix.c_str());
 }
 
 
@@ -663,8 +678,16 @@ void computeConfRMSECurvesFrmModel(Data& data, Params& params) {
   int nItems = data.trainMat->ncols;
 
   std::vector<Model> bestModels;
-  bestModels.push_back(Model(params, "",
-        "", params.seed));
+  bestModels.push_back(Model(params, "multiconf_partial_2_uFac_20000_5_0.001000.mat",
+        "multiconf_partial_2_iFac_8324_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multiconf_partial_3_uFac_20000_5_0.001000.mat",
+        "multiconf_partial_3_iFac_8324_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multiconf_partial_4_uFac_20000_5_0.001000.mat",
+        "multiconf_partial_4_iFac_8324_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multiconf_partial_5_uFac_20000_5_0.001000.mat",
+        "multiconf_partial_5_iFac_8324_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "multiconf_partial_6_uFac_20000_5_0.001000.mat",
+        "multiconf_partial_6_iFac_8324_5_0.001000.mat", params.seed));
 
   std::cout << "\nnBestModels: " << bestModels.size();
 
@@ -738,7 +761,7 @@ void computeConfRMSECurvesFrmModel(Data& data, Params& params) {
 
   std::vector<double> pprConfCurve = genPPRConfRMSECurve(testPairs, origModel,
       fullModel, data.graphMat, params.alpha, MAX_PR_ITER, 
-      ".ppr", 10);
+      "ml_rand_20kus_u99_i28_20kX8324.ppr", 10);
   std::cout << "\nppr conf RMSE curve:";
   dispVector(pprConfCurve);
   prefix = std::string(params.prefix) + "_ppr_rmse_curve_miss.txt";
@@ -904,69 +927,8 @@ int main(int argc , char* argv[]) {
 
   Data data (params);
 
-  //computeConf(data, params);
-  //computeConfCurve(data, params);
-  //computeConfCurveTest(data, params);
-  computeConfRMSECurvesFrmModel(data, params);
-  //computeConfCurvesFrmModel(data, params);
-  //computeConfScores(data, params);
-  //computePRScores2(data, params);
-  //computeGPRScores(data, params);
-  //computeOptScores(data, params);
-
-  //writeTrainTestMat(data.trainMat, "y_u21_i20_19980X81208.syn.train.csr", 
-  //    "y_u21_i20_19980X81208.syn.test.csr", 0.1, params.seed);
-  //writeCSRWSparsityStructure(data.trainMat, "", 
-  //    data.origUFac, data.origIFac, 5);
-  //writeCSRWHalfSparsity(data.trainMat, "mat.csr", 0, 10000, 0, 10000);
-
-  /*
-  int uStart = 0, uEnd = 10000;
-  int iStart = 0, iEnd = 10000;
-
-  std::cout << "\nnnz: " << nnzSubMat(data.trainMat, 0, data.trainMat->nrows, 
-                                      0, data.trainMat->ncols)
-    << " nnz submat: " << nnzSubMat(data.trainMat, uStart, uEnd, iStart, iEnd);
-
-
-    //create mf model instance
-    ModelMF trainModel(params, params.seed);
-    //trainModel.load(params.initUFacFile, params.initIFacFile);
-
-    //create mf model instance to store the best model
-    ModelMF bestModel(trainModel);
-    //bestModel.load(params.initUFacFile, params.initIFacFile);
-    
-    trainModel.train(data, bestModel);
-    //trainModel.subTrain(data, bestModel, uStart, uEnd, iStart, iEnd);
-    //trainModel.fixTrain(data, bestModel, uStart, uEnd, iStart, iEnd);
-
-    //std::string prefix(params.prefix);
-    //bestModel.save(prefix);
-  */  
-  /*
-    std::cout << "\n subMat Non-Obs RMSE("<<uStart<<","<<uEnd<<","<<iStart<<","<<iEnd<<"): "
-              << bestModel.subMatKnownRankNonObsErr(data, uStart, uEnd, iStart, iEnd) 
-              << "\n subMat Non-Obs RMSE("<<uEnd<<","<<data.nUsers<<","<<iStart<<","<<iEnd<<"): "
-              << bestModel.subMatKnownRankNonObsErr(data, uEnd, data.nUsers, iStart, iEnd) 
-              << "\n subMat Non-Obs RMSE("<<uStart<<","<<uEnd<<","<<iEnd<<","<<data.nItems<<"): "
-              << bestModel.subMatKnownRankNonObsErr(data, uStart, uEnd, iEnd, data.nItems)
-              << "\n subMat Non-Obs RMSE("<<uEnd<<","<<data.nUsers<<","<<iEnd<<","<<data.nItems<<"): "
-              << bestModel.subMatKnownRankNonObsErr(data, uEnd, data.nUsers, iEnd, data.nItems)
-              << std::endl;
-    */
-    /*
-    double subMatNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, uStart, uEnd, 
-                                                                    iStart, iEnd);
-    double matNonObsRMSE = bestModel.subMatKnownRankNonObsErr(data, 0, params.nUsers, 
-                                                                    0, params.nItems);
-
-    std::cout << "\nsubMatNonObs RMSE: " << subMatNonObsRMSE;
-    std::cout << "\nmatNonObs RMSE: " << matNonObsRMSE;
-    std::cout << "\nResult: " << " " << subMatNonObsRMSE << " " 
-      << matNonObsRMSE <<  std::endl;
-    //knownLowRankEval2(data, bestModel, params); 
-  */
+  computeConfScoresFrmModel(data, params);
+  
   return 0;
 }
 

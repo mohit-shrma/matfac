@@ -112,7 +112,10 @@ std::vector<double> genRMSECurve(
     }
     
     std::cout << "\nsumSE = " << sumSE;
-
+    std::cout << "\nbucketCounts = \n" << std::endl;
+    for (auto v: bucketNNZ) {
+      std::cout << v << " ";
+    }
     return bucketScores;
 }
 
@@ -1078,6 +1081,31 @@ void updateBuckets(int user, std::vector<double>& bucketScores,
 }
 
 
+void updateBucketsSorted(int user, std::vector<double>& bucketScores, 
+    std::vector<double>& bucketNNZ, 
+    std::vector<int>& sortedItems, Model& origModel,
+    Model& fullModel, int nBuckets, int nItemsPerBuck) {
+
+    int nItems = sortedItems.size(); 
+    for (int bInd = 0; bInd < nBuckets; bInd++) {
+      int start = bInd*nItemsPerBuck;
+      int end = (bInd+1)*nItemsPerBuck;
+      if (bInd == nBuckets-1 || end > nItems) {
+        end = nItems;
+      }
+      for (int j = start; j < end; j++) {
+        int item = sortedItems[j];
+        //compute square err for item
+        double r_ui = origModel.estRating(user, item);
+        double r_ui_est = fullModel.estRating(user, item);
+        double se = (r_ui - r_ui_est)*(r_ui - r_ui_est);
+        bucketScores[bInd] += se;
+        bucketNNZ[bInd] += 1;
+      }
+    }
+}
+
+
 std::vector<double> confBucketRMSEs(Model& origModel, Model& fullModel,
     std::vector<Model>& models, int nUsers, int nItems, int nBuckets) {
   
@@ -1576,6 +1604,11 @@ std::vector<double> gprBucketRMSEsWInVal(Model& origModel, Model& fullModel, int
   
   //sort items by DECREASING order in score
   std::sort(itemScores.begin(), itemScores.end(), comparePair);  
+  
+  std::vector<int> sortedItems;
+  for (auto const& itemScore: itemScores) {
+    sortedItems.push_back(itemScore.first);
+  }
 
   //add RMSEs to bucket as per ranking by itemscores
   for (int user = 0; user < nUsers; user++) {
@@ -1585,22 +1618,9 @@ std::vector<double> gprBucketRMSEsWInVal(Model& origModel, Model& fullModel, int
       //found n skip
       continue;
     }
-    for (int bInd = 0; bInd < nBuckets; bInd++) {
-      int start = bInd*nItemsPerBuck;
-      int end = (bInd+1)*nItemsPerBuck;
-      if (bInd == nBuckets-1 || end > nItems-nInvalItems) {
-        end = nItems-nInvalItems;
-      }
-      for (int j = start; j < end; j++) {
-        int item = itemScores[j].first;
-        //compute square err for item
-        double r_ui = origModel.estRating(user, item);
-        double r_ui_est = fullModel.estRating(user, item);
-        double se = (r_ui - r_ui_est)*(r_ui - r_ui_est);
-        bucketScores[bInd] += se;
-        bucketNNZ[bInd] += 1;
-      }
-    }
+    
+    updateBucketsSorted(user, bucketScores, bucketNNZ, sortedItems, origModel,
+        fullModel, nBuckets, nItemsPerBuck);
   }
 
   for (int i = 0; i < nBuckets; i++) {
@@ -1608,6 +1628,61 @@ std::vector<double> gprBucketRMSEsWInVal(Model& origModel, Model& fullModel, int
   }
     
   free(pr);
+  
+  return bucketScores;
+}
+
+
+std::vector<double> itemFreqBucketRMSEsWInVal(Model& origModel, 
+    Model& fullModel, int nUsers, int nItems, float lambda, int max_niter, 
+    std::vector<double>& itemFreq, int nBuckets, 
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems) {
+  
+  int nInvalItems = invalItems.size();
+  int nItemsPerBuck = (nItems-nInvalItems)/nBuckets;
+  std::vector<double> bucketScores(nBuckets, 0.0);
+  std::vector<double> bucketNNZ(nBuckets, 0.0);
+  std::vector<std::pair<int, double>> itemScores;
+
+  for (int item = 0; item < nItems; item++) {
+    //skip item if invalid
+    auto search = invalItems.find(item);
+    if (search != invalItems.end()) {
+      //found n skip
+      continue;
+    }
+    itemScores.push_back(std::make_pair(item, itemFreq[item])); 
+  }
+
+  //sort items by item frequency in decreasing order
+  auto comparePair = [](std::pair<int, double> a, std::pair<int, double> b) { 
+    return a.second > b.second; 
+  };
+  
+  //sort items by DECREASING order in score
+  std::sort(itemScores.begin(), itemScores.end(), comparePair);  
+  
+  std::vector<int> sortedItems;
+  for (auto const& itemScore: itemScores) {
+    sortedItems.push_back(itemScore.first);
+  }
+
+  //add RMSEs to bucket as per ranking by itemscores
+  for (int user = 0; user < nUsers; user++) {
+    //skip if user is invalid
+    auto search = invalUsers.find(user);
+    if (search != invalUsers.end()) {
+      //found n skip
+      continue;
+    }
+    
+    updateBucketsSorted(user, bucketScores, bucketNNZ, sortedItems, origModel,
+        fullModel, nBuckets, nItemsPerBuck);
+  }
+
+  for (int i = 0; i < nBuckets; i++) {
+    bucketScores[i] = sqrt(bucketScores[i]/bucketNNZ[i]);
+  }
   
   return bucketScores;
 }

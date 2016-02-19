@@ -126,6 +126,17 @@ std::vector<double> genPPRConfRMSECurve(std::vector<std::pair<int, int>>& testPa
 std::vector<double> genPPRConfRMSECurve(std::vector<std::pair<int, int>>& testPairs, 
     Model& origModel, Model& fullModel, gk_csr_t* graphMat, float lambda,
     int max_niter, const char* prFName, int nBuckets);
+
+
+void updateBucketsSorted(int user, std::vector<double>& bucketScores, 
+    std::vector<double>& bucketNNZ, 
+    std::vector<int>& sortedItems, Model& origModel,
+    Model& fullModel, int nBuckets, int nItemsPerBuck);
+
+std::vector<double> itemFreqBucketRMSEsWInVal(Model& origModel, 
+    Model& fullModel, int nUsers, int nItems, float lambda, int max_niter, 
+    std::vector<double>& itemFreq, int nBuckets, 
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems);
 #endif
 
 
