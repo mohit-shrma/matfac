@@ -18,7 +18,7 @@ double confScore(int user, int item, std::vector<Model>& models) {
 
 
 std::vector<double> genConfidenceCurve(
-    std::vector<std::tuple<int, int, double>> matConfScores, Model& origModel,
+    std::vector<std::tuple<int, int, double>>& matConfScores, Model& origModel,
     Model& fullModel, int nBuckets, float alpha) {
   
   std::vector<double> binWidths;
@@ -64,8 +64,118 @@ std::vector<double> genConfidenceCurve(
 }
 
 
+//passed a vector of <conf score, diff>
+std::vector<double> genRMSECurve(
+    std::vector<std::pair<double, double>>& confActPredDiffs,
+    int nBuckets) { 
+   
+    std::vector<double> bucketScores(nBuckets, 0);
+    std::vector<int> bucketNNZ(nBuckets, 0);
+
+    int nScores = confActPredDiffs.size();
+    std::cout << "\nnScores: " << nScores << std::endl;
+    int nItemsPerBuck = nScores/nBuckets;
+    
+    auto comparePair = [](std::pair<double, double> a, 
+        std::pair<double, double> b) { 
+      bool ret;
+      ret = a.first > b.first;
+      if (a.first == b.first) {
+        //break tie randomly
+        ret = std::rand() % 2;
+      } 
+      return ret; 
+    };
+    
+    //sort items by DECREASING order in score
+    std::sort(confActPredDiffs.begin(), confActPredDiffs.end(), comparePair);  
+   
+    for (int bInd = 0; bInd < nBuckets; bInd++) {
+      int start = bInd*nItemsPerBuck;
+      int end = (bInd+1)*nItemsPerBuck;
+      if (bInd == nBuckets-1 || end > nScores) {
+        end = nScores;
+      }
+      for (int j = start; j < end; j++) {
+        bucketScores[bInd] += confActPredDiffs[j].second*confActPredDiffs[j].second;
+        bucketNNZ[bInd] += 1;
+      }
+    }
+    
+    for (int bInd = 0; bInd < nBuckets; bInd++) {
+      bucketScores[bInd] = sqrt(bucketScores[bInd]/bucketNNZ[bInd]);
+    }
+
+    return bucketScores;
+}
+
+
+std::vector<double> genOptConfRMSECurve(
+    std::vector<std::pair<int, int>>& testPairs, Model& origModel,
+    Model& fullModel, int nBuckets) {
+  std::vector<double> bucketScores(nBuckets, 0);
+  std::vector<int> bucketNNZ(nBuckets, 0);
+  int nScores = testPairs.size();
+  std::cout << "\nnScores: " << nScores << std::endl;
+  int nItemsPerBuck = nScores/nBuckets;
+  
+  std::vector<double> scores;
+  for (auto const& testPair: testPairs) {
+    int user = testPair.first;
+    int item = testPair.second;
+    double r_ui = origModel.estRating(user, item);
+    double r_ui_est = fullModel.estRating(user, item);
+    double w = fabs(r_ui - r_ui_est);
+    scores.push_back(w);
+  }
+  
+  //sort scores in ascending order
+  std::sort(scores.begin(), scores.end());
+ 
+  std::vector<double> widths;
+  for (int bInd = 0; bInd < nBuckets; bInd++) {
+    int start = bInd*nItemsPerBuck;
+    int end = (bInd+1)*nItemsPerBuck;
+    if (bInd == nBuckets-1 || end > nScores) {
+      end = nScores;
+    }
+    for (int j = start; j < end; j++) {
+      bucketScores[bInd] += scores[j]*scores[j];
+      bucketNNZ[bInd] += 1;
+    }
+  }
+
+  for (int bInd = 0; bInd < nBuckets; bInd++) {
+    bucketScores[bInd] = sqrt(bucketScores[bInd]/bucketNNZ[bInd]);
+  }
+
+  return bucketScores;
+}
+
+
+std::vector<double> genUserConfRMSECurve(std::vector<std::pair<int, int>>& testPairs, 
+    Model& origModel, Model& fullModel, int nBuckets,  
+    std::vector<double>& userFreq) {
+  //confscore, width
+  std::vector<std::pair<double, double>> scores;
+  int nScores = testPairs.size();
+  std::cout << "\nnScores: " << nScores << std::endl;
+
+  for (auto const& testPair: testPairs) {
+    int user = testPair.first;
+    int item = testPair.second;
+    double r_ui = origModel.estRating(user, item);
+    double r_ui_est = fullModel.estRating(user, item);
+    double w = fabs(r_ui - r_ui_est);
+    scores.push_back(std::make_pair(userFreq[user], w));
+  }
+  
+  return genRMSECurve(scores, nBuckets);
+}
+
+
 std::vector<double> genOptConfidenceCurve(
-    std::vector<std::pair<int, int>> testPairs, Model& origModel,
+    std::vector<std::pair<int, int>>& testPairs, Model& origModel,
     Model& fullModel, int nBuckets, float alpha) {
   std::vector<double> binWidths;
   std::vector<double> scores;
@@ -106,7 +216,7 @@ std::vector<double> genOptConfidenceCurve(
 }
 
 
-std::vector<double> genUserConfCurve(std::vector<std::pair<int, int>> testPairs, 
+std::vector<double> genUserConfCurve(std::vector<std::pair<int, int>>& testPairs, 
     Model& origModel, Model& fullModel, int nBuckets, float alpha, 
     std::vector<double>& userFreq) {
   std::vector<double> binWidths;
@@ -154,7 +264,7 @@ std::vector<double> genUserConfCurve(std::vector<std::pair<int, int>> testPairs,
 }
 
 
-std::vector<double> genItemConfCurve(std::vector<std::pair<int, int>> testPairs, 
+std::vector<double> genItemConfCurve(std::vector<std::pair<int, int>>& testPairs, 
     Model& origModel, Model& fullModel, int nBuckets, float alpha, 
     std::vector<double>& itemFreq) {
   std::vector<double> binWidths;

@@ -657,6 +657,65 @@ void computeConfCurvesFrmModel(Data& data, Params& params) {
 }
 
 
+void computeConfRMSECurvesFrmModel(Data& data, Params& params) {
+  
+  int nUsers = data.trainMat->nrows;
+  int nItems = data.trainMat->ncols;
+
+  std::vector<Model> bestModels;
+  bestModels.push_back(Model(params, "",
+        "", params.seed));
+
+  std::cout << "\nnBestModels: " << bestModels.size();
+
+  Model fullModel(params, params.seed);
+  fullModel.load(params.initUFacFile, params.initIFacFile);
+  Model origModel(params, params.seed);
+  origModel.load(params.origUFacFile, params.origIFacFile);
+
+  std::vector<int> invalUsersVec = readVector("multiconf_invalUsers.txt");
+  std::vector<int> invalItemsVec = readVector("multiconf_invalItems.txt");
+
+  std::cout << "\nnInvalidUsers: " << invalUsersVec.size();
+  std::cout << "\nnInvalidItems: " << invalItemsVec.size() << std::endl;
+
+  std::unordered_set<int> invalUsers;
+  for (auto v: invalUsersVec) {
+    invalUsers.insert(v);
+  }
+
+  std::unordered_set<int> invalItems;
+  for (auto v: invalItems) {
+    invalItems.insert(v);
+  }
+
+
+  double halfRatCount = ((double)nUsers*(double)nItems)/2.0;
+  int testSize = std::min((double)MAX_MISS_RATS, halfRatCount);
+  std::vector<std::pair<int, int>> testPairs = getTestPairs(data.trainMat, invalUsers,
+      invalItems, testSize, params.seed);
+
+  std::vector<double> optConfCurve = genOptConfRMSECurve(testPairs, origModel,
+      fullModel, 10);
+  std::cout << "\nOpt RMSE curve: ";
+  dispVector(optConfCurve);
+  std::string prefix = std::string(params.prefix) + "_opt_rmse_curve_miss.txt";
+  writeVector(optConfCurve, prefix.c_str());
+
+  //get number of ratings per user and item, i.e. frequency
+  auto rowColFreq = getRowColFreq(data.trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+
+  std::vector<double> userConfCurve = genUserConfRMSECurve(testPairs, origModel,
+      fullModel, 10, userFreq);
+  std::cout << "\nuser RMSE curve: ";
+  dispVector(userConfCurve);
+  prefix = std::string(params.prefix) + "_user_rmse_curve_miss.txt";
+  writeVector(userConfCurve, prefix.c_str());
+
+}
+
 void computeConfCurveTest(Data& data, Params& params) {
   
   int nUsers = data.trainMat->nrows;
@@ -816,7 +875,8 @@ int main(int argc , char* argv[]) {
 
   //computeConf(data, params);
   //computeConfCurve(data, params);
-  computeConfCurveTest(data, params);
+  //computeConfCurveTest(data, params);
+  computeConfRMSECurvesFrmModel(data, params);
   //computeConfCurvesFrmModel(data, params);
   //computeConfScores(data, params);
   //computePRScores2(data, params);

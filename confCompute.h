@@ -41,7 +41,7 @@ std::vector<double> confBucketRMSEsWInvalOpPerUser(Model& origModel, Model& full
     std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems,
     std::string opFileName);
 std::vector<double> genConfidenceCurve(
-    std::vector<std::tuple<int, int, double>> matConfScores, Model& origModel,
+    std::vector<std::tuple<int, int, double>>& matConfScores, Model& origModel,
     Model& fullModel, int nBuckets, float alpha);
 std::vector<double> computeModConf(gk_csr_t* mat, 
     std::vector<Model>& models, std::unordered_set<int>& invalUsers,
@@ -88,15 +88,26 @@ std::vector<std::pair<int, int>> getTestPairs(gk_csr_t* mat,
     int testSize, int seed);
 
 std::vector<double> genOptConfidenceCurve(
-    std::vector<std::pair<int, int>> testPairs, Model& origModel,
+    std::vector<std::pair<int, int>>& testPairs, Model& origModel,
     Model& fullModel, int nBuckets, float alpha);
 
-std::vector<double> genItemConfCurve(std::vector<std::pair<int, int>> testPairs, 
+std::vector<double> genItemConfCurve(std::vector<std::pair<int, int>>& testPairs, 
     Model& origModel, Model& fullModel, int nBuckets, float alpha, 
     std::vector<double>& itemFreq);
-std::vector<double> genUserConfCurve(std::vector<std::pair<int, int>> testPairs, 
+std::vector<double> genUserConfCurve(std::vector<std::pair<int, int>>& testPairs, 
     Model& origModel, Model& fullModel, int nBuckets, float alpha, 
     std::vector<double>& userFreq);
+
+std::vector<double> genRMSECurve(
+    std::vector<std::pair<double, double>>& confActPredDiffs,
+    int nBuckets);
+std::vector<double> genUserConfRMSECurve(std::vector<std::pair<int, int>>& testPairs, 
+    Model& origModel, Model& fullModel, int nBuckets,  
+    std::vector<double>& userFreq);
+std::vector<double> genOptConfRMSECurve(
+    std::vector<std::pair<int, int>>& testPairs, Model& origModel,
+    Model& fullModel, int nBuckets);
+
 #endif
 
 
