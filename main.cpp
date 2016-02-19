@@ -645,7 +645,7 @@ void computeConfCurvesFrmModel(Data& data, Params& params) {
   writeVector(gprCurve, prefix.c_str());
   std::cout << "\nGPR confidence Curve:";
   dispVector(gprCurve);
-
+  /*
   std::vector<double> pprCurve = computeMissingPPRConfExtSamp(data.trainMat, 
       data.graphMat, params.alpha, MAX_PR_ITER, origModel, 
       fullModel, 10, 0.05, ".ppr", testPairs);
@@ -653,7 +653,7 @@ void computeConfCurvesFrmModel(Data& data, Params& params) {
   writeVector(pprCurve, prefix.c_str());
   std::cout << "\nPPR confidence Curve:";
   dispVector(pprCurve);
-
+  */
 }
 
 
@@ -695,13 +695,14 @@ void computeConfRMSECurvesFrmModel(Data& data, Params& params) {
   std::vector<std::pair<int, int>> testPairs = getTestPairs(data.trainMat, invalUsers,
       invalItems, testSize, params.seed);
 
+  std::string prefix = std::string(params.prefix) + "_opt_rmse_curve_miss.txt";
+  
   std::vector<double> optConfCurve = genOptConfRMSECurve(testPairs, origModel,
       fullModel, 10);
   std::cout << "\nOpt RMSE curve: ";
   dispVector(optConfCurve);
-  std::string prefix = std::string(params.prefix) + "_opt_rmse_curve_miss.txt";
   writeVector(optConfCurve, prefix.c_str());
-
+  
   //get number of ratings per user and item, i.e. frequency
   auto rowColFreq = getRowColFreq(data.trainMat);
   auto userFreq = rowColFreq.first;
@@ -714,7 +715,36 @@ void computeConfRMSECurvesFrmModel(Data& data, Params& params) {
   prefix = std::string(params.prefix) + "_user_rmse_curve_miss.txt";
   writeVector(userConfCurve, prefix.c_str());
 
+  std::vector<double> itemConfCurve = genItemConfRMSECurve(testPairs, origModel,
+      fullModel, 10, itemFreq);
+  std::cout << "\nItem RMSE curve:";
+  dispVector(itemConfCurve);
+  prefix = std::string(params.prefix) + "_item_rmse_curve_miss.txt";
+  writeVector(itemConfCurve, prefix.c_str());
+
+  std::vector<double> modelConfCurve = genModelConfRMSECurve(testPairs, origModel,
+      fullModel, bestModels, 10);
+  std::cout << "\nModel conf RMSE curve:";
+  dispVector(modelConfCurve);
+  prefix = std::string(params.prefix) + "_model_rmse_curve_miss.txt";
+  writeVector(modelConfCurve, prefix.c_str());
+
+  std::vector<double> gprConfCurve = genGPRConfRMSECurve(testPairs, origModel,
+      fullModel, data.graphMat, params.alpha, MAX_PR_ITER, 10);
+  std::cout << "\nGpr conf RMSE curve:";
+  dispVector(gprConfCurve);
+  prefix = std::string(params.prefix) + "_gpr_rmse_curve_miss.txt";
+  writeVector(gprConfCurve, prefix.c_str());
+
+  std::vector<double> pprConfCurve = genPPRConfRMSECurve(testPairs, origModel,
+      fullModel, data.graphMat, params.alpha, MAX_PR_ITER, 
+      ".ppr", 10);
+  std::cout << "\nppr conf RMSE curve:";
+  dispVector(pprConfCurve);
+  prefix = std::string(params.prefix) + "_ppr_rmse_curve_miss.txt";
+  writeVector(pprConfCurve, prefix.c_str());  
 }
+
 
 void computeConfCurveTest(Data& data, Params& params) {
   
@@ -862,6 +892,7 @@ void computeConfCurveTest(Data& data, Params& params) {
   dispVector(pprCurve);
   
 }
+
 
 int main(int argc , char* argv[]) {
 

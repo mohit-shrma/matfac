@@ -56,7 +56,8 @@ std::vector<double> genConfidenceCurve(
     }
     //sort widths in ascending order
     std::sort(widths.begin(), widths.end());
-    binWidths.push_back(widths[(1-alpha)*widths.size()]);
+    int ind = ((float)(1.0 - alpha))*widths.size();
+    binWidths.push_back(widths[ind]);
   }
 
 
@@ -80,10 +81,12 @@ std::vector<double> genRMSECurve(
         std::pair<double, double> b) { 
       bool ret;
       ret = a.first > b.first;
+      /* 
       if (a.first == b.first) {
         //break tie randomly
         ret = std::rand() % 2;
-      } 
+      }
+      */
       return ret; 
     };
     
@@ -102,9 +105,13 @@ std::vector<double> genRMSECurve(
       }
     }
     
+    double sumSE = 0;
     for (int bInd = 0; bInd < nBuckets; bInd++) {
+      sumSE +=  bucketScores[bInd];
       bucketScores[bInd] = sqrt(bucketScores[bInd]/bucketNNZ[bInd]);
     }
+    
+    std::cout << "\nsumSE = " << sumSE;
 
     return bucketScores;
 }
@@ -144,11 +151,12 @@ std::vector<double> genOptConfRMSECurve(
       bucketNNZ[bInd] += 1;
     }
   }
-
+  double sumSE = 0;
   for (int bInd = 0; bInd < nBuckets; bInd++) {
+    sumSE += bucketScores[bInd];
     bucketScores[bInd] = sqrt(bucketScores[bInd]/bucketNNZ[bInd]);
   }
-
+  std::cout << "\nsumSE = " << sumSE;
   return bucketScores;
 }
 
@@ -168,6 +176,172 @@ std::vector<double> genUserConfRMSECurve(std::vector<std::pair<int, int>>& testP
     double r_ui_est = fullModel.estRating(user, item);
     double w = fabs(r_ui - r_ui_est);
     scores.push_back(std::make_pair(userFreq[user], w));
+  }
+  
+  return genRMSECurve(scores, nBuckets);
+}
+
+
+std::vector<double> genItemConfRMSECurve(std::vector<std::pair<int, int>>& testPairs, 
+    Model& origModel, Model& fullModel, int nBuckets,  
+    std::vector<double>& itemFreq) {
+  //confscore, width
+  std::vector<std::pair<double, double>> scores;
+  int nScores = testPairs.size();
+  std::cout << "\nnScores: " << nScores << std::endl;
+
+  for (auto const& testPair: testPairs) {
+    int user = testPair.first;
+    int item = testPair.second;
+    double r_ui = origModel.estRating(user, item);
+    double r_ui_est = fullModel.estRating(user, item);
+    double w = fabs(r_ui - r_ui_est);
+    scores.push_back(std::make_pair(itemFreq[item], w));
+  }
+  
+  return genRMSECurve(scores, nBuckets);
+}
+
+
+std::vector<double> genModelConfRMSECurve(std::vector<std::pair<int, int>>& testPairs, 
+    Model& origModel, Model& fullModel, std::vector<Model>& models,
+    int nBuckets) {
+  //confscore, width
+  std::vector<std::pair<double, double>> scores;
+  int nScores = testPairs.size();
+  std::cout << "\nnScores: " << nScores << std::endl;
+
+  for (auto const& testPair: testPairs) {
+    int user = testPair.first;
+    int item = testPair.second;
+    double r_ui = origModel.estRating(user, item);
+    double r_ui_est = fullModel.estRating(user, item);
+    double w = fabs(r_ui - r_ui_est);
+    double cScore = confScore(user, item, models);
+    scores.push_back(std::make_pair(cScore, w));
+  }
+  
+  return genRMSECurve(scores, nBuckets);
+}
+
+
+std::vector<double> genGPRConfRMSECurve(std::vector<std::pair<int, int>>& testPairs, 
+    Model& origModel, Model& fullModel, gk_csr_t* graphMat, float lambda,
+    int max_niter, int nBuckets) {
+  //confscore, width
+  std::vector<std::pair<double, double>> scores;
+  int nScores = testPairs.size();
+  std::cout << "\nnScores: " << nScores << std::endl;
+
+  int nUsers = origModel.nUsers;
+
+  float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
+  memset(pr, 0, sizeof(float)*graphMat->nrows);
+  //assign all users equal restart probability
+  for (int user = 0; user < nUsers; user++) {
+    pr[user] = 1.0/nUsers;
+  }
+  
+  //run global page rank on the graph w.r.t. users
+  gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
+ 
+  for (auto const& testPair: testPairs) {
+    int user = testPair.first;
+    int item = testPair.second;
+    double r_ui = origModel.estRating(user, item);
+    double r_ui_est = fullModel.estRating(user, item);
+    double w = fabs(r_ui - r_ui_est);
+    double confScore = pr[nUsers + item];
+    scores.push_back(std::make_pair(confScore, w));
+  }
+  
+  return genRMSECurve(scores, nBuckets);
+}
+
+
+std::vector<double> genPPRConfRMSECurve(std::vector<std::pair<int, int>>& testPairs, 
+    Model& origModel, Model& fullModel, gk_csr_t* graphMat, float lambda,
+    int max_niter, const char* prFName, int nBuckets) {
+  
+  std::ifstream inFile (prFName);
+  std::string line, token;
+  std::string delimiter = " ";
+  size_t pos;
+  double score;
+  int nUsers = origModel.nUsers;
+  int nItems = origModel.nItems;
+
+  //confscore, width
+  std::vector<std::pair<double, double>> scores;
+  
+  //ascending order comp
+  auto comparePairs = [] (std::pair<int, int> a, std::pair<int, int> b) {
+    return a.first < b.first;
+  };
+  //sort testPairs in ascending order i.e., by user id
+  std::sort(testPairs.begin(), testPairs.end(), comparePairs);
+  
+  if (inFile.is_open()) {
+
+    int testInd = 0;
+
+    for (int user = 0 ; user < nUsers; user++) {
+     
+      //read ppr for user
+      getline(inFile, line);
+      
+      std::unordered_set<int> uValItems;
+      while (testPairs[testInd].first == user) {
+        //curr test user is same as user, collect the user's item
+        int item = testPairs[testInd].second;  
+        uValItems.insert(item);
+        testInd++;
+      }
+
+      if (uValItems.size() == 0) {
+        continue;
+      }
+
+      int foundItems = 0;   
+      for (int i = 0; i < nItems; i++) {
+        
+        //split the line
+        pos = line.find(delimiter);
+        token = line.substr(0, pos);
+        int item = std::stoi(token)-nUsers; 
+        
+        line.erase(0, pos + delimiter.length());
+        
+        pos = line.find(delimiter);
+        token = line.substr(0, pos);
+        score = std::stod(token);
+        line.erase(0, pos + delimiter.length());
+ 
+        //check if item was sampled
+        auto search = uValItems.find(item);
+        if (search != uValItems.end()) {
+          //found
+          foundItems++;
+          double r_ui = origModel.estRating(user, item);
+          double r_ui_est = fullModel.estRating(user, item);
+          double w = fabs(r_ui - r_ui_est);
+          scores.push_back(std::make_pair(score, w));
+        }
+        
+        if (foundItems == uValItems.size()) {
+          //allvalid items found
+          break;
+        }
+      }
+
+      if (user%PROGU == 0) {
+        std::cout << user << " done..." << std::endl; 
+      }
+    
+    }
+
+  } else {
+    std::cerr << "\nCan't open file: " << prFName;
   }
   
   return genRMSECurve(scores, nBuckets);

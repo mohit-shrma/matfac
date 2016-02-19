@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <tuple>
 #include <cmath>
-
+#include <cstdlib>
 
 double confScore(int user, int item, std::vector<Model>& models);
 std::vector<double> confBucketRMSEs(Model& origModel, Model& fullModel,
@@ -108,6 +108,24 @@ std::vector<double> genOptConfRMSECurve(
     std::vector<std::pair<int, int>>& testPairs, Model& origModel,
     Model& fullModel, int nBuckets);
 
+std::vector<double> genGPRConfRMSECurve(std::vector<std::pair<int, int>>& testPairs, 
+    Model& origModel, Model& fullModel, gk_csr_t* graphMat, float lambda,
+    int max_niter, int nBuckets);
+
+std::vector<double> genModelConfRMSECurve(std::vector<std::pair<int, int>>& testPairs, 
+    Model& origModel, Model& fullModel, std::vector<Model>& models,
+    int nBuckets);
+
+std::vector<double> genItemConfRMSECurve(std::vector<std::pair<int, int>>& testPairs, 
+    Model& origModel, Model& fullModel, int nBuckets,  
+    std::vector<double>& itemFreq);
+std::vector<double> genPPRConfRMSECurve(std::vector<std::pair<int, int>>& testPairs, 
+    Model& origModel, Model& fullModel, gk_csr_t* graphMat, float lambda,
+    int max_niter, const char* prFName, int nBuckets);
+
+std::vector<double> genPPRConfRMSECurve(std::vector<std::pair<int, int>>& testPairs, 
+    Model& origModel, Model& fullModel, gk_csr_t* graphMat, float lambda,
+    int max_niter, const char* prFName, int nBuckets);
 #endif
 
 
