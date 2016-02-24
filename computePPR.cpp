@@ -21,8 +21,11 @@ std::vector<std::pair<int,float>> getSortedItems(int u, gk_csr_t *mat,
   pr[u] = 1.0;
   
   //run personalized page rank on the graph w.r.t. u
-  gk_rw_PageRank(mat, lambda, 0.0001, max_niter, pr);
- 
+  int iter = gk_rw_PageRank(mat, lambda, 0.0001, max_niter, pr);
+  
+  std::cout << "\nU: " << u << " nIters: " << iter;
+
+
   //get pr score of items
   std::vector<std::pair<int, float>> itemScores;
   for (int i = nUsers; i < nUsers + nItems; i++) {
@@ -81,8 +84,10 @@ void writeSortedItemsByGlobalPR(gk_csr_t *mat, int nUsers, int nItems, float lam
   
   std::cout << "\nsum pr: " << sm << std::endl;
  
-  gk_rw_PageRank(mat, lambda, 0.0001, max_niter, pr);
+  int iter = gk_rw_PageRank(mat, lambda, 0.0001, max_niter, pr);
   
+  std::cout << "\ngpr nIters: " << iter;
+
   //get pr score of items
   std::vector<std::pair<int, float>> itemScores;
   for (int i = nUsers; i < nUsers + nItems; i++) {
@@ -126,10 +131,11 @@ int main(int argc, char* argv[]) {
   std::cout << "\nncols: " << graphMat->ncols;
   std::cout << "\nnUsers: " << nUsers;
   std::cout << "\nnItems: " << nItems;
+  std::cout << "\nmax_niter: " << max_niter;
 
-  writeSortedItemsByPR(graphMat, nUsers, nItems, lambda, max_niter, opFileName);
-  //writeSortedItemsByGlobalPR(graphMat, nUsers, nItems, lambda, max_niter, 
-  //    opFileName);
+  //writeSortedItemsByPR(graphMat, nUsers, nItems, lambda, max_niter, opFileName);
+  writeSortedItemsByGlobalPR(graphMat, nUsers, nItems, lambda, max_niter, 
+      opFileName);
 
   gk_csr_Free(&graphMat);
   return 0;
