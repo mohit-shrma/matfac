@@ -48,4 +48,7 @@ void dispContainer(Iter it, Iter end) {
     }
 }
 
+void writeBlkDiagJoinedCSR(const char* mat1Name, const char* mat2Name, 
+    const char* opFileName);
+
 #endif

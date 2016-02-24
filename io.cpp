@@ -181,3 +181,56 @@ bool isFileExist(const char *fileName) {
   return infile.good();
 }
 
+
+void writeBlkDiagJoinedCSR(const char* mat1Name, const char* mat2Name, 
+    const char* opFileName) {
+ 
+  gk_csr_t *mat1 = gk_csr_Read((char*)mat1Name, GK_CSR_FMT_CSR, 1, 0);
+  gk_csr_t *mat2 = gk_csr_Read((char*)mat2Name, GK_CSR_FMT_CSR, 1, 0);
+
+  std::cout << "\n mat1 nrows: " << mat1->nrows << " ncols: " << mat1->ncols;
+  std::cout << "\n mat2 nrows: " << mat2->nrows << " ncols: " << mat2->ncols << std::endl;
+  
+
+  std::ofstream opFile(opFileName);
+
+  if (opFile.is_open()) {
+
+    int nItems1 = mat1->ncols;
+  
+    //write first block on the diagonal
+    for (int u = 0; u < mat1->nrows; u++) {
+      for (int ii = mat1->rowptr[u]; ii < mat1->rowptr[u+1]; ii++) {
+        int item = mat1->rowind[ii];
+        float rating = mat1->rowval[ii];
+        opFile << item << " " << rating << " ";
+      }
+      opFile << std::endl;
+    }
+
+    //write second block on the diagonal, items offset by prev mat items
+    for (int u = 0; u < mat2->nrows; u++) {
+      for (int ii = mat2->rowptr[u]; ii < mat2->rowptr[u+1]; ii++) {
+        int item = mat2->rowind[ii];
+        float rating = mat2->rowval[ii];
+        opFile << (item+nItems1) << " " << rating << " ";
+      }
+      opFile << std::endl;
+    }
+    
+    opFile.close();
+  } else {
+    std::cerr << "\nCan't open file: " << opFileName  << std::endl;
+  }
+  
+
+  if (NULL != mat1) {
+    gk_csr_Free(&mat1);
+  }
+  
+  if (NULL != mat2) {
+    gk_csr_Free(&mat2);
+  }
+}
+
+
