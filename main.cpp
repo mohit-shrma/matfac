@@ -268,24 +268,27 @@ void computeConf(Data& data, Params& params) {
   prefix = std::string(params.prefix) + "_invalItems.txt";
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
 
+  //get number of ratings per user and item, i.e. frequency
+  auto rowColFreq = getRowColFreq(data.trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+  
   //compute confidence using the best models for 10 buckets
   std::vector<double> confRMSEs = confBucketRMSEsWInval(origModel, fullBestModel, 
       bestModels, params.nUsers, params.nItems, 10, invalidUsers, invalidItems);
-  std::cout << "\nConfidence bucket RMSEs: ";
+  std::cout << "\nModel Confidence bucket RMSEs: ";
   dispVector(confRMSEs);
-  prefix = std::string(params.prefix) + "_mconf_bucket.txt";
+  prefix = std::string(params.prefix) + "_conf_bucket.txt";
   writeVector(confRMSEs, prefix.c_str());
 
-  //compute global page rank confidence
-  //NOTE: using params.alpha as (1 - restartProb)
-  std::vector<double> gprRMSEs = gprBucketRMSEsWInVal(origModel, fullBestModel, 
-    params.nUsers, params.nItems, params.alpha, MAX_PR_ITER, 
-    data.graphMat, 10, invalidUsers, invalidItems);
-  prefix = std::string(params.prefix) + "_gprconf_bucket.txt";
-  writeVector(gprRMSEs, prefix.c_str());
-  std::cout << "\nGPR confidence RMSEs:";
-  dispVector(gprRMSEs);
-
+  std::cout << "\nItem Freq confidence: ";
+  std::vector<double> itemRMSEs = itemFreqBucketRMSEsWInVal(origModel, fullModel,
+      params.nUsers, params.nItems, itemFreq, 
+      10, invalidUsers, invalidItems);
+  dispVector(itemRMSEs);
+  prefix = std::string(params.prefix) + "_iFreq_bucket.txt";
+  writeVector(itemRMSEs, prefix.c_str());
+ 
   //compute optimal confidence
   std::vector<double> optRMSEs = confOptBucketRMSEsWInVal(origModel, fullBestModel, 
     params.nUsers, params.nItems, 10, invalidUsers, invalidItems);
@@ -294,19 +297,35 @@ void computeConf(Data& data, Params& params) {
   std::cout << "\nOptimal confidence RMSEs:";
   dispVector(optRMSEs);
 
-  //compute ppr confidence
-  std::vector<double> pprRMSEs = pprBucketRMSEsWInVal(origModel, fullBestModel, 
+  //compute global page rank confidence
+  //NOTE: using params.alpha as (1 - restartProb)
+  std::vector<double> gprRMSEs = gprBucketRMSEsWInVal(origModel, fullBestModel, 
     params.nUsers, params.nItems, params.alpha, MAX_PR_ITER, 
     data.graphMat, 10, invalidUsers, invalidItems);
-  prefix = std::string(params.prefix) + "_pprconf_bucket.txt";
+  prefix = std::string(params.prefix) + "_gprconf_" + std::to_string(params.alpha ) + "_bucket.txt";
+  writeVector(gprRMSEs, prefix.c_str());
+  std::cout << "\nGPR confidence RMSEs:";
+  dispVector(gprRMSEs);
+
+   
+  //compute ppr confidence
+  std::vector<double> pprRMSEs = pprBucketRMSEsFrmPRWInVal(origModel, fullBestModel,
+      params.nUsers, params.nItems, data.graphMat, 10, 
+      ".ppr", invalidUsers, invalidItems);
+  /*
+   std::vector<double> pprRMSEs = pprBucketRMSEsWInVal(origModel, fullBestModel, 
+    params.nUsers, params.nItems, params.alpha, MAX_PR_ITER, 
+    data.graphMat, 10, invalidUsers, invalidItems);
+  */
+  prefix = std::string(params.prefix) + "_pprconf_"+ std::to_string(params.alpha ) + "_bucket.txt";
   writeVector(pprRMSEs, prefix.c_str());
   std::cout << "\nPPR confidence RMSEs:";
   dispVector(pprRMSEs);
+  
 }
 
 
 void computeConfScoresFrmModel(Data& data, Params& params) {
- 
   std::vector<Model> bestModels;
   bestModels.push_back(Model(params, "",
         "", params.seed));
@@ -339,6 +358,12 @@ void computeConfScoresFrmModel(Data& data, Params& params) {
   auto rowColFreq = getRowColFreq(data.trainMat);
   auto userFreq = rowColFreq.first;
   auto itemFreq = rowColFreq.second;
+
+  /*
+  comparePPR2GPR(params.nUsers, params.nItems, data.graphMat,
+      params.alpha, MAX_PR_ITER,
+      "flix_y_10000x15905_0.8.ppr", "ppr2GPR_0_2.txt");  
+  */
   
   std::cout << "\nModel confidence: ";
   std::vector<double> confRMSEs = confBucketRMSEsWInval(origModel, fullModel, 
@@ -359,7 +384,7 @@ void computeConfScoresFrmModel(Data& data, Params& params) {
       params.nUsers, params.nItems, params.alpha, MAX_PR_ITER, data.graphMat, 
       10, invalUsers, invalItems);
   dispVector(gprRMSEs);
-  prefix = std::string(params.prefix) + "_gpr_bucket.txt";
+  prefix = std::string(params.prefix) + "_gpr_" + std::to_string(params.alpha) + "_bucket.txt";
   writeVector(gprRMSEs, prefix.c_str());
 
   std::cout << "\nItem Freq confidence: ";
@@ -374,11 +399,11 @@ void computeConfScoresFrmModel(Data& data, Params& params) {
   std::cout << "\nPPR confidence: ";
   std::vector<double> pprRMSEs = pprBucketRMSEsFrmPRWInVal(origModel, fullModel,
       params.nUsers, params.nItems, data.graphMat, 10, 
-      ".ppr", invalUsers, invalItems);
+      "ppr", invalUsers, invalItems);
   dispVector(pprRMSEs);
-  prefix = std::string(params.prefix) + "_ppr_bucket.txt";
+  prefix = std::string(params.prefix) + "_ppr_" + std::to_string(params.alpha) + "_bucket.txt";
   writeVector(pprRMSEs, prefix.c_str());
-
+  
 }
 
 
@@ -693,16 +718,8 @@ void computeConfRMSECurvesFrmModel(Data& data, Params& params) {
   int nItems = data.trainMat->ncols;
 
   std::vector<Model> bestModels;
-  bestModels.push_back(Model(params, "multiconf_partial_2_uFac_20000_5_0.001000.mat",
-        "multiconf_partial_2_iFac_8324_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "multiconf_partial_3_uFac_20000_5_0.001000.mat",
-        "multiconf_partial_3_iFac_8324_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "multiconf_partial_4_uFac_20000_5_0.001000.mat",
-        "multiconf_partial_4_iFac_8324_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "multiconf_partial_5_uFac_20000_5_0.001000.mat",
-        "multiconf_partial_5_iFac_8324_5_0.001000.mat", params.seed));
-  bestModels.push_back(Model(params, "multiconf_partial_6_uFac_20000_5_0.001000.mat",
-        "multiconf_partial_6_iFac_8324_5_0.001000.mat", params.seed));
+  bestModels.push_back(Model(params, "",
+        "", params.seed));
 
   std::cout << "\nnBestModels: " << bestModels.size();
 
@@ -776,7 +793,7 @@ void computeConfRMSECurvesFrmModel(Data& data, Params& params) {
 
   std::vector<double> pprConfCurve = genPPRConfRMSECurve(testPairs, origModel,
       fullModel, data.graphMat, params.alpha, MAX_PR_ITER, 
-      "ml_rand_20kus_u99_i28_20kX8324.ppr", 10);
+      ".ppr", 10);
   std::cout << "\nppr conf RMSE curve:";
   dispVector(pprConfCurve);
   prefix = std::string(params.prefix) + "_ppr_rmse_curve_miss.txt";
@@ -934,6 +951,7 @@ void computeConfCurveTest(Data& data, Params& params) {
 
 int main(int argc , char* argv[]) {
 
+  
   //get passed parameters
   Params params = parse_cmd_line(argc, argv);
 
@@ -942,8 +960,13 @@ int main(int argc , char* argv[]) {
 
   Data data (params);
 
-  computeConfScoresFrmModel(data, params);
+  //writeCSRWSparsityStructure(data.trainMat, "",
+  //    data.origUFac, data.origIFac, params.facDim);
   
+  //writeBlkDiagJoinedCSR("", "", "");
+
+  //computeConfScoresFrmModel(data, params);
+  computeConf(data, params);  
   return 0;
 }
 

@@ -23,8 +23,9 @@ std::vector<std::pair<int,float>> getSortedItems(int u, gk_csr_t *mat,
   //run personalized page rank on the graph w.r.t. u
   int iter = gk_rw_PageRank(mat, lambda, 0.0001, max_niter, pr);
   
-  std::cout << "\nU: " << u << " nIters: " << iter;
-
+  if (u % 500 == 0) {
+    std::cout << "\nU: " << u << " nIters: " << iter;
+  }
 
   //get pr score of items
   std::vector<std::pair<int, float>> itemScores;
@@ -133,9 +134,9 @@ int main(int argc, char* argv[]) {
   std::cout << "\nnItems: " << nItems;
   std::cout << "\nmax_niter: " << max_niter;
 
-  //writeSortedItemsByPR(graphMat, nUsers, nItems, lambda, max_niter, opFileName);
-  writeSortedItemsByGlobalPR(graphMat, nUsers, nItems, lambda, max_niter, 
-      opFileName);
+  writeSortedItemsByPR(graphMat, nUsers, nItems, lambda, max_niter, opFileName);
+  //writeSortedItemsByGlobalPR(graphMat, nUsers, nItems, lambda, max_niter, 
+  //    opFileName);
 
   gk_csr_Free(&graphMat);
   return 0;
