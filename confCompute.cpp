@@ -1,6 +1,155 @@
 #include "confCompute.h"
 
 
+
+void comparePPR2GPR(int nUsers, int nItems, gk_csr_t* graphMat, float lambda,
+    int max_niter, const char* prFName, const char* opFName) {
+ 
+  std::vector<std::pair<int, double>> itemScores;
+
+  float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
+  memset(pr, 0, sizeof(float)*graphMat->nrows);
+  //assign all users equal restart probability
+  for (int user = 0; user < nUsers; user++) {
+    pr[user] = 1.0/nUsers;
+  }
+  
+  //run global page rank on the graph w.r.t. users
+  gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
+
+  //get pr score of items
+  for (int i = nUsers; i < nUsers + nItems; i++) {
+    int item = i - nUsers;
+    itemScores.push_back(std::make_pair(item, pr[i]));
+  }
+
+  //sort items by global page rank
+  auto comparePair = [](std::pair<int, double> a, std::pair<int, double> b) { 
+    return a.second > b.second; 
+  };
+  
+  //sort items by DECREASING order in score
+  std::sort(itemScores.begin(), itemScores.end(), comparePair);  
+  
+  std::vector<int> gprSortedItems;
+  for (auto const& itemScore: itemScores) {
+    gprSortedItems.push_back(itemScore.first);
+  }
+
+  std::unordered_set<int> topGPRSet;
+  for (int i = 0; i < 0.25*nItems; i++) {
+    topGPRSet.insert(gprSortedItems[i]);
+  }
+
+  std::unordered_set<int> mid1GPRSet;
+  for (int i = 0.25*nItems; i < 0.5*nItems; i++) {
+    mid1GPRSet.insert(gprSortedItems[i]);
+  }
+
+  std::unordered_set<int> mid2GPRSet;
+  for (int i = 0.5*nItems; i < 0.75*nItems; i++) {
+    mid2GPRSet.insert(gprSortedItems[i]);
+  }
+
+  std::unordered_set<int> botGPRSet;
+  for (int i = 0.75*nItems; i < nItems; i++) {
+    botGPRSet.insert(gprSortedItems[i]);
+  }
+
+  std::ifstream inFile (prFName);
+  std::ofstream opFile (opFName);
+  std::string line, token;
+  std::string delimiter = " ";
+  size_t pos;
+  int item;
+  double score;
+  
+  if (inFile.is_open() && opFile.is_open()) {
+    std::cout << "\nReading " << prFName << " ..." << std::endl;
+    for (int user = 0; user < nUsers; user++) {
+  
+      //read prank items of the current user
+      getline(inFile, line);
+      
+      itemScores.clear();
+
+      //split the line
+      for (int i = 0; i < nItems; i++) {
+        pos = line.find(delimiter);
+        token = line.substr(0, pos);
+        item = std::stoi(token)-nUsers; 
+        line.erase(0, pos + delimiter.length());
+        pos = line.find(delimiter);
+        token = line.substr(0, pos);
+        score = std::stod(token);
+        line.erase(0, pos + delimiter.length());
+        
+        //notfound, valid item, insert
+        itemScores.push_back(std::make_pair(item, score));
+      }
+   
+      //compute overlap of top 1/4th  item  and bottom 1/4th item
+      int topOvCount = 0;
+      for (int i = 0; i < nItems*0.25; i++) {
+        auto search = topGPRSet.find(itemScores[i].first);
+        if (search != topGPRSet.end()) {
+          //found
+          topOvCount++;
+        }
+      }
+      float topOvPc = (float)topOvCount/(float)(nItems*0.25);
+
+      int mid1OvCount = 0;
+      for (int i = 0.25*nItems; i < 0.5*nItems; i++) {
+        auto search = mid1GPRSet.find(itemScores[i].first);
+        if (search != mid1GPRSet.end()) {
+          //found
+          mid1OvCount++;
+        }
+      }
+      float mid1OvPc = (float)mid1OvCount/(float)(nItems*0.25);
+
+      int mid2OvCount = 0;
+      for (int i = 0.5*nItems; i < 0.75*nItems; i++) {
+        auto search = mid2GPRSet.find(itemScores[i].first);
+        if (search != mid2GPRSet.end()) {
+          //found
+          mid2OvCount++;
+        }
+      }
+      float mid2OvPc = (float)mid2OvCount/(float)(nItems*0.25);
+
+      int botOvCount = 0;
+      for (int i = 0.75*nItems; i < nItems; i++) {
+        auto search = botGPRSet.find(itemScores[i].first);
+        if (search != botGPRSet.end()) {
+          //found
+          botOvCount++;
+        }
+      }
+      float botOvPc = (float)botOvCount/(float)(nItems*0.25);
+
+      opFile << user << " " << topOvPc << " "  << mid1OvPc << " " 
+        << mid2OvPc << " " << botOvPc << std::endl;
+      
+      if (user % PROGU == 0) {
+        std::cout << " u: " << user << "," 
+          << topOvCount << "," << topOvPc << ","
+          << mid1OvCount << "," << mid1OvPc << ","
+          << mid2OvCount << "," << mid2OvPc << ","
+          << botOvCount << "," << botOvPc << std::endl;
+      }
+
+    }
+  } else {
+    std::cerr << "\nFile NOT opened: " << prFName;
+  }
+
+
+}
+
+
+
 double confScore(int user, int item, std::vector<Model>& models) {
   int nModels = models.size();
   std::vector<double> predRats(nModels);

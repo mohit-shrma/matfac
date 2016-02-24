@@ -9,6 +9,8 @@
 #include <cmath>
 #include <cstdlib>
 
+void comparePPR2GPR(int nUsers, int nItems, gk_csr_t* graphMat, float lambda,
+    int max_niter, const char* prFName, const char* opFName);
 double confScore(int user, int item, std::vector<Model>& models);
 std::vector<double> confBucketRMSEs(Model& origModel, Model& fullModel,
     std::vector<Model>& models,
