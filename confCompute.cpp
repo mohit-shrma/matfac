@@ -149,7 +149,6 @@ void comparePPR2GPR(int nUsers, int nItems, gk_csr_t* graphMat, float lambda,
 }
 
 
-
 double confScore(int user, int item, std::vector<Model>& models) {
   int nModels = models.size();
   std::vector<double> predRats(nModels);
@@ -1230,6 +1229,46 @@ void updateBuckets(int user, std::vector<double>& bucketScores,
 }
 
 
+void updateBucketsOpFile(int user, std::vector<double>& bucketScores, 
+    std::vector<double>& bucketNNZ, 
+    std::vector<std::pair<int, double>>& itemScores, Model& origModel,
+    Model& fullModel, int nBuckets, int nItemsPerBuck, int nItems,
+    std::ofstream& opFile) { 
+  
+    auto comparePair = [](std::pair<int, double> a, std::pair<int, double> b) { 
+      return a.second > b.second; 
+    };
+    
+    //sort items by DECREASING order in score
+    std::sort(itemScores.begin(), itemScores.end(), comparePair);  
+   
+    for (int bInd = 0; bInd < nBuckets; bInd++) {
+      int start = bInd*nItemsPerBuck;
+      int end = (bInd+1)*nItemsPerBuck;
+      if (bInd == nBuckets-1 || end > nItems) {
+        end = nItems;
+      }
+      
+      double uBuckSE = 0;
+      int uBucketNNZ = 0;
+      for (int j = start; j < end; j++) {
+        int item = itemScores[j].first;
+        //compute square err for item
+        double r_ui = origModel.estRating(user, item);
+        double r_ui_est = fullModel.estRating(user, item);
+        double se = (r_ui - r_ui_est)*(r_ui - r_ui_est);
+        bucketScores[bInd] += se;
+        bucketNNZ[bInd] += 1;
+        uBuckSE += se;
+        uBucketNNZ += 1;
+      }
+      opFile << sqrt(uBuckSE/uBucketNNZ) << " ";
+    }
+
+    opFile << std::endl;
+}
+
+
 void updateBucketsSorted(int user, std::vector<double>& bucketScores, 
     std::vector<double>& bucketNNZ, 
     std::vector<int>& sortedItems, Model& origModel,
@@ -1252,6 +1291,37 @@ void updateBucketsSorted(int user, std::vector<double>& bucketScores,
         bucketNNZ[bInd] += 1;
       }
     }
+}
+
+
+void updateBucketsSortedOpFile(int user, std::vector<double>& bucketScores, 
+    std::vector<double>& bucketNNZ, 
+    std::vector<int>& sortedItems, Model& origModel,
+    Model& fullModel, int nBuckets, int nItemsPerBuck, std::ofstream& opFile) {
+
+    int nItems = sortedItems.size(); 
+    for (int bInd = 0; bInd < nBuckets; bInd++) {
+      int start = bInd*nItemsPerBuck;
+      int end = (bInd+1)*nItemsPerBuck;
+      if (bInd == nBuckets-1 || end > nItems) {
+        end = nItems;
+      }
+      double uBuckSE = 0;
+      int uBuckNNZ = 0;
+      for (int j = start; j < end; j++) {
+        int item = sortedItems[j];
+        //compute square err for item
+        double r_ui = origModel.estRating(user, item);
+        double r_ui_est = fullModel.estRating(user, item);
+        double se = (r_ui - r_ui_est)*(r_ui - r_ui_est);
+        bucketScores[bInd] += se;
+        bucketNNZ[bInd] += 1;
+        uBuckSE += se;
+        uBuckNNZ += 1;
+      }
+      opFile << sqrt(uBuckSE/uBuckNNZ) << " ";
+    }
+    opFile << std::endl;
 }
 
 

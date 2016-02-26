@@ -176,6 +176,7 @@ void writeCSRWHalfSparsity(gk_csr_t *mat, const char *opFileName, int uStart,
 
 }
 
+
 bool isFileExist(const char *fileName) {
   std::ifstream infile(fileName);
   return infile.good();

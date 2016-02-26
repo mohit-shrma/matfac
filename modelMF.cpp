@@ -1,7 +1,7 @@
 #include "modelMF.h"
 
 
-void ModelMF::updateFac(std::vector<double> &fac, std::vector<double> &grad) {
+inline void ModelMF::updateFac(std::vector<double> &fac, std::vector<double> &grad) {
   for (int i = 0; i < facDim; i++) {
     fac[i] -= learnRate * grad[i];
   }
@@ -234,6 +234,8 @@ void ModelMF::train(const Data &data, Model &bestModel,
 
     }
 
+    end = std::chrono::system_clock::now();  
+    
     //check objective
     if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj)) {
@@ -243,9 +245,8 @@ void ModelMF::train(const Data &data, Model &bestModel,
                 << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
                 << " Train RMSE: " << RMSE(data.trainMat) 
                 << std::endl;
-      end = std::chrono::system_clock::now();  
       std::chrono::duration<double> duration =  (end - start) ;
-      std::cout << "\nsub duration: " << duration.count();
+      std::cout << "\nsub duration: " << duration.count() << std::endl;
       //save best model found till now
       std::string modelFName = "ModelFull_" + std::to_string(trainSeed);
       bestModel.save(modelFName);

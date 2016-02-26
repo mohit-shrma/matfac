@@ -242,7 +242,6 @@ void computeConf(Data& data, Params& params) {
 
   ModelMF origModel(params, params.seed);
   origModel.load(params.origUFacFile, params.origIFacFile);
-
   
   //find all invalid users
   for (int thInd = 0; thInd < nThreads; thInd++) {
@@ -309,19 +308,124 @@ void computeConf(Data& data, Params& params) {
 
    
   //compute ppr confidence
+  std::vector<double> pprRMSEs = pprBucketRMSEs(origModel, fullBestModel,
+      params.nUsers, params.nItems, params.alpha, MAX_PR_ITER, data.graphMat, 10);
+  /*
   std::vector<double> pprRMSEs = pprBucketRMSEsFrmPRWInVal(origModel, fullBestModel,
       params.nUsers, params.nItems, data.graphMat, 10, 
-      ".ppr", invalidUsers, invalidItems);
-  /*
+      "", invalidUsers, invalidItems);
    std::vector<double> pprRMSEs = pprBucketRMSEsWInVal(origModel, fullBestModel, 
     params.nUsers, params.nItems, params.alpha, MAX_PR_ITER, 
     data.graphMat, 10, invalidUsers, invalidItems);
   */
+  
   prefix = std::string(params.prefix) + "_pprconf_"+ std::to_string(params.alpha ) + "_bucket.txt";
   writeVector(pprRMSEs, prefix.c_str());
   std::cout << "\nPPR confidence RMSEs:";
   dispVector(pprRMSEs);
   
+}
+
+
+void computeBucksFrmFullModel(Data& data, Params& params) {
+
+  Model fullModel(params, params.seed);
+  fullModel.load(params.initUFacFile, params.initIFacFile);
+  Model origModel(params, params.seed);
+  origModel.load(params.origUFacFile, params.origIFacFile);
+
+  std::unordered_set<int> invalUsers;
+  std::unordered_set<int> invalItems;
+
+  //get number of ratings per user and item, i.e. frequency
+  auto rowColFreq = getRowColFreq(data.trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+  
+  std::cout << "\nOptimal confidence: ";
+  std::vector<double> optRMSEs = confOptBucketRMSEsWInVal(origModel, fullModel,
+      params.nUsers, params.nItems, 10, invalUsers, invalItems);
+  dispVector(optRMSEs);
+  std::string prefix = std::string(params.prefix) + "_opt_bucket.txt";
+  writeVector(optRMSEs, prefix.c_str());
+
+  std::cout << "\nGPR confidence: ";
+  std::vector<double> gprRMSEs = gprBucketRMSEsWInVal(origModel, fullModel,
+      params.nUsers, params.nItems, params.alpha, MAX_PR_ITER, data.graphMat, 
+      10, invalUsers, invalItems);
+  dispVector(gprRMSEs);
+  prefix = std::string(params.prefix) + "_gpr_" + std::to_string(params.alpha) + "_bucket.txt";
+  writeVector(gprRMSEs, prefix.c_str());
+
+  std::cout << "\nItem Freq confidence: ";
+  std::vector<double> itemRMSEs = itemFreqBucketRMSEsWInVal(origModel, fullModel,
+      params.nUsers, params.nItems, itemFreq, 
+      10, invalUsers, invalItems);
+  dispVector(itemRMSEs);
+  prefix = std::string(params.prefix) + "_iFreq_bucket.txt";
+  writeVector(itemRMSEs, prefix.c_str());
+   
+  std::cout << "\nPPR confidence: ";
+  std::vector<double> pprRMSEs = pprBucketRMSEsFrmPRWInVal(origModel, fullModel,
+      params.nUsers, params.nItems, data.graphMat, 10, 
+      ".ppr", invalUsers, invalItems);
+  dispVector(pprRMSEs);
+  prefix = std::string(params.prefix) + "_ppr_" + std::to_string(params.alpha) + "_bucket.txt";
+  writeVector(pprRMSEs, prefix.c_str());
+}
+
+
+void computeBucksEstFullModel(Data& data, Params& params) {
+
+  ModelMF fullModel(params, params.seed);
+  svdFrmSvdlibCSR(data.trainMat, fullModel.facDim, fullModel.uFac, 
+      fullModel.iFac); 
+  ModelMF fullBestModel(fullModel);
+  
+  Model origModel(params, params.seed);
+  origModel.load(params.origUFacFile, params.origIFacFile);
+
+  std::unordered_set<int> invalUsers;
+  std::unordered_set<int> invalItems;
+  
+  std::cout << "\nStarting full model train...";
+  fullModel.train(data, fullBestModel, invalUsers, invalItems);
+  
+  //get number of ratings per user and item, i.e. frequency
+  auto rowColFreq = getRowColFreq(data.trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+  
+  std::cout << "\nOptimal confidence: ";
+  std::vector<double> optRMSEs = confOptBucketRMSEsWInVal(origModel, fullModel,
+      params.nUsers, params.nItems, 10, invalUsers, invalItems);
+  dispVector(optRMSEs);
+  std::string prefix = std::string(params.prefix) + "_opt_bucket.txt";
+  writeVector(optRMSEs, prefix.c_str());
+
+  std::cout << "\nGPR confidence: ";
+  std::vector<double> gprRMSEs = gprBucketRMSEsWInVal(origModel, fullModel,
+      params.nUsers, params.nItems, params.alpha, MAX_PR_ITER, data.graphMat, 
+      10, invalUsers, invalItems);
+  dispVector(gprRMSEs);
+  prefix = std::string(params.prefix) + "_gpr_" + std::to_string(params.alpha) + "_bucket.txt";
+  writeVector(gprRMSEs, prefix.c_str());
+
+  std::cout << "\nItem Freq confidence: ";
+  std::vector<double> itemRMSEs = itemFreqBucketRMSEsWInVal(origModel, fullModel,
+      params.nUsers, params.nItems, itemFreq, 
+      10, invalUsers, invalItems);
+  dispVector(itemRMSEs);
+  prefix = std::string(params.prefix) + "_iFreq_bucket.txt";
+  writeVector(itemRMSEs, prefix.c_str());
+   
+  std::cout << "\nPPR confidence: ";
+  std::vector<double> pprRMSEs = pprBucketRMSEsFrmPRWInVal(origModel, fullModel,
+      params.nUsers, params.nItems, data.graphMat, 10, 
+      ".ppr", invalUsers, invalItems);
+  dispVector(pprRMSEs);
+  prefix = std::string(params.prefix) + "_ppr_" + std::to_string(params.alpha) + "_bucket.txt";
+  writeVector(pprRMSEs, prefix.c_str());
 }
 
 
@@ -399,7 +503,7 @@ void computeConfScoresFrmModel(Data& data, Params& params) {
   std::cout << "\nPPR confidence: ";
   std::vector<double> pprRMSEs = pprBucketRMSEsFrmPRWInVal(origModel, fullModel,
       params.nUsers, params.nItems, data.graphMat, 10, 
-      "ppr", invalUsers, invalItems);
+      ".ppr", invalUsers, invalItems);
   dispVector(pprRMSEs);
   prefix = std::string(params.prefix) + "_ppr_" + std::to_string(params.alpha) + "_bucket.txt";
   writeVector(pprRMSEs, prefix.c_str());
@@ -960,13 +1064,14 @@ int main(int argc , char* argv[]) {
 
   Data data (params);
 
-  //writeCSRWSparsityStructure(data.trainMat, "",
+  //writeCSRWSparsityStructure(data.trainMat, "flix_u1_i1_50Kx33027.syn.csr",
   //    data.origUFac, data.origIFac, params.facDim);
-  
   //writeBlkDiagJoinedCSR("", "", "");
 
   //computeConfScoresFrmModel(data, params);
-  computeConf(data, params);  
+  //computeConf(data, params);  
+  computeBucksEstFullModel(data, params);
+
   return 0;
 }
 
