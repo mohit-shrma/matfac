@@ -11,6 +11,22 @@ void Model::save(std::string prefix) {
   std::string iFacName = prefix + "_iFac_" + std::to_string(nItems) + "_" 
     + std::to_string(facDim) + "_" + std::to_string(iReg) + ".mat";
   writeMat(iFac, nItems, facDim, iFacName.c_str());
+
+  //save user bias
+  std::string uBFName = prefix + "_uBias_" + std::to_string(nUsers) + "_" 
+    + std::to_string(uReg) + ".vec";
+  writeVector(uBias, uBFName.c_str());
+
+  //save item bias
+  std::string iBFName = prefix + "_iBias_" + std::to_string(nItems) + "_" 
+    + std::to_string(iReg) + ".vec";
+  writeVector(iBias, iBFName.c_str());
+
+  //TODO:save global bias 
+  std::vector<double> gBias = {mu};
+  std::string gBFName = prefix + "_gBias_" + std::to_string(nItems) + "_" 
+    + std::to_string(iReg) + ".vec";
+  writeVector(gBias, gBFName.c_str());
 }
 
 
@@ -540,7 +556,21 @@ Model::Model(const Params& params) {
       v = (double)std::rand() / (double) (1.0 + RAND_MAX);
     }
   }
-  
+ 
+  //init user biases
+  uBias = std::vector<double>(nUsers, 0);
+  for (auto& v: uBias) {
+    v = (double)std::rand() / (double) (1.0 + RAND_MAX);
+  }
+
+  //init item biases
+  iBias = std::vector<double>(nItems, 0);
+  for (auto& v: iBias) {
+    v = (double)std::rand() / (double) (1.0 + RAND_MAX);
+  }
+
+
+  //TODO: global bias
 }
 
 
@@ -565,6 +595,19 @@ Model::Model(const Params& params, const char* uFacName, const char* iFacName,
 
 
 
+Model::Model(const Params& params, const char* uFacName, const char* iFacName,
+    const char* iBFName, const char *uBFName, 
+    const, int seed):Model(params, seed) {
+  std::cout << "\nLoading user factors: " << uFacName;
+  readMat(uFac, nUsers, facDim, uFacName);
+  std::cout << "\nLoading item factors: " << iFacName;
+  readMat(iFac, nItems, facDim, iFacName);
+  std::cout << "\nLoading item bias..." << iBFName;
+  iBias = readVector(iBFName);
+  std::cout << "\nLoading user bias..." << uBFName;
+  uBias = readVector(uBFName);
+  //TODO: read global bias
+}
 
 
 
