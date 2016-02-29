@@ -9,6 +9,7 @@
 #include <chrono>
 #include <string>
 #include <random>
+#include <tuple>
 #include "util.h"
 #include "const.h"
 #include "GKlib.h"

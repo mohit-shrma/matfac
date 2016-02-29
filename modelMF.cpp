@@ -174,11 +174,6 @@ void ModelMF::train(const Data &data, Model &bestModel,
   prevObj = objective(data);
   std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " << RMSE(data.trainMat);
 
-  //random engine
-  std::mt19937 mt(trainSeed);
-  //user dist
-  std::uniform_int_distribution<int> uDist(0, nUsers-1);
-  std::uniform_int_distribution<int> iDist(0, nItems-1);
 
   std::chrono::time_point<std::chrono::system_clock> start, end;
   
@@ -189,32 +184,40 @@ void ModelMF::train(const Data &data, Model &bestModel,
   std::cout << "\nModelMF::train trainSeed: " << trainSeed 
     << " invalidUsers: " << invalidUsers.size()
     << " invalidItems: " << invalidItems.size() << std::endl;
+  
+  //random engine
+  std::mt19937 mt(trainSeed);
+  //get user-item ratings from training data
+  auto uiRatings = getUIRatings(trainMat);
 
   for (iter = 0; iter < maxIter; iter++) {  
     start = std::chrono::system_clock::now();
-    for (subIter = 0; subIter < nnz; subIter++) {
+
+    //shuffle the user item ratings
+    std::shuffle(uiRatings.begin(), uiRatings.end(), mt);
+    for (auto&& uiRating: uiRatings) {
+      //get user, item and rating
+      u       = std::get<0>(uiRating);
+      item    = std::get<1>(uiRating);
+      itemRat = std::get<2>(uiRating);
       
-      //sample u
-      u = uDist(mt);
       //skip if u in invalidUsers    
+      /*
       auto search = invalidUsers.find(u);
       if (search != invalidUsers.end()) {
         //found and skip
         continue;
       }
+      */
       
-      //sample item rated by user
-      nUserItems =  trainMat->rowptr[u+1] - trainMat->rowptr[u];
-      itemInd = iDist(mt)%nUserItems; 
-      item = trainMat->rowind[trainMat->rowptr[u] + itemInd];
+      /*
       search = invalidItems.find(item);
       if (search != invalidItems.end()) {
         //found and skip
         continue;
       }
-      
-      itemRat = trainMat->rowval[trainMat->rowptr[u] + itemInd]; 
-    
+      */
+
       //std::cout << "\nGradCheck u: " << u << " item: " << item;
       //gradCheck(u, item, itemRat);
 
@@ -231,7 +234,6 @@ void ModelMF::train(const Data &data, Model &bestModel,
       //update item
       //updateAdaptiveFac(iFac[item], iGrad, iGradsAcc[item]);
       updateFac(iFac[item], iGrad);
-
     }
 
     end = std::chrono::system_clock::now();  
