@@ -7,6 +7,7 @@
 #include "util.h"
 #include "datastruct.h"
 #include "modelMF.h"
+#include "modelMFBias.h"
 #include "confCompute.h"
 
 
@@ -378,8 +379,8 @@ void computeBucksFrmFullModel(Data& data, Params& params) {
 void computeBucksEstFullModel(Data& data, Params& params) {
 
   ModelMF fullModel(params, params.seed);
-  svdFrmSvdlibCSR(data.trainMat, fullModel.facDim, fullModel.uFac, 
-      fullModel.iFac); 
+  //svdFrmSvdlibCSR(data.trainMat, fullModel.facDim, fullModel.uFac, 
+  //    fullModel.iFac); 
   ModelMF fullBestModel(fullModel);
   
   Model origModel(params, params.seed);
@@ -391,6 +392,11 @@ void computeBucksEstFullModel(Data& data, Params& params) {
   std::cout << "\nStarting full model train...";
   fullModel.train(data, fullBestModel, invalUsers, invalItems);
   
+  //save best model
+  std::string prefix(params.prefix);
+  prefix = prefix + "_full";
+  fullBestModel.save(prefix);
+  
   //get number of ratings per user and item, i.e. frequency
   auto rowColFreq = getRowColFreq(data.trainMat);
   auto userFreq = rowColFreq.first;
@@ -400,7 +406,7 @@ void computeBucksEstFullModel(Data& data, Params& params) {
   std::vector<double> optRMSEs = confOptBucketRMSEsWInVal(origModel, fullModel,
       params.nUsers, params.nItems, 10, invalUsers, invalItems);
   dispVector(optRMSEs);
-  std::string prefix = std::string(params.prefix) + "_opt_bucket.txt";
+  prefix = std::string(params.prefix) + "_opt_bucket.txt";
   writeVector(optRMSEs, prefix.c_str());
 
   std::cout << "\nGPR confidence: ";
@@ -426,6 +432,7 @@ void computeBucksEstFullModel(Data& data, Params& params) {
   dispVector(pprRMSEs);
   prefix = std::string(params.prefix) + "_ppr_" + std::to_string(params.alpha) + "_bucket.txt";
   writeVector(pprRMSEs, prefix.c_str());
+  
 }
 
 
@@ -1054,7 +1061,6 @@ void computeConfCurveTest(Data& data, Params& params) {
 
 
 int main(int argc , char* argv[]) {
-
   
   //get passed parameters
   Params params = parse_cmd_line(argc, argv);
@@ -1070,7 +1076,17 @@ int main(int argc , char* argv[]) {
 
   //computeConfScoresFrmModel(data, params);
   //computeConf(data, params);  
-  computeBucksEstFullModel(data, params);
+  //computeBucksEstFullModel(data, params);
+  
+  ModelMFBias biasModel(params, params.seed);
+  
+  std::unordered_set<int> invalUsers;
+  std::unordered_set<int> invalItems;
+  
+  ModelMFBias bestModel(biasModel);
+  std::cout << "\nStarting model train...";
+  biasModel.train(data, bestModel, invalUsers, invalItems);
+  std::cout << "\nTest RMSE: " << biasModel.RMSE(data.testMat);
 
   return 0;
 }
