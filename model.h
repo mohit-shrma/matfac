@@ -40,7 +40,7 @@ class Model {
     Model(const Params& params, const char*uFacName, const char* iFacName, 
         int seed);
     Model(const Params& params, const char*uFacName, const char* iFacName, 
-        const char* iBFName, const char *uBFName, int seed);
+        const char* iBFName, const char *uBFName, const char* gBFName, int seed);
 
     //declare virtual method for train
     virtual void train(const Data& data, Model& bestModel,
@@ -97,7 +97,10 @@ class Model {
     double fullRMSE(const Data& data);
     virtual double estRating(int user, int item);
     void save(std::string prefix);
+    void load(std::string prefix);
     void load(const char* uFacName, const char *iFacName);
+    void load(const char* uFacName, const char* iFacName, const char* uBFName,
+      const char* iBFName, const char*gBFName);
     void updateFac(std::vector<double> &fac, std::vector<double> &grad);
 };
 #endif

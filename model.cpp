@@ -29,11 +29,62 @@ void Model::save(std::string prefix) {
     + std::to_string(iReg) + ".vec";
   writeVector(iBias, iBFName.c_str());
 
-  //TODO:save global bias 
+  //save global bias 
   std::vector<double> gBias = {mu};
   std::string gBFName = prefix + "_gBias_" + std::to_string(nItems) + "_" 
     + std::to_string(iReg) + ".vec";
   writeVector(gBias, gBFName.c_str());
+}
+
+
+void Model::load(std::string prefix) {
+  //read user latent factors
+  std::string uFacName = prefix + "_uFac_" + std::to_string(nUsers) + "_" 
+    + std::to_string(facDim) + "_" + std::to_string(uReg) + ".mat";
+  readMat(uFac, nUsers, facDim, uFacName.c_str());
+  
+  //read item latent factors
+  std::string iFacName = prefix + "_iFac_" + std::to_string(nItems) + "_" 
+    + std::to_string(facDim) + "_" + std::to_string(iReg) + ".mat";
+  readMat(iFac, nItems, facDim, iFacName.c_str());
+
+  //read user bias
+  std::string uBFName = prefix + "_uBias_" + std::to_string(nUsers) + "_" 
+    + std::to_string(uReg) + ".vec";
+  uBias = readDVector(uBFName.c_str());
+
+  //read item bias
+  std::string iBFName = prefix + "_iBias_" + std::to_string(nItems) + "_" 
+    + std::to_string(iReg) + ".vec";
+  iBias = readDVector(iBFName.c_str());
+
+  //read global bias 
+  std::vector<double> gBias;
+  std::string gBFName = prefix + "_gBias_" + std::to_string(nItems) + "_" 
+    + std::to_string(iReg) + ".vec";
+  gBias = readDVector(gBFName.c_str());
+  mu = gBias[0];  
+}
+
+
+void Model::load(const char* uFacName, const char* iFacName, const char* uBFName,
+    const char* iBFName, const char*gBFName) {
+  //read user latent factors
+  readMat(uFac, nUsers, facDim, uFacName);
+  
+  //read item latent factors
+  readMat(iFac, nItems, facDim, iFacName);
+
+  //read user bias
+  uBias = readDVector(uBFName);
+
+  //read item bias
+  iBias = readDVector(iBFName);
+
+  //read global bias 
+  std::vector<double> gBias;
+  gBias = readDVector(gBFName);
+  mu = gBias[0];  
 }
 
 
@@ -576,8 +627,6 @@ Model::Model(const Params& params) {
     v = (double)std::rand() / (double) (1.0 + RAND_MAX);
   }
 
-
-  //TODO: global bias
 }
 
 
@@ -603,7 +652,7 @@ Model::Model(const Params& params, const char* uFacName, const char* iFacName,
 
 
 Model::Model(const Params& params, const char* uFacName, const char* iFacName,
-    const char* iBFName, const char *uBFName, 
+    const char* iBFName, const char *uBFName, const char *gBFName, 
     int seed):Model(params, seed) {
   std::cout << "\nLoading user factors: " << uFacName;
   readMat(uFac, nUsers, facDim, uFacName);
@@ -613,7 +662,11 @@ Model::Model(const Params& params, const char* uFacName, const char* iFacName,
   iBias = readDVector(iBFName);
   std::cout << "\nLoading user bias..." << uBFName;
   uBias = readDVector(uBFName);
-  //TODO: read global bias
+  //read global bias
+  std::cout << "\nLoading global bias...";
+  std::vector<double> gBias;
+  gBias = readDVector(gBFName);
+  mu = gBias[0];  
 }
 
 

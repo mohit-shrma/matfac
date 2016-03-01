@@ -1,5 +1,40 @@
 #include "modelMFBias.h"
 
+double ModelMFBias::objective(const Data& data) {
+
+  int u, ii, item;
+  float itemRat;
+  double rmse = 0, uRegErr = 0, iRegErr = 0, obj = 0, diff = 0;
+  double uBiasReg = 0, iBiasReg = 0;
+  gk_csr_t *trainMat = data.trainMat;
+
+  for (u = 0; u < nUsers; u++) {
+    for (ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+      item = trainMat->rowind[ii];
+      itemRat = trainMat->rowval[ii];
+      diff = itemRat - estRating(u, item);
+      rmse += diff*diff;
+    }
+    uRegErr += dotProd(uFac[u], uFac[u], facDim);
+    uBiasReg += uBias[u]*uBias[u];
+  }
+  uRegErr = uRegErr*uReg;
+  uBiasReg = uBiasReg*uReg;
+
+  for (item = 0; item < nItems; item++) {
+    iRegErr += dotProd(iFac[item], iFac[item], facDim);
+    iBiasReg += iBias[item]*iBias[item];
+  }
+  iRegErr = iRegErr*iReg;
+  iBiasReg = iBiasReg*iReg;
+  
+  obj = rmse + uRegErr + iRegErr + uBiasReg + iBiasReg;
+    
+  //std::cout <<"\nrmse: " << std::scientific << rmse << " uReg: " << uRegErr << " iReg: " << iRegErr ; 
+
+  return obj;
+}
+
 
 double ModelMFBias::estRating(int user, int item) {
   double rating = mu + uBias[user] + iBias[item] + 
@@ -37,10 +72,11 @@ void ModelMFBias::train(const Data& data, Model& bestModel,
 
   //global bias
   mu = meanRating(data.trainMat);
-  
+  std::cout << "\nGlobal bias: " << mu;
+
   int nnz = data.trainNNZ;
    
-  //TODO:modify these methods
+  //modify these methods
   std::cout << "\nObj b4 svd: " << objective(data) 
     << " Train RMSE: " << RMSE(data.trainMat) 
     << " Train nnz: " << nnz << std::endl;
@@ -48,10 +84,7 @@ void ModelMFBias::train(const Data& data, Model& bestModel,
   std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
   startSVD = std::chrono::system_clock::now();
   //initialization with svd of the passed matrix
-  //svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac); 
-  //svdUsingLapack(data.trainMat, facDim, uFac, iFac);
-  //svdFrmCSR(data.trainMat, facDim, uFac, iFac);
-  //svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
+  svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac); 
   
   endSVD = std::chrono::system_clock::now();
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
@@ -76,7 +109,7 @@ void ModelMFBias::train(const Data& data, Model& bestModel,
   genStats(trainMat, uISet, std::to_string(trainSeed));
   getInvalidUsersItems(trainMat, uISet, invalidUsers, invalidItems);
   
-  std::cout << "\nModelMF::train trainSeed: " << trainSeed 
+  std::cout << "\nModelMFBias::train trainSeed: " << trainSeed 
     << " invalidUsers: " << invalidUsers.size()
     << " invalidItems: " << invalidItems.size() << std::endl;
 

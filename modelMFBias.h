@@ -10,8 +10,6 @@
 #include <string>
 #include "io.h"
 #include "model.h"
-//#include "svd.h"
-//#include "svdLapack.h"
 #include "svdFrmsvdlib.h"
 
 class ModelMFBias: public Model {
@@ -21,10 +19,15 @@ class ModelMFBias: public Model {
     ModelMFBias(const Params& params, int seed) : Model(params, seed) {}
     ModelMFBias(const Params& params, const char*uFacName, const char* iFacName, 
         int seed):Model(params, uFacName, iFacName, seed) {}
+    ModelMFBias(const Params& params, const char*uFacName, const char* iFacName, 
+        const char* iBFName, const char *uBFName, const char* gBFName,
+        int seed):Model (params, uFacName, iFacName, iBFName, uBFName, gBFName, 
+          seed) {}
     virtual void train(const Data& data, Model& bestModel,
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems);
     virtual double estRating(int user, int item);
+    virtual double objective(const Data& data);
     void computeUGrad(int user, int item, float r_ui, 
         double r_ui_est, std::vector<double> &uGrad);
     void computeIGrad(int user, int item, float r_ui, 
