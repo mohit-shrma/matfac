@@ -184,6 +184,7 @@ void ModelMFBias::train(const Data& data, Model& bestModel,
       std::cout << "\nModelMFBias::train trainSeed: " << trainSeed
                 << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
                 << " Train RMSE: " << RMSE(data.trainMat) 
+                << " Test RMSE: " << RMSE(data.testMat) 
                 << std::endl;
       std::chrono::duration<double> duration =  (end - start) ;
       std::cout << "\nsub duration: " << duration.count() << std::endl;
