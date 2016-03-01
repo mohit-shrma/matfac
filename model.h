@@ -29,6 +29,9 @@ class Model {
     float iReg;
     std::vector<std::vector<double>> uFac; 
     std::vector<std::vector<double>> iFac;
+    std::vector<double> uBias;
+    std::vector<double> iBias;
+    double mu; //global bias
 
     //declare constructor
     Model(const Params& params);
@@ -36,6 +39,8 @@ class Model {
     Model(const Params& params, int seed);
     Model(const Params& params, const char*uFacName, const char* iFacName, 
         int seed);
+    Model(const Params& params, const char*uFacName, const char* iFacName, 
+        const char* iBFName, const char *uBFName, const char* gBFName, int seed);
 
     //declare virtual method for train
     virtual void train(const Data& data, Model& bestModel,
@@ -90,8 +95,12 @@ class Model {
     double subMatKnownRankNonObsErrWSet(const Data& data, int uStart, int uEnd,
       int iStart, int iEnd, std::set<int> exUSet, std::set<int> exISet);
     double fullRMSE(const Data& data);
-    double estRating(int user, int item);
+    virtual double estRating(int user, int item);
     void save(std::string prefix);
+    void load(std::string prefix);
     void load(const char* uFacName, const char *iFacName);
+    void load(const char* uFacName, const char* iFacName, const char* uBFName,
+      const char* iBFName, const char*gBFName);
+    void updateFac(std::vector<double> &fac, std::vector<double> &grad);
 };
 #endif

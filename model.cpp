@@ -1,16 +1,94 @@
 #include "model.h"
 
 
+void Model::updateFac(std::vector<double> &fac, std::vector<double> &grad) {
+  for (int i = 0; i < facDim; i++) {
+    fac[i] -= learnRate * grad[i];
+  }
+}
+
+
 void Model::save(std::string prefix) {
   //save user latent factors
   std::string uFacName = prefix + "_uFac_" + std::to_string(nUsers) + "_" 
-    + std::to_string(facDim) + "_" + std::to_string(uReg) + ".mat";
+    + std::to_string(facDim) + "_" + std::to_string(uReg) + "_"
+    + std::to_string(learnRate) + ".mat";
   writeMat(uFac, nUsers, facDim, uFacName.c_str());
   
   //save item latent factors
   std::string iFacName = prefix + "_iFac_" + std::to_string(nItems) + "_" 
-    + std::to_string(facDim) + "_" + std::to_string(iReg) + ".mat";
+    + std::to_string(facDim) + "_" + std::to_string(iReg) + "_"
+    + std::to_string(learnRate) +  ".mat";
   writeMat(iFac, nItems, facDim, iFacName.c_str());
+
+  //save user bias
+  std::string uBFName = prefix + "_uBias_" + std::to_string(nUsers) + "_" 
+    + std::to_string(uReg) + "_" + std::to_string(learnRate) + ".vec";
+  writeVector(uBias, uBFName.c_str());
+
+  //save item bias
+  std::string iBFName = prefix + "_iBias_" + std::to_string(nItems) + "_" 
+    + std::to_string(iReg) + "_" + std::to_string(learnRate) + ".vec";
+  writeVector(iBias, iBFName.c_str());
+
+  //save global bias 
+  std::vector<double> gBias = {mu};
+  std::string gBFName = prefix + "_gBias_" + std::to_string(nItems) + "_" 
+    + std::to_string(iReg) + "_" + std::to_string(learnRate) + ".vec";
+  writeVector(gBias, gBFName.c_str());
+}
+
+
+void Model::load(std::string prefix) {
+  //read user latent factors
+  std::string uFacName = prefix + "_uFac_" + std::to_string(nUsers) + "_" 
+    + std::to_string(facDim) + "_" + std::to_string(uReg) + "_"
+    + std::to_string(learnRate) + ".mat";
+  readMat(uFac, nUsers, facDim, uFacName.c_str());
+  
+  //read item latent factors
+  std::string iFacName = prefix + "_iFac_" + std::to_string(nItems) + "_" 
+    + std::to_string(facDim) + "_" + std::to_string(iReg) + "_"
+    + std::to_string(learnRate) +  ".mat";
+  readMat(iFac, nItems, facDim, iFacName.c_str());
+
+  //read user bias
+  std::string uBFName = prefix + "_uBias_" + std::to_string(nUsers) + "_" 
+    + std::to_string(uReg) + "_" + std::to_string(learnRate) + ".vec";
+  uBias = readDVector(uBFName.c_str());
+
+  //read item bias
+  std::string iBFName = prefix + "_iBias_" + std::to_string(nItems) + "_" 
+    + std::to_string(iReg) + "_" + std::to_string(learnRate) + ".vec";
+  iBias = readDVector(iBFName.c_str());
+
+  //read global bias 
+  std::vector<double> gBias;
+  std::string gBFName = prefix + "_gBias_" + std::to_string(nItems) + "_" 
+    + std::to_string(iReg) + "_" + std::to_string(learnRate) + ".vec";
+  gBias = readDVector(gBFName.c_str());
+  mu = gBias[0];  
+}
+
+
+void Model::load(const char* uFacName, const char* iFacName, const char* uBFName,
+    const char* iBFName, const char*gBFName) {
+  //read user latent factors
+  readMat(uFac, nUsers, facDim, uFacName);
+  
+  //read item latent factors
+  readMat(iFac, nItems, facDim, iFacName);
+
+  //read user bias
+  uBias = readDVector(uBFName);
+
+  //read item bias
+  iBias = readDVector(iBFName);
+
+  //read global bias 
+  std::vector<double> gBias;
+  gBias = readDVector(gBFName);
+  mu = gBias[0];  
 }
 
 
@@ -33,7 +111,7 @@ double Model::RMSE(gk_csr_t *mat) {
     for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
       i = mat->rowind[ii];
       r_ui = mat->rowval[ii];
-      r_ui_est = dotProd(uFac[u], iFac[i], facDim);
+      r_ui_est = estRating(u, i);
       diff = r_ui - r_ui_est;
       rmse += diff*diff;
       nnz++;
@@ -66,7 +144,7 @@ double Model::subMatRMSE(gk_csr_t *mat, int uStart, int uEnd,
         continue;
       }
       r_ui = mat->rowval[ii];
-      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      r_ui_est = estRating(u, item);
       diff = r_ui - r_ui_est;
       rmse += diff*diff;
       nnz++;
@@ -95,7 +173,7 @@ double Model::subMatExRMSE(gk_csr_t *mat, int uStart, int uEnd,
         continue;
       }
       r_ui = mat->rowval[ii];
-      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      r_ui_est = estRating(u, item);
       diff = r_ui - r_ui_est;
       rmse += diff*diff;
       nnz++;
@@ -120,7 +198,7 @@ double Model::fullRMSE(const Data& data) {
     for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
       i = mat->rowind[ii];
       r_ui = mat->rowval[ii];
-      r_ui_est = dotProd(uFac[u], iFac[i], facDim);
+      r_ui_est = estRating(u, i);
       diff = r_ui - r_ui_est;
       rmse += diff*diff;
       nnz++;
@@ -132,7 +210,7 @@ double Model::fullRMSE(const Data& data) {
     for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
       i = mat->rowind[ii];
       r_ui = mat->rowval[ii];
-      r_ui_est = dotProd(uFac[u], iFac[i], facDim);
+      r_ui_est = estRating(u, i);
       diff = r_ui - r_ui_est;
       rmse += diff*diff;
       nnz++;
@@ -273,7 +351,7 @@ double Model::objective(const Data& data) {
     for (ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
       item = trainMat->rowind[ii];
       itemRat = trainMat->rowval[ii];
-      diff = itemRat - dotProd(uFac[u], iFac[item], facDim);
+      diff = itemRat - estRating(u, item);
       rmse += diff*diff;
     }
     uRegErr += dotProd(uFac[u], uFac[u], facDim);
@@ -308,7 +386,7 @@ double Model::objectiveSubMat(const Data& data, int uStart, int uEnd,
         continue;
       }
       itemRat = trainMat->rowval[ii];
-      diff = itemRat - dotProd(uFac[u], iFac[item], facDim);
+      diff = itemRat - estRating(u, item);
       rmse += diff*diff;
     }
     uRegErr += dotProd(uFac[u], uFac[u], facDim);
@@ -344,7 +422,7 @@ double Model::objectiveExSubMat(const Data& data, int uStart, int uEnd,
         continue;
       }
       itemRat = trainMat->rowval[ii];
-      diff = itemRat - dotProd(uFac[u], iFac[item], facDim);
+      diff = itemRat - estRating(u, item);
       rmse += diff*diff;
     }
     uRegErr += dotProd(uFac[u], uFac[u], facDim);
@@ -372,7 +450,7 @@ double Model::fullLowRankErr(const Data& data) {
   rmse = 0;
   for (int u = 0; u < nUsers; u++) {
     for (int item = 0; item < nItems; item++) {
-      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      r_ui_est = estRating(u, item);
       r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
       diff = r_ui_orig - r_ui_est;
       rmse += diff*diff;
@@ -389,7 +467,7 @@ double Model::subMatKnownRankErr(const Data& data, int uStart, int uEnd,
   rmse = 0;
   for (int u = uStart; u <= uEnd; u++) {
     for (int item = iStart; item <= iEnd; item++) {
-      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      r_ui_est = estRating(u, item);
       r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
       diff = r_ui_orig - r_ui_est;
       rmse += diff*diff;
@@ -419,7 +497,7 @@ double Model::subMatKnownRankNonObsErr(const Data& data, int uStart, int uEnd,
       if (!isInsideBlock(u, item, uStart, uEnd, iStart, iEnd)) {
         continue;
       }
-      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      r_ui_est = estRating(u, item);
       r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
       diff = r_ui_orig - r_ui_est;
       seKnown += diff*diff;
@@ -429,7 +507,7 @@ double Model::subMatKnownRankNonObsErr(const Data& data, int uStart, int uEnd,
 
   for (u = uStart; u < uEnd; u++) {
     for (item = iStart; item < iEnd; item++) {
-      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      r_ui_est = estRating(u, item);
       r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
       diff = r_ui_orig - r_ui_est;
       seUnknown += diff*diff;
@@ -472,7 +550,7 @@ double Model::subMatKnownRankNonObsErrWSet(const Data& data, int uStart, int uEn
       if (!isInsideBlock(u, item, uStart, uEnd, iStart, iEnd)) {
         continue;
       }
-      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      r_ui_est = estRating(u, item);
       r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
       diff = r_ui_orig - r_ui_est;
       seKnown += diff*diff;
@@ -492,7 +570,7 @@ double Model::subMatKnownRankNonObsErrWSet(const Data& data, int uStart, int uEn
         //found in set
         continue;
       }
-      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      r_ui_est = estRating(u, item);
       r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
       diff = r_ui_orig - r_ui_est;
       seUnknown += diff*diff;
@@ -540,7 +618,19 @@ Model::Model(const Params& params) {
       v = (double)std::rand() / (double) (1.0 + RAND_MAX);
     }
   }
-  
+ 
+  //init user biases
+  uBias = std::vector<double>(nUsers, 0);
+  for (auto& v: uBias) {
+    v = (double)std::rand() / (double) (1.0 + RAND_MAX);
+  }
+
+  //init item biases
+  iBias = std::vector<double>(nItems, 0);
+  for (auto& v: iBias) {
+    v = (double)std::rand() / (double) (1.0 + RAND_MAX);
+  }
+
 }
 
 
@@ -565,6 +655,23 @@ Model::Model(const Params& params, const char* uFacName, const char* iFacName,
 
 
 
+Model::Model(const Params& params, const char* uFacName, const char* iFacName,
+    const char* iBFName, const char *uBFName, const char *gBFName, 
+    int seed):Model(params, seed) {
+  std::cout << "\nLoading user factors: " << uFacName;
+  readMat(uFac, nUsers, facDim, uFacName);
+  std::cout << "\nLoading item factors: " << iFacName;
+  readMat(iFac, nItems, facDim, iFacName);
+  std::cout << "\nLoading item bias..." << iBFName;
+  iBias = readDVector(iBFName);
+  std::cout << "\nLoading user bias..." << uBFName;
+  uBias = readDVector(uBFName);
+  //read global bias
+  std::cout << "\nLoading global bias...";
+  std::vector<double> gBias;
+  gBias = readDVector(gBFName);
+  mu = gBias[0];  
+}
 
 
 

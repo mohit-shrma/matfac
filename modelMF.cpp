@@ -1,13 +1,6 @@
 #include "modelMF.h"
 
 
-inline void ModelMF::updateFac(std::vector<double> &fac, std::vector<double> &grad) {
-  for (int i = 0; i < facDim; i++) {
-    fac[i] -= learnRate * grad[i];
-  }
-}
-
-
 void ModelMF::updateAdaptiveFac(std::vector<double> &fac, std::vector<double> &grad,
     std::vector<double> &gradAcc) {
   for (int i = 0; i < facDim; i++) {
@@ -20,8 +13,7 @@ void ModelMF::updateAdaptiveFac(std::vector<double> &fac, std::vector<double> &g
 void ModelMF::computeUGrad(int user, int item, float r_ui, 
         std::vector<double> &uGrad) {
   //estimate rating on the item
-  double r_ui_est = dotProd(uFac[user], iFac[item], facDim);
-  double diff = r_ui - r_ui_est;
+  double diff = r_ui - dotProd(uFac[user], iFac[item], facDim);
 
   //initialize gradients to 0
   for (int i = 0; i < facDim; i++) {
@@ -34,8 +26,7 @@ void ModelMF::computeUGrad(int user, int item, float r_ui,
 void ModelMF::computeIGrad(int user, int item, float r_ui, 
         std::vector<double> &iGrad) {
   //estimate rating on the item
-  double r_ui_est = dotProd(uFac[user], iFac[item], facDim);
-  double diff = r_ui - r_ui_est;
+  double diff = r_ui - dotProd(uFac[user], iFac[item], facDim);
 
   //initialize gradients to 0
   for (int i = 0; i < facDim; i++) {
@@ -51,7 +42,7 @@ void ModelMF::gradCheck(int u, int item, float r_ui) {
   std::vector<double> tempFac (facDim, 0);
   double lossRight, lossLeft, gradE;
 
-  double r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+  double r_ui_est = estRating(u, item);
   double diff = r_ui - r_ui_est;
   
   //gradient w.r.t. u
@@ -151,8 +142,7 @@ void ModelMF::train(const Data &data, Model &bestModel,
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
   std::cout << "\nsvd duration: " << durationSVD.count();
 
-  int u, iter, subIter, bestIter;
-  int item, nUserItems, itemInd;
+  int u, item, iter, bestIter; 
   float itemRat;
   double bestObj, prevObj;
 
