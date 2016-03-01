@@ -18,14 +18,17 @@ class ModelMFBias: public Model {
 
   public:
     ModelMFBias(const Params& params):Model(params) {}
-    ModelMF(const Params& params, int seed) : Model(params, seed) {}
-    ModelMF(const Params& params, const char*uFacName, const char* iFacName, 
+    ModelMFBias(const Params& params, int seed) : Model(params, seed) {}
+    ModelMFBias(const Params& params, const char*uFacName, const char* iFacName, 
         int seed):Model(params, uFacName, iFacName, seed) {}
     virtual void train(const Data& data, Model& bestModel,
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems);
-    virtual double objective(const Data& data);
     virtual double estRating(int user, int item);
+    void computeUGrad(int user, int item, float r_ui, 
+        double r_ui_est, std::vector<double> &uGrad);
+    void computeIGrad(int user, int item, float r_ui, 
+        double r_ui_est, std::vector<double> &iGrad);
 };
 
 

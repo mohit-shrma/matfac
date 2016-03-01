@@ -70,6 +70,25 @@ std::vector<int> readVector(const char *ipFileName) {
 }
 
 
+std::vector<double> readDVector(const char *ipFileName) {
+  std::vector<double> vec;
+  std::ifstream ipFile(ipFileName);
+  std::string line; 
+  if (ipFile.is_open ()) {
+    while(getline(ipFile, line)) {
+      if (line.length( ) > 0) {
+        vec.push_back(std::stod(line));
+      }
+    }
+    ipFile.close();
+  } else {
+    std::cerr <<  "\nCan't open file: " << ipFileName;
+    exit(0);
+  }
+  return vec;
+}
+
+
 void writeVector(std::vector<double>& vec, const char *opFileName) {
   std::ofstream opFile(opFileName);
   if (opFile.is_open()) {

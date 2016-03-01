@@ -2,8 +2,29 @@
 
 
 double ModelMFBias::estRating(int user, int item) {
+  double rating = mu + uBias[user] + iBias[item] + 
+    dotProd(uFac[user], iFac[item], facDim);
+  return rating;
+}
 
 
+void ModelMFBias::computeUGrad(int user, int item, float r_ui, 
+    double r_ui_est, std::vector<double> &uGrad) {
+
+  double diff = r_ui - r_ui_est;
+  for (int i = 0; i < facDim; i++) {
+    uGrad[i] = -2.0*diff*iFac[item][i] + 2.0*uReg*uFac[user][i];
+  }
+}
+
+
+void ModelMFBias::computeIGrad(int user, int item, float r_ui, 
+    double r_ui_est, std::vector<double> &iGrad) {
+
+  double diff = r_ui - r_ui_est;
+  for (int i = 0; i < facDim; i++) {
+    iGrad[i] = -2.0*diff*uFac[user][i] + 2.0*iReg*iFac[item][i];
+  }
 }
 
 
@@ -14,9 +35,11 @@ void ModelMFBias::train(const Data& data, Model& bestModel,
   std::cout << "\nModelMFBias::train trainSeed: " << trainSeed;
   
 
-  //TODO: global bias
+  //global bias
+  mu = meanRating(data.trainMat);
+  
   int nnz = data.trainNNZ;
- 
+   
   //TODO:modify these methods
   std::cout << "\nObj b4 svd: " << objective(data) 
     << " Train RMSE: " << RMSE(data.trainMat) 
@@ -34,10 +57,9 @@ void ModelMFBias::train(const Data& data, Model& bestModel,
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
   std::cout << "\nsvd duration: " << durationSVD.count();
 
-  int u, iter, subIter, bestIter;
-  int item;
+  int u, item, iter, bestIter;
   float itemRat;
-  double bestObj, prevObj;
+  double bestObj, prevObj, r_ui_est, diff;
 
   gk_csr_t *trainMat = data.trainMat;
 
@@ -77,6 +99,12 @@ void ModelMFBias::train(const Data& data, Model& bestModel,
       item    = std::get<1>(uiRating);
       itemRat = std::get<2>(uiRating);
       
+      //get estimated rating
+      r_ui_est = estRating(u, item);
+      
+      //get difference with actual rating
+      diff = itemRat - r_ui_est;
+
       //skip if u in invalidUsers    
       /*
       auto search = invalidUsers.find(u);
@@ -95,24 +123,26 @@ void ModelMFBias::train(const Data& data, Model& bestModel,
       */
 
       //compute user gradient
-      computeUGrad(u, item, itemRat, uGrad);
+      computeUGrad(u, item, itemRat, r_ui_est, uGrad);
 
       //update user
       //updateAdaptiveFac(uFac[u], uGrad, uGradsAcc[u]); 
       updateFac(uFac[u], uGrad); 
 
-      //TODO: update user bias
-      
+      //update user bias
+      uBias[u] -= learnRate*(-2.0*diff + 2.0*uReg*uBias[u]);
+
       //compute item gradient
-      computeIGrad(u, item, itemRat, iGrad);
+      computeIGrad(u, item, itemRat, r_ui_est, iGrad);
 
       //update item
       //updateAdaptiveFac(iFac[item], iGrad, iGradsAcc[item]);
       updateFac(iFac[item], iGrad);
 
-      //TODO: update item bias
-
+      //update item bias
+      iBias[item] -= learnRate*(-2.0*diff + 2.0*iReg*iBias[item]);
     }
+
     //check objective
     if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj)) {

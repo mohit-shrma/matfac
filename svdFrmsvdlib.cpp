@@ -4,7 +4,7 @@
 void svdFrmSvdlibCSR(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& uFac,
                 std::vector<std::vector<double>>& iFac) {
   int nnz = 0;
-  int u, i, j, ii, item, jj;
+  int u, i, j, item, jj;
   for (u = 0; u < mat->nrows; u++) {
     nnz += mat->rowptr[u+1] - mat->rowptr[u];
   }

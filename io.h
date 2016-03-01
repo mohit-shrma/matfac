@@ -24,6 +24,7 @@ void writeCSRWHalfSparsity(gk_csr_t *mat, const char *opFileName, int uStart,
 void writeVector(std::vector<double>& vec, const char *opFileName);
 
 std::vector<int> readVector(const char *ipFileName);
+std::vector<double> readDVector(const char *ipFileName);
 void writeTrainTestMat(gk_csr_t *mat,  const char* trainFileName, 
      const char* testFileName, float testPc, int seed);
 
