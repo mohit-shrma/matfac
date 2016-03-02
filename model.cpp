@@ -123,6 +123,43 @@ double Model::RMSE(gk_csr_t *mat) {
 }
 
 
+double Model::RMSE(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems) {
+  int u, i, ii, nnz;
+  float r_ui;
+  double r_ui_est, diff, rmse;
+
+  nnz = 0;
+  rmse = 0;
+  for (u = 0; u < nUsers; u++) {
+    //skip if invalid user
+    auto search = invalidUsers.find(u);
+    if (search != invalidUsers.end()) {
+      //found and skip
+      continue;
+    }
+    for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      i = mat->rowind[ii];
+      //skip if invalid item
+      search = invalidItems.find(i);
+      if (search != invalidItems.end()) {
+        //found and skip
+        continue;
+      }
+      
+      r_ui = mat->rowval[ii];
+      r_ui_est = estRating(u, i);
+      diff = r_ui - r_ui_est;
+      rmse += diff*diff;
+      nnz++;
+    }
+  }
+  rmse = sqrt(rmse/nnz);
+  
+  return rmse;
+}
+
+
 double Model::estRating(int user, int item) {
   return dotProd(uFac[user], iFac[item], facDim);
 }
@@ -227,6 +264,45 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
     int& bestIter, double& bestObj, double& prevObj) {
   bool ret = false;
   double currObj = objective(data);
+  if (iter > 0) {
+    
+    if (currObj < bestObj) {
+      bestModel = *this;
+      bestObj = currObj;
+      bestIter = iter;
+    }
+
+    if (iter - bestIter >= 500) {
+      //can't go lower than best objective after 500 iterations
+      printf("\nNOT CONVERGED: bestIter:%d bestObj: %.10e"
+          " currIter:%d currObj: %.10e", bestIter, bestObj, iter, currObj);
+      ret = true;
+    }
+    
+    if (fabs(prevObj - currObj) < EPS) {
+      //convergence
+      printf("\nConverged in iteration: %d prevObj: %.10e currObj: %.10e", iter,
+              prevObj, currObj); 
+      ret = true;
+    }
+  }
+
+  if (iter == 0) {
+    bestObj = currObj;
+    bestIter = iter;
+  }
+
+  prevObj = currObj;
+
+  return ret;
+}
+
+
+bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
+    int& bestIter, double& bestObj, double& prevObj, 
+    std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems) {
+  bool ret = false;
+  double currObj = objective(data, invalidUsers, invalidItems);
   if (iter > 0) {
     
     if (currObj < bestObj) {
@@ -370,6 +446,56 @@ double Model::objective(const Data& data) {
   return obj;
 }
 
+
+double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems) {
+
+  int u, ii, item;
+  float itemRat;
+  double rmse = 0, uRegErr = 0, iRegErr = 0, obj = 0, diff = 0;
+  gk_csr_t *trainMat = data.trainMat;
+
+  for (u = 0; u < nUsers; u++) {
+    //skip if invalid user
+    auto search = invalidUsers.find(u);
+    if (search != invalidUsers.end()) {
+      //found and skip
+      continue;
+    }
+    for (ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+      item = trainMat->rowind[ii];
+      //skip if invalid item
+      search = invalidItems.find(item);
+      if (search != invalidItems.end()) {
+        //found and skip
+        continue;
+      }
+
+      itemRat = trainMat->rowval[ii];
+      diff = itemRat - estRating(u, item);
+      rmse += diff*diff;
+    }
+    uRegErr += dotProd(uFac[u], uFac[u], facDim);
+  }
+  uRegErr = uRegErr*uReg;
+  
+  for (item = 0; item < nItems; item++) {
+    //skip if invalid item
+    auto search = invalidItems.find(item);
+    if (search != invalidItems.end()) {
+      //found and skip
+      continue;
+    }
+    iRegErr += dotProd(iFac[item], iFac[item], facDim);
+  }
+  iRegErr = iRegErr*iReg;
+
+  obj = rmse + uRegErr + iRegErr;
+    
+  //std::cout <<"\nrmse: " << std::scientific << rmse << " uReg: " << uRegErr << " iReg: " << iRegErr ; 
+
+  return obj;
+}
 
 double Model::objectiveSubMat(const Data& data, int uStart, int uEnd,
     int iStart, int iEnd) {
@@ -652,7 +778,6 @@ Model::Model(const Params& params, const char* uFacName, const char* iFacName,
   std::cout << "\nLoading item factors: " << iFacName;
   readMat(iFac, nItems, facDim, iFacName);
 }
-
 
 
 Model::Model(const Params& params, const char* uFacName, const char* iFacName,

@@ -70,12 +70,19 @@ class Model {
     };
 
     virtual double objective(const Data& data);
+    virtual double objective(const Data& data, 
+        std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems);
     double objectiveSubMat(const Data& data, int uStart, int uEnd,
       int iStart, int iEnd);
     double objectiveExSubMat(const Data& data, int uStart, int uEnd,
       int iStart, int iEnd);
     bool isTerminateModel(Model& bestModel, const Data& data, int iter, 
         int& bestIter, double& bestObj, double& prevObj);
+    bool isTerminateModel(Model& bestModel, const Data& data, int iter, 
+        int& bestIter, double& bestObj, double& prevObj, 
+        std::unordered_set<int>& invalidUsers, 
+        std::unordered_set<int>& invalidItems);
     bool isTerminateModelSubMat(Model& bestModel, const Data& data, int iter,
       int& bestIter, double& bestObj, double& prevObj, int uStart, int uEnd,
       int iStart, int iEnd); 
@@ -83,6 +90,8 @@ class Model {
       int& bestIter, double& bestObj, double& prevObj, int uStart, int uEnd,
       int iStart, int iEnd); 
     double RMSE(gk_csr_t* mat);
+    double RMSE(gk_csr_t* mat, std::unordered_set<int>& invalidUsers,
+      std::unordered_set<int>& invalidItems);
     double subMatRMSE(gk_csr_t *mat, int uStart, int uEnd, int iStart, 
                       int iEnd);
     double subMatExRMSE(gk_csr_t *mat, int uStart, int uEnd, 

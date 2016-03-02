@@ -37,5 +37,8 @@ std::vector<std::pair<int, int>> getUIPairs(gk_csr_t *mat,
     std::unordered_set<int>& invalidUsers, 
     std::unordered_set<int>& invalidItems);
 std::vector<std::tuple<int, int, float>> getUIRatings(gk_csr_t* mat);
+std::vector<std::tuple<int, int, float>> getUIRatings(gk_csr_t* mat, 
+    std::unordered_set<int>& invalidUsers, 
+    std::unordered_set<int>& invalidItems);
 #endif
 

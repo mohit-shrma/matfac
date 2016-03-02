@@ -28,6 +28,9 @@ class ModelMFBias: public Model {
         std::unordered_set<int>& invalidItems);
     virtual double estRating(int user, int item);
     virtual double objective(const Data& data);
+    virtual double objective(const Data& data, 
+        std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems);
     void computeUGrad(int user, int item, float r_ui, 
         double r_ui_est, std::vector<double> &uGrad);
     void computeIGrad(int user, int item, float r_ui, 

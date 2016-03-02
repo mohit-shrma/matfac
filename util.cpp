@@ -281,4 +281,30 @@ std::vector<std::tuple<int, int, float>> getUIRatings(gk_csr_t* mat) {
 }
 
 
+std::vector<std::tuple<int, int, float>> getUIRatings(gk_csr_t* mat, 
+    std::unordered_set<int>& invalidUsers, 
+    std::unordered_set<int>& invalidItems) {
+  std::vector<std::tuple<int, int, float>> uiRatings;
+  for (int u = 0; u < mat->nrows; u++) {
+    //skip if in invalid users
+    auto search = invalidUsers.find(u);
+    if (search != invalidUsers.end()) {
+      //found and skip
+      continue;
+    }
+    
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      int item = mat->rowind[ii];
+      //skip if in invalid items
+      search = invalidItems.find(item);
+      if (search != invalidItems.end()) {
+        //found and skip
+        continue;
+      }
+      float rating = mat->rowval[ii];
+      uiRatings.push_back(std::make_tuple(u, item, rating));
+    }
+  }
+  return uiRatings;
+}
 
