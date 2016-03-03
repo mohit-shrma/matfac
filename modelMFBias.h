@@ -20,8 +20,8 @@ class ModelMFBias: public Model {
     ModelMFBias(const Params& params, const char*uFacName, const char* iFacName, 
         int seed):Model(params, uFacName, iFacName, seed) {}
     ModelMFBias(const Params& params, const char*uFacName, const char* iFacName, 
-        const char* iBFName, const char *uBFName, const char* gBFName,
-        int seed):Model (params, uFacName, iFacName, iBFName, uBFName, gBFName, 
+        const char* uBFName, const char *iBFName, const char* gBFName,
+        int seed):Model (params, uFacName, iFacName, uBFName, iBFName, gBFName, 
           seed) {}
     virtual void train(const Data& data, Model& bestModel,
         std::unordered_set<int>& invalidUsers,

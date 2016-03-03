@@ -40,7 +40,7 @@ class Model {
     Model(const Params& params, const char*uFacName, const char* iFacName, 
         int seed);
     Model(const Params& params, const char*uFacName, const char* iFacName, 
-        const char* iBFName, const char *uBFName, const char* gBFName, int seed);
+        const char* uBFName, const char *iBFName, const char* gBFName, int seed);
 
     //declare virtual method for train
     virtual void train(const Data& data, Model& bestModel,

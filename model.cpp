@@ -25,11 +25,13 @@ void Model::save(std::string prefix) {
   std::string uBFName = prefix + "_uBias_" + std::to_string(nUsers) + "_" 
     + std::to_string(uReg) + "_" + std::to_string(learnRate) + ".vec";
   writeVector(uBias, uBFName.c_str());
+  std::cout << "\nuser bias norm: " << normVec(uBias);
 
   //save item bias
   std::string iBFName = prefix + "_iBias_" + std::to_string(nItems) + "_" 
     + std::to_string(iReg) + "_" + std::to_string(learnRate) + ".vec";
   writeVector(iBias, iBFName.c_str());
+  std::cout << "\nitem bias norm: " << normVec(iBias);
 
   //save global bias 
   std::vector<double> gBias = {mu};
@@ -781,21 +783,27 @@ Model::Model(const Params& params, const char* uFacName, const char* iFacName,
 
 
 Model::Model(const Params& params, const char* uFacName, const char* iFacName,
-    const char* iBFName, const char *uBFName, const char *gBFName, 
+    const char* uBFName, const char *iBFName, const char *gBFName, 
     int seed):Model(params, seed) {
   std::cout << "\nLoading user factors: " << uFacName;
   readMat(uFac, nUsers, facDim, uFacName);
   std::cout << "\nLoading item factors: " << iFacName;
   readMat(iFac, nItems, facDim, iFacName);
-  std::cout << "\nLoading item bias..." << iBFName;
-  iBias = readDVector(iBFName);
-  std::cout << "\nLoading user bias..." << uBFName;
+
+  std::cout << "\nLoading user bias: " << uBFName;
   uBias = readDVector(uBFName);
+  std::cout << "\nuBias norm: " << normVec(uBias);
+  
+  std::cout << "\nLoading item bias: " << iBFName;
+  iBias = readDVector(iBFName);
+  std::cout << "\niBias norm: " << normVec(iBias);
+
   //read global bias
   std::cout << "\nLoading global bias...";
   std::vector<double> gBias;
   gBias = readDVector(gBFName);
-  mu = gBias[0];  
+  mu = gBias[0]; 
+  std::cout << "\nglobal bias: " << mu << std::endl;
 }
 
 

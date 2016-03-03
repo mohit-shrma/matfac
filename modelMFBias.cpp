@@ -171,6 +171,7 @@ void ModelMFBias::train(const Data& data, Model& bestModel,
   //get user-item ratings from training data
   auto uiRatings = getUIRatings(trainMat, invalidUsers, invalidItems);
   std::cout << "\nNo. of training ratings: " << uiRatings.size(); 
+  double prevTestRMSE = 100, currTestRMSE = 100;
   for (iter = 0; iter < maxIter; iter++) {  
     start = std::chrono::system_clock::now();
 
@@ -218,11 +219,16 @@ void ModelMFBias::train(const Data& data, Model& bestModel,
             invalidUsers, invalidItems)) {
         break; 
       }
+      currTestRMSE = RMSE(data.testMat, invalidUsers, invalidItems);
       std::cout << "\nModelMFBias::train trainSeed: " << trainSeed
                 << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
                 << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems) 
-                << " Test RMSE: " << RMSE(data.testMat, invalidUsers, invalidItems) 
+                << " Test RMSE: " <<  currTestRMSE
                 << std::endl;
+      if (currTestRMSE  > prevTestRMSE) {
+        break;
+      }
+      prevTestRMSE = currTestRMSE;
       std::chrono::duration<double> duration =  (end - start) ;
       std::cout << "\nsub duration: " << duration.count() << std::endl;
       //save best model found till now

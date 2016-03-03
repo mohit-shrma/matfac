@@ -308,3 +308,14 @@ std::vector<std::tuple<int, int, float>> getUIRatings(gk_csr_t* mat,
   return uiRatings;
 }
 
+
+double normVec(std::vector<double>& vec) {
+  double norm = 0;
+  for (auto v: vec) {
+    norm += v*v;
+  }
+  norm = sqrt(norm);
+  return norm;
+}
+
+

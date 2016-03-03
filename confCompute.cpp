@@ -1850,10 +1850,19 @@ std::vector<double> pprSampBucketRMSEsWInVal(Model& fullModel, gk_csr_t *mat,
       float itemRat = mat->rowval[ii];
       itemRatings[item] = itemRat;
     }
-    
+   
+    if (itemRatings.size() == 0) {
+      //cant find ratings due to invalid items
+      continue;
+    }
+
     //update buckets for given items of the user
     updateBuckets(user, bucketScores, bucketNNZ, itemScores, itemRatings, fullModel,
         nBuckets);
+
+    if (sampU % 100 == 0) {
+      std::cout << sampU << " done..." << std::endl;
+    }
 
     sampU++;
   }
@@ -2084,6 +2093,11 @@ std::vector<double> gprSampBucketRMSEsWInVal(Model& fullModel, gk_csr_t *mat,
       itemRatings[item] = itemRat;
     }
 
+    if (itemRatings.size() == 0) {
+      //cant find ratings due to invalid items
+      continue;
+    }
+
     updateBucketsSorted(user, bucketScores, bucketNNZ, sortedItems, itemRatings,
         fullModel, nBuckets, nItemsPerBuck);
     
@@ -2226,6 +2240,11 @@ std::vector<double> itemFreqSampBucketRMSEsWInVal(gk_csr_t* mat,
       }
       float itemRat = mat->rowval[ii];
       itemRatings[item] = itemRat;
+    }
+    
+    if (itemRatings.size() == 0) {
+      //couldnt find a test rating for user due to invalid items
+      continue;
     }
 
     updateBucketsSorted(user, bucketScores, bucketNNZ, sortedItems, itemRatings,
