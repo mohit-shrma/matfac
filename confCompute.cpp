@@ -1841,6 +1841,12 @@ std::vector<double> pprSampBucketRMSEsWInVal(Model& fullModel, gk_csr_t *mat,
     itemRatings.clear();
     for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
       int item = mat->rowind[ii];
+      //check if invalid item
+      search = invalItems.find(item);
+      if (search != invalItems.end()) {
+        // skip if invalid
+        continue;
+      }
       float itemRat = mat->rowval[ii];
       itemRatings[item] = itemRat;
     }
@@ -2068,6 +2074,12 @@ std::vector<double> gprSampBucketRMSEsWInVal(Model& fullModel, gk_csr_t *mat,
     itemRatings.clear();
     for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
       int item = mat->rowind[ii];
+      //check if invalid item
+      search = invalItems.find(item);
+      if (search != invalItems.end()) {
+        // skip if invalid
+        continue;
+      }
       float itemRat = mat->rowval[ii];
       itemRatings[item] = itemRat;
     }
@@ -2134,6 +2146,94 @@ std::vector<double> itemFreqBucketRMSEsWInVal(Model& origModel,
         fullModel, nBuckets, nItemsPerBuck);
   }
 
+  for (int i = 0; i < nBuckets; i++) {
+    bucketScores[i] = sqrt(bucketScores[i]/bucketNNZ[i]);
+  }
+  
+  return bucketScores;
+}
+
+
+std::vector<double> itemFreqSampBucketRMSEsWInVal(gk_csr_t* mat, 
+    Model& fullModel, 
+    std::vector<double>& itemFreq, int nBuckets, 
+    std::unordered_set<int>& invalUsers, 
+    std::unordered_set<int>& invalItems, int nSampUsers, int seed) {
+  
+  int nUsers = mat->nrows;
+  int nItems = mat->ncols;
+  
+  int nInvalItems = invalItems.size();
+  int nItemsPerBuck = (nItems-nInvalItems)/nBuckets;
+  std::vector<double> bucketScores(nBuckets, 0.0);
+  std::vector<double> bucketNNZ(nBuckets, 0.0);
+  std::vector<std::pair<int, double>> itemScores;
+
+  for (int item = 0; item < nItems; item++) {
+    //skip item if invalid
+    auto search = invalItems.find(item);
+    if (search != invalItems.end()) {
+      //found n skip
+      continue;
+    }
+    itemScores.push_back(std::make_pair(item, itemFreq[item])); 
+  }
+
+  //sort items by item frequency in decreasing order
+  auto comparePair = [](std::pair<int, double> a, std::pair<int, double> b) { 
+    return a.second > b.second; 
+  };
+  
+  //sort items by DECREASING order in score
+  std::sort(itemScores.begin(), itemScores.end(), comparePair);  
+  
+  std::vector<int> sortedItems;
+  for (auto const& itemScore: itemScores) {
+    sortedItems.push_back(itemScore.first);
+  }
+
+  std::map<int, float> itemRatings;
+  //initialize random engine
+  std::mt19937 mt(seed);
+  //user distribution to sample users
+  std::uniform_int_distribution<int> uDist(0, nUsers-1);
+  
+  int sampU = 0;
+  while(sampU < nSampUsers) {
+    //sample user
+    int user = uDist(mt); 
+    //skip if user is invalid
+    auto search = invalUsers.find(user);
+    if (search != invalUsers.end()) {
+      //found n skip
+      continue;
+    }
+    
+    if (mat->rowptr[user] - mat->rowptr[user+1] == 0) {
+      //no items found for user
+      continue;
+    }
+
+    //get map of items,rating for user
+    itemRatings.clear();
+    for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
+      int item = mat->rowind[ii];
+      //check if invalid item
+      search = invalItems.find(item);
+      if (search != invalItems.end()) {
+        // skip if invalid
+        continue;
+      }
+      float itemRat = mat->rowval[ii];
+      itemRatings[item] = itemRat;
+    }
+
+    updateBucketsSorted(user, bucketScores, bucketNNZ, sortedItems, itemRatings,
+        fullModel, nBuckets, nItemsPerBuck);
+
+    sampU++; 
+  }
+   
   for (int i = 0; i < nBuckets; i++) {
     bucketScores[i] = sqrt(bucketScores[i]/bucketNNZ[i]);
   }
