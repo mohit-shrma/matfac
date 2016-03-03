@@ -6,6 +6,7 @@
 #include <vector>
 #include <algorithm>
 #include <tuple>
+#include <map>
 #include <cmath>
 #include <cstdlib>
 
@@ -129,11 +130,6 @@ std::vector<double> genPPRConfRMSECurve(std::vector<std::pair<int, int>>& testPa
     Model& origModel, Model& fullModel, gk_csr_t* graphMat, float lambda,
     int max_niter, const char* prFName, int nBuckets);
 
-
-void updateBucketsSorted(int user, std::vector<double>& bucketScores, 
-    std::vector<double>& bucketNNZ, 
-    std::vector<int>& sortedItems, Model& origModel,
-    Model& fullModel, int nBuckets, int nItemsPerBuck);
 
 std::vector<double> itemFreqBucketRMSEsWInVal(Model& origModel, 
     Model& fullModel, int nUsers, int nItems, 

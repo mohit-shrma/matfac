@@ -1199,9 +1199,52 @@ std::vector<double> computeMissingPPRConfExtSamp(gk_csr_t* trainMat,
 
 void updateBuckets(int user, std::vector<double>& bucketScores, 
     std::vector<double>& bucketNNZ, 
-    std::vector<std::pair<int, double>>& itemScores, Model& origModel,
-    Model& fullModel, int nBuckets, int nItemsPerBuck, int nItems) { 
+    std::vector<std::pair<int, double>>& itemScores, 
+    std::map<int, float>& itemRat,
+    Model& fullModel, int nBuckets) { 
   
+    int nItems = itemScores.size();
+    int nItemsPerBuck = nItems/nBuckets;
+    
+    auto comparePair = [](std::pair<int, double> a, std::pair<int, double> b) { 
+      return a.second > b.second; 
+    };
+    
+    //sort items by DECREASING order in score
+    std::sort(itemScores.begin(), itemScores.end(), comparePair);  
+   
+    for (int bInd = 0; bInd < nBuckets; bInd++) {
+      int start = bInd*nItemsPerBuck;
+      int end = (bInd+1)*nItemsPerBuck;
+      if (bInd == nBuckets-1 || end > nItems) {
+        end = nItems;
+      }
+      for (int j = start; j < end; j++) {
+        int item = itemScores[j].first;
+        //check if item in itemRat map
+        auto search = itemRat.find(item);
+        if(search != itemRat.end()) {
+          //compute square err for item
+          float r_ui = search->second;
+          double r_ui_est = fullModel.estRating(user, item);
+          double se = (r_ui - r_ui_est)*(r_ui - r_ui_est);
+          bucketScores[bInd] += se;
+          bucketNNZ[bInd] += 1;
+        }
+      }
+
+    }
+}
+
+
+void updateBuckets(int user, std::vector<double>& bucketScores, 
+    std::vector<double>& bucketNNZ, 
+    std::vector<std::pair<int, double>>& itemScores, Model& origModel,
+    Model& fullModel, int nBuckets) { 
+    
+    int nItems = itemScores.size();
+    int nItemsPerBuck = nItems/nBuckets;
+
     auto comparePair = [](std::pair<int, double> a, std::pair<int, double> b) { 
       return a.second > b.second; 
     };
@@ -1294,6 +1337,35 @@ void updateBucketsSorted(int user, std::vector<double>& bucketScores,
 }
 
 
+void updateBucketsSorted(int user, std::vector<double>& bucketScores, 
+    std::vector<double>& bucketNNZ, 
+    std::vector<int>& sortedItems, std::map<int, float>& itemRat,
+    Model& fullModel, int nBuckets, int nItemsPerBuck) {
+
+    int nItems = sortedItems.size(); 
+    for (int bInd = 0; bInd < nBuckets; bInd++) {
+      int start = bInd*nItemsPerBuck;
+      int end = (bInd+1)*nItemsPerBuck;
+      if (bInd == nBuckets-1 || end > nItems) {
+        end = nItems;
+      }
+      for (int j = start; j < end; j++) {
+        int item = sortedItems[j];
+        //check if item in itemRat map
+        auto search = itemRat.find(item);
+        if(search != itemRat.end()) {
+          //compute square err for item
+          double r_ui = search->second;
+          double r_ui_est = fullModel.estRating(user, item);
+          double se = (r_ui - r_ui_est)*(r_ui - r_ui_est);
+          bucketScores[bInd] += se;
+          bucketNNZ[bInd] += 1;
+        }
+      }
+    }
+}
+
+
 void updateBucketsSortedOpFile(int user, std::vector<double>& bucketScores, 
     std::vector<double>& bucketNNZ, 
     std::vector<int>& sortedItems, Model& origModel,
@@ -1328,7 +1400,6 @@ void updateBucketsSortedOpFile(int user, std::vector<double>& bucketScores,
 std::vector<double> confBucketRMSEs(Model& origModel, Model& fullModel,
     std::vector<Model>& models, int nUsers, int nItems, int nBuckets) {
   
-  int nItemsPerBuck = nItems/nBuckets;
   std::vector<double> bucketScores(nBuckets, 0.0);
   std::vector<double> bucketNNZ(nBuckets, 0.0);
   double score;
@@ -1344,7 +1415,7 @@ std::vector<double> confBucketRMSEs(Model& origModel, Model& fullModel,
     
     //add RMSEs to bucket as per ranking by itemscores
     updateBuckets(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,
-        nBuckets, nItemsPerBuck, nItems);
+        nBuckets);
    
     if (0 == user%PROGU) {
       std::cout << " u: " << user << std::endl;
@@ -1396,7 +1467,7 @@ std::vector<double> confBucketRMSEsWInval(Model& origModel, Model& fullModel,
     
     //add RMSEs to bucket as per ranking by itemscores
     updateBuckets(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,
-        nBuckets, nItemsPerBuck, nItems-nInvalItems);
+        nBuckets);
   }
 
   for (int i = 0; i < nBuckets; i++) {
@@ -1466,7 +1537,7 @@ std::vector<double> confBucketRMSEsWInvalOpPerUser(Model& origModel, Model& full
       std::fill(uBucketScores.begin(), uBucketScores.end(), 0);
       std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0);
       updateBuckets(user, uBucketScores, uBucketNNZ, itemScores, origModel, fullModel,
-          nBuckets, nItemsPerBuck, nItems-nInvalItems);
+          nBuckets);
      
       for (int i = 0; i < nBuckets; i++) {
         bucketScores[i] += uBucketScores[i];
@@ -1617,7 +1688,6 @@ std::vector<double> confOptBucketRMSEsWInVal(Model& origModel, Model& fullModel,
 std::vector<double> pprBucketRMSEs(Model& origModel, Model& fullModel, int nUsers, 
     int nItems, float lambda, int max_niter, gk_csr_t *graphMat, int nBuckets) {
   
-  int nItemsPerBuck = nItems/nBuckets;
   std::vector<double> bucketScores(nBuckets, 0.0);
   std::vector<double> bucketNNZ(nBuckets, 0.0);
   float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
@@ -1638,7 +1708,7 @@ std::vector<double> pprBucketRMSEs(Model& origModel, Model& fullModel, int nUser
 
     //add RMSEs to bucket as per ranking by itemscores
     updateBuckets(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,
-        nBuckets, nItemsPerBuck, nItems);
+        nBuckets);
     
     if (user % 100 == 0) {
       std::cout<< "\n" << user << " Done..." << std::endl;
@@ -1659,8 +1729,6 @@ std::vector<double> pprBucketRMSEsWInVal(Model& origModel, Model& fullModel, int
     int nItems, float lambda, int max_niter, gk_csr_t *graphMat, int nBuckets, 
     std::unordered_set<int> invalUsers, std::unordered_set<int> invalItems) {
   
-  int nInvalItems = invalItems.size();
-  int nItemsPerBuck = (nItems-nInvalItems)/nBuckets;
   std::vector<double> bucketScores(nBuckets, 0.0);
   std::vector<double> bucketNNZ(nBuckets, 0.0);
   float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
@@ -1697,12 +1765,91 @@ std::vector<double> pprBucketRMSEsWInVal(Model& origModel, Model& fullModel, int
 
     //add RMSEs to bucket as per ranking by itemscores
     updateBuckets(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,
-        nBuckets, nItemsPerBuck, nItems);
+        nBuckets);
     
     if (user % PROGU == 0) {
       std::cout<< user << " Done..." << std::endl;
     }
   
+  }
+  
+  free(pr);
+  
+  for (int i = 0; i < nBuckets; i++) {
+    bucketScores[i] = sqrt(bucketScores[i]/bucketNNZ[i]);
+  }
+  return bucketScores;
+}
+
+
+std::vector<double> pprSampBucketRMSEsWInVal(Model& fullModel, gk_csr_t *mat, 
+    float lambda, int max_niter, gk_csr_t *graphMat, int nBuckets, 
+    std::unordered_set<int> invalUsers, std::unordered_set<int> invalItems, 
+    int nSampUsers, int seed) {
+  
+  int nUsers = mat->nrows;
+  int nItems = mat->ncols;
+
+  std::vector<double> bucketScores(nBuckets, 0.0);
+  std::vector<double> bucketNNZ(nBuckets, 0.0);
+  float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
+  
+  std::vector<std::pair<int, double>> itemScores;
+  std::cout << "\npprBucketRMSEsWInVal: " << std::endl;
+  std::map<int, float> itemRatings;
+  //initialize random engine
+  std::mt19937 mt(seed);
+  //user distribution to sample users
+  std::uniform_int_distribution<int> uDist(0, nUsers-1);
+  
+  int sampU = 0;
+  
+  while(sampU < nSampUsers) {
+    int user = uDist(mt); 
+    //skip if user is invalid
+    auto search = invalUsers.find(user);
+    if (search != invalUsers.end()) {
+      //found n skip
+      continue;
+    }
+
+    if (mat->rowptr[user] - mat->rowptr[user+1] == 0) {
+      //no items found for user
+      continue;
+    }
+    
+    memset(pr, 0, sizeof(float)*graphMat->nrows);
+    pr[user] = 1.0;
+    
+    //run personalized page rank on the graph w.r.t. u
+    gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
+
+    //get pr score of items
+    itemScores.clear();
+    for (int i = nUsers; i < nUsers + nItems; i++) {
+      int item = i - nUsers;
+      //skip if item is invalid
+      search = invalItems.find(item);
+      if (search != invalItems.end()) {
+        //found, invalid, skip
+        continue;
+      }
+      itemScores.push_back(std::make_pair(item, pr[i]));
+    }
+
+    //get map of items,rating for user
+    itemRatings.clear();
+    for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
+      int item = mat->rowind[ii];
+      float itemRat = mat->rowval[ii];
+      itemRatings[item] = itemRat;
+    }
+    
+    //update buckets for given items of the user
+    updateBuckets(user, bucketScores, bucketNNZ, itemScores, itemRatings, fullModel,
+        nBuckets);
+
+    sampU++;
   }
   
   free(pr);
@@ -1778,7 +1925,7 @@ std::vector<double> gprBucketRMSEs(Model& origModel, Model& fullModel, int nUser
 std::vector<double> gprBucketRMSEsWInVal(Model& origModel, Model& fullModel, int nUsers, 
     int nItems, float lambda, int max_niter, gk_csr_t *graphMat, int nBuckets,
     std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems) {
-  
+  std::ofstream opFile("u_gpr_0.6.txt"); 
   int nInvalItems = invalItems.size();
   int nItemsPerBuck = (nItems-nInvalItems)/nBuckets;
   std::vector<double> bucketScores(nBuckets, 0.0);
@@ -1829,8 +1976,8 @@ std::vector<double> gprBucketRMSEsWInVal(Model& origModel, Model& fullModel, int
       continue;
     }
     
-    updateBucketsSorted(user, bucketScores, bucketNNZ, sortedItems, origModel,
-        fullModel, nBuckets, nItemsPerBuck);
+    updateBucketsSortedOpFile(user, bucketScores, bucketNNZ, sortedItems, origModel,
+        fullModel, nBuckets, nItemsPerBuck, opFile);
   }
 
   for (int i = 0; i < nBuckets; i++) {
@@ -1838,7 +1985,104 @@ std::vector<double> gprBucketRMSEsWInVal(Model& origModel, Model& fullModel, int
   }
     
   free(pr);
+  opFile.close();
+  return bucketScores;
+}
+
+
+std::vector<double> gprSampBucketRMSEsWInVal(Model& fullModel, gk_csr_t *mat,
+    float lambda, int max_niter, gk_csr_t *graphMat, int nBuckets,
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
+    int nSampUsers, int seed) {
+
+
+  int nUsers = mat->nrows;
+  int nItems = mat->ncols;
+
+  int nInvalItems = invalItems.size();
+  int nItemsPerBuck = (nItems-nInvalItems)/nBuckets;
+  std::vector<double> bucketScores(nBuckets, 0.0);
+  std::vector<double> bucketNNZ(nBuckets, 0.0);
+  std::vector<std::pair<int, double>> itemScores;
+
+  float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
+  memset(pr, 0, sizeof(float)*graphMat->nrows);
+  //assign all users equal restart probability
+  for (int user = 0; user < nUsers; user++) {
+    pr[user] = 1.0/nUsers;
+  }
   
+  //run global page rank on the graph w.r.t. users
+  gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
+
+  //get pr score of items
+  for (int i = nUsers; i < nUsers + nItems; i++) {
+    int item = i - nUsers;
+    //skip item if invalid
+    auto search = invalItems.find(item);
+    if (search != invalItems.end()) {
+      //found n skip
+      continue;
+    }
+    itemScores.push_back(std::make_pair(item, pr[i]));
+  }
+
+  //sort items by global page rank
+  auto comparePair = [](std::pair<int, double> a, std::pair<int, double> b) { 
+    return a.second > b.second; 
+  };
+  
+  //sort items by DECREASING order in score
+  std::sort(itemScores.begin(), itemScores.end(), comparePair);  
+  
+  std::vector<int> sortedItems;
+  for (auto const& itemScore: itemScores) {
+    sortedItems.push_back(itemScore.first);
+  }
+
+  std::map<int, float> itemRatings;
+  //initialize random engine
+  std::mt19937 mt(seed);
+  //user distribution to sample users
+  std::uniform_int_distribution<int> uDist(0, nUsers-1);
+  
+  int sampU = 0;
+ 
+  //add RMSEs to bucket as per ranking by itemscores
+  while (sampU < nSampUsers) {
+    //sample user
+    int user = uDist(mt); 
+    //skip if user is invalid
+    auto search = invalUsers.find(user);
+    if (search != invalUsers.end()) {
+      //found n skip
+      continue;
+    }
+    
+    if (mat->rowptr[user] - mat->rowptr[user+1] == 0) {
+      //no items found for user
+      continue;
+    }
+
+    //get map of items,rating for user
+    itemRatings.clear();
+    for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
+      int item = mat->rowind[ii];
+      float itemRat = mat->rowval[ii];
+      itemRatings[item] = itemRat;
+    }
+
+    updateBucketsSorted(user, bucketScores, bucketNNZ, sortedItems, itemRatings,
+        fullModel, nBuckets, nItemsPerBuck);
+    
+    sampU++;
+  }
+
+  for (int i = 0; i < nBuckets; i++) {
+    bucketScores[i] = sqrt(bucketScores[i]/bucketNNZ[i]);
+  }
+    
+  free(pr);
   return bucketScores;
 }
 
@@ -1901,7 +2145,6 @@ std::vector<double> itemFreqBucketRMSEsWInVal(Model& origModel,
 std::vector<double> pprBucketRMSEsFrmPR(Model& origModel, Model& fullModel, int nUsers, 
     int nItems, gk_csr_t *graphMat, int nBuckets, const char* prFName) {
   
-  int nItemsPerBuck = nItems/nBuckets;
   std::vector<double> bucketScores(nBuckets, 0.0);
   std::vector<double> bucketNNZ(nBuckets, 0.0);
   
@@ -1938,7 +2181,7 @@ std::vector<double> pprBucketRMSEsFrmPR(Model& origModel, Model& fullModel, int 
 
       //add RMSEs to bucket as per ranking by itemscores
       updateBuckets(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,
-          nBuckets, nItemsPerBuck, nItems);
+          nBuckets);
       
       if (user % PROGU == 0) {
         std::cout<< " u: " << user << std::endl;
@@ -1962,7 +2205,7 @@ std::vector<double> pprBucketRMSEsFrmPR(Model& origModel, Model& fullModel, int 
 std::vector<double> pprBucketRMSEsFrmPRWInVal(Model& origModel, Model& fullModel, int nUsers, 
     int nItems, gk_csr_t *graphMat, int nBuckets, const char* prFName,
     std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems) {
-  
+  std::ofstream opFile("u_ppr_0.6.txt");  
   int nInvalItems = invalItems.size(); 
   int nItemsPerBuck = (nItems- nInvalItems)/nBuckets;
   std::vector<double> bucketScores(nBuckets, 0.0);
@@ -2012,8 +2255,8 @@ std::vector<double> pprBucketRMSEsFrmPRWInVal(Model& origModel, Model& fullModel
       }
 
       //add RMSEs to bucket as per ranking by itemscores
-      updateBuckets(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,
-          nBuckets, nItemsPerBuck, nItems-nInvalItems);
+      updateBucketsOpFile(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,
+          nBuckets, nItemsPerBuck, nItems-nInvalItems, opFile);
       
       if (user % PROGU == 0) {
         std::cout<< " u: " << user << std::endl;
@@ -2025,7 +2268,8 @@ std::vector<double> pprBucketRMSEsFrmPRWInVal(Model& origModel, Model& fullModel
   } else {
     std::cerr << "\nFailed to open file: " << prFName << std::endl;
   }
-
+  
+  opFile.close();
   
   for (int i = 0; i < nBuckets; i++) {
     bucketScores[i] = sqrt(bucketScores[i]/bucketNNZ[i]);
