@@ -1817,26 +1817,7 @@ std::vector<double> pprSampBucketRMSEsWInVal(Model& fullModel, gk_csr_t *mat,
       //no items found for user
       continue;
     }
-    
-    memset(pr, 0, sizeof(float)*graphMat->nrows);
-    pr[user] = 1.0;
-    
-    //run personalized page rank on the graph w.r.t. u
-    gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
-
-    //get pr score of items
-    itemScores.clear();
-    for (int i = nUsers; i < nUsers + nItems; i++) {
-      int item = i - nUsers;
-      //skip if item is invalid
-      search = invalItems.find(item);
-      if (search != invalItems.end()) {
-        //found, invalid, skip
-        continue;
-      }
-      itemScores.push_back(std::make_pair(item, pr[i]));
-    }
-
+ 
     //get map of items,rating for user
     itemRatings.clear();
     for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
@@ -1856,11 +1837,31 @@ std::vector<double> pprSampBucketRMSEsWInVal(Model& fullModel, gk_csr_t *mat,
       continue;
     }
 
+   
+    memset(pr, 0, sizeof(float)*graphMat->nrows);
+    pr[user] = 1.0;
+    
+    //run personalized page rank on the graph w.r.t. u
+    gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
+
+    //get pr score of items
+    itemScores.clear();
+    for (int i = nUsers; i < nUsers + nItems; i++) {
+      int item = i - nUsers;
+      //skip if item is invalid
+      search = invalItems.find(item);
+      if (search != invalItems.end()) {
+        //found, invalid, skip
+        continue;
+      }
+      itemScores.push_back(std::make_pair(item, pr[i]));
+    }
+
     //update buckets for given items of the user
     updateBuckets(user, bucketScores, bucketNNZ, itemScores, itemRatings, fullModel,
         nBuckets);
 
-    if (sampU % 100 == 0) {
+    if (sampU % PROGU == 0) {
       std::cout << sampU << " done..." << std::endl;
     }
 
