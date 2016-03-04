@@ -133,7 +133,7 @@ void ModelMF::train(const Data &data, Model &bestModel,
   std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
   startSVD = std::chrono::system_clock::now();
   //initialization with svd of the passed matrix
-  //svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac); 
+  svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac); 
   //svdUsingLapack(data.trainMat, facDim, uFac, iFac);
   //svdFrmCSR(data.trainMat, facDim, uFac, iFac);
   //svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
@@ -145,6 +145,7 @@ void ModelMF::train(const Data &data, Model &bestModel,
   int u, item, iter, bestIter; 
   float itemRat;
   double bestObj, prevObj;
+  double bestValRMSE, prevValRMSE;
 
   gk_csr_t *trainMat = data.trainMat;
 
@@ -230,12 +231,15 @@ void ModelMF::train(const Data &data, Model &bestModel,
     
     //check objective
     if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
-      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj)) {
+      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
+            bestValRMSE, prevValRMSE,
+            invalidUsers, invalidItems)) {
         break; 
       }
       std::cout << "\nModelMF::train trainSeed: " << trainSeed
                 << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
-                << " Train RMSE: " << RMSE(data.trainMat) 
+                << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)
+                << " Val RMSE: " << prevValRMSE
                 << std::endl;
       std::chrono::duration<double> duration =  (end - start) ;
       std::cout << "\nsub duration: " << duration.count() << std::endl;

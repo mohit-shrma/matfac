@@ -83,6 +83,10 @@ class Model {
         int& bestIter, double& bestObj, double& prevObj, 
         std::unordered_set<int>& invalidUsers, 
         std::unordered_set<int>& invalidItems);
+    bool isTerminateModel(Model& bestModel, const Data& data, int iter,
+      int& bestIter, double& bestObj, double& prevObj, double& bestValRMSE,
+      double& prevValRMSE, std::unordered_set<int>& invalidUsers, 
+      std::unordered_set<int>& invalidItems);
     bool isTerminateModelSubMat(Model& bestModel, const Data& data, int iter,
       int& bestIter, double& bestObj, double& prevObj, int uStart, int uEnd,
       int iStart, int iEnd); 

@@ -1275,9 +1275,11 @@ void updateBuckets(int user, std::vector<double>& bucketScores,
 void updateBucketsOpFile(int user, std::vector<double>& bucketScores, 
     std::vector<double>& bucketNNZ, 
     std::vector<std::pair<int, double>>& itemScores, Model& origModel,
-    Model& fullModel, int nBuckets, int nItemsPerBuck, int nItems,
+    Model& fullModel, int nBuckets, 
     std::ofstream& opFile) { 
   
+    int nItems = itemScores.size();
+    int nItemsPerBuck = nItems/nBuckets;
     auto comparePair = [](std::pair<int, double> a, std::pair<int, double> b) { 
       return a.second > b.second; 
     };
@@ -1790,6 +1792,9 @@ std::vector<double> pprSampBucketRMSEsWInVal(Model& fullModel, gk_csr_t *mat,
   int nUsers = mat->nrows;
   int nItems = mat->ncols;
 
+  std::cout << "\nnUsers: " << nUsers;
+  std::cout << "\nnItems: " << nItems;
+  
   std::vector<double> bucketScores(nBuckets, 0.0);
   std::vector<double> bucketNNZ(nBuckets, 0.0);
   float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
@@ -1871,7 +1876,9 @@ std::vector<double> pprSampBucketRMSEsWInVal(Model& fullModel, gk_csr_t *mat,
   free(pr);
   
   for (int i = 0; i < nBuckets; i++) {
-    bucketScores[i] = sqrt(bucketScores[i]/bucketNNZ[i]);
+    if (bucketNNZ[i] > 0) {
+      bucketScores[i] = sqrt(bucketScores[i]/bucketNNZ[i]);
+    }
   }
   return bucketScores;
 }
@@ -1941,7 +1948,6 @@ std::vector<double> gprBucketRMSEs(Model& origModel, Model& fullModel, int nUser
 std::vector<double> gprBucketRMSEsWInVal(Model& origModel, Model& fullModel, int nUsers, 
     int nItems, float lambda, int max_niter, gk_csr_t *graphMat, int nBuckets,
     std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems) {
-  std::ofstream opFile("u_gpr_0.6.txt"); 
   int nInvalItems = invalItems.size();
   int nItemsPerBuck = (nItems-nInvalItems)/nBuckets;
   std::vector<double> bucketScores(nBuckets, 0.0);
@@ -1992,8 +1998,8 @@ std::vector<double> gprBucketRMSEsWInVal(Model& origModel, Model& fullModel, int
       continue;
     }
     
-    updateBucketsSortedOpFile(user, bucketScores, bucketNNZ, sortedItems, origModel,
-        fullModel, nBuckets, nItemsPerBuck, opFile);
+    updateBucketsSorted(user, bucketScores, bucketNNZ, sortedItems, origModel,
+        fullModel, nBuckets, nItemsPerBuck);
   }
 
   for (int i = 0; i < nBuckets; i++) {
@@ -2001,7 +2007,6 @@ std::vector<double> gprBucketRMSEsWInVal(Model& origModel, Model& fullModel, int
   }
     
   free(pr);
-  opFile.close();
   return bucketScores;
 }
 
@@ -2325,7 +2330,6 @@ std::vector<double> pprBucketRMSEsFrmPR(Model& origModel, Model& fullModel, int 
 std::vector<double> pprBucketRMSEsFrmPRWInVal(Model& origModel, Model& fullModel, int nUsers, 
     int nItems, gk_csr_t *graphMat, int nBuckets, const char* prFName,
     std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems) {
-  std::ofstream opFile("u_ppr_0.6.txt");  
   int nInvalItems = invalItems.size(); 
   int nItemsPerBuck = (nItems- nInvalItems)/nBuckets;
   std::vector<double> bucketScores(nBuckets, 0.0);
@@ -2375,8 +2379,8 @@ std::vector<double> pprBucketRMSEsFrmPRWInVal(Model& origModel, Model& fullModel
       }
 
       //add RMSEs to bucket as per ranking by itemscores
-      updateBucketsOpFile(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,
-          nBuckets, nItemsPerBuck, nItems-nInvalItems, opFile);
+      updateBuckets(user, bucketScores, bucketNNZ, itemScores, origModel, fullModel,
+          nBuckets);
       
       if (user % PROGU == 0) {
         std::cout<< " u: " << user << std::endl;
@@ -2388,8 +2392,6 @@ std::vector<double> pprBucketRMSEsFrmPRWInVal(Model& origModel, Model& fullModel
   } else {
     std::cerr << "\nFailed to open file: " << prFName << std::endl;
   }
-  
-  opFile.close();
   
   for (int i = 0; i < nBuckets; i++) {
     bucketScores[i] = sqrt(bucketScores[i]/bucketNNZ[i]);

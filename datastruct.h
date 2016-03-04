@@ -25,6 +25,7 @@ class Params {
     float alpha;
     char *trainMatFile;
     char *testMatFile;
+    char *valMatFile;
     char *graphMatFile;
     char *origUFacFile;
     char *origIFacFile;
@@ -36,7 +37,8 @@ class Params {
         int p_origFacDim, int p_seed,
         float p_uReg, float p_iReg,  float p_learnRate, float p_rhoRMS, 
         float p_alpha,
-        char *p_trainMatFile, char *p_testMatFile, char *p_graphMatFile,
+        char *p_trainMatFile, char *p_testMatFile, char *p_valMatFile,
+        char *p_graphMatFile,
         char *p_origUFacFile, 
         char *p_origIFacFile, char *p_initUFacFile, char *p_initIFacFile,
         char *p_prefix)
@@ -45,13 +47,13 @@ class Params {
       uReg(p_uReg), iReg(p_iReg), learnRate(p_learnRate), rhoRMS(p_rhoRMS), 
       alpha(p_alpha),
       trainMatFile(p_trainMatFile), testMatFile(p_testMatFile), 
-      graphMatFile(p_graphMatFile),
+      valMatFile(p_valMatFile), graphMatFile(p_graphMatFile),
       origUFacFile(p_origUFacFile), origIFacFile(p_origIFacFile), 
       initUFacFile(p_initUFacFile), initIFacFile(p_initIFacFile),
       prefix(p_prefix){}
 
 
-};
+}; 
 
 
  class Data {
@@ -59,6 +61,7 @@ class Params {
   public:
     gk_csr_t *trainMat;
     gk_csr_t *testMat;
+    gk_csr_t *valMat;
     gk_csr_t *graphMat;
 
     std::vector<std::vector<double>> origUFac;
@@ -136,6 +139,13 @@ class Params {
         gk_csr_CreateIndex(testMat, GK_CSR_COL);
       }
       
+      valMat = NULL;
+      if (NULL != params.valMatFile) {
+        std::cout << "\nReading val matrix 0-indexed... ";
+        valMat = gk_csr_Read(params.valMatFile, GK_CSR_FMT_CSR, 1, 0);
+        gk_csr_CreateIndex(valMat, GK_CSR_COL);
+      }
+
       graphMat = NULL;
       if (NULL != params.graphMatFile) {
         if (isFileExist(params.graphMatFile)) { 
@@ -160,6 +170,10 @@ class Params {
         gk_csr_Free(&testMat);
       }
       
+      if (NULL != valMat) {
+        gk_csr_Free(&valMat);
+      }
+
       if (NULL != graphMat) {
         gk_csr_Free(&graphMat);
       }

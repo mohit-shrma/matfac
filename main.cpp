@@ -13,7 +13,7 @@
 
 Params parse_cmd_line(int argc, char *argv[]) {
   
-  if (argc < 20) {
+  if (argc < 21) {
     std::cout << "\nNot enough arguments";
     exit(0);
   }  
@@ -21,7 +21,8 @@ Params parse_cmd_line(int argc, char *argv[]) {
   Params params(atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), 
       atoi(argv[5]), atoi(argv[6]),
       atof(argv[7]), atof(argv[8]), atof(argv[9]), atof(argv[10]), atof(argv[11]),
-      argv[12], argv[13], argv[14], argv[15], argv[16], argv[17], argv[18], argv[19]);
+      argv[12], argv[13], argv[14], argv[15], argv[16], argv[17], argv[18], argv[19], 
+      argv[20]);
 
   return params;
 }
@@ -369,7 +370,68 @@ void computeBucksFrmFullModel(Data& data, Params& params) {
   std::cout << "\nPPR confidence: ";
   std::vector<double> pprRMSEs = pprBucketRMSEsFrmPRWInVal(origModel, fullModel,
       params.nUsers, params.nItems, data.graphMat, 10, 
-      ".ppr", invalUsers, invalItems);
+      "flix_u1_i1_50Kx33027_0.6.ppr", invalUsers, invalItems);
+  dispVector(pprRMSEs);
+  prefix = std::string(params.prefix) + "_ppr_" + std::to_string(params.alpha) + "_bucket.txt";
+  writeVector(pprRMSEs, prefix.c_str());
+}
+
+
+void computeSampBucksFrmFullModel(Data& data, Params& params) {
+
+  ModelMFBias fullModel(params, "ModelFull_1_uFac_229060_5_0.010000_0.001000.mat", 
+      "ModelFull_1_iFac_26779_5_0.010000_0.001000.mat",
+      "ModelFull_1_uBias_229060_0.010000_0.001000.vec", 
+      "ModelFull_1_iBias_26779_0.010000_0.001000.vec", 
+      "ModelFull_1_gBias_26779_0.010000_0.001000.vec",
+      params.seed);
+
+
+  //get number of ratings per user and item, i.e. frequency
+  auto rowColFreq = getRowColFreq(data.trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+  
+  std::vector<int> invalUsersVec = readVector("mfBias_invalUsers.txt");
+  std::vector<int> invalItemsVec = readVector("mfBias_invalItems.txt");
+
+  std::unordered_set<int> invalUsers;
+  for (auto v: invalUsersVec) {
+    invalUsers.insert(v);
+  }
+
+  std::unordered_set<int> invalItems;
+  for (auto v: invalItemsVec) {
+    invalItems.insert(v);
+  }
+
+  std::cout << "\nnInvalidUsers: " << invalUsers.size();
+  std::cout << "\nnInvalidItems: " << invalItems.size() <<std::endl;
+ 
+  std::cout << "\nTrain RMSE: " << fullModel.RMSE(data.trainMat, invalUsers, invalItems);
+  std::cout << "\nTest RMSE: " << fullModel.RMSE(data.testMat, invalUsers, invalItems);
+
+  int nSampUsers = 10000;
+
+  std::cout << "\nGPR confidence: ";
+  std::vector<double> gprRMSEs = gprSampBucketRMSEsWInVal(fullModel, data.testMat,
+      params.alpha, MAX_PR_ITER, data.graphMat, 10, invalUsers, invalItems, 
+      nSampUsers, params.seed);
+  dispVector(gprRMSEs);
+  std::string prefix = std::string(params.prefix) + "_gpr_" + std::to_string(params.alpha) + "_bucket.txt";
+  writeVector(gprRMSEs, prefix.c_str());
+
+  std::cout << "\nItem Freq confidence: ";
+  std::vector<double> itemRMSEs = itemFreqSampBucketRMSEsWInVal(data.testMat,
+      fullModel, itemFreq, 10, invalUsers, invalItems, nSampUsers, params.seed);
+  dispVector(itemRMSEs);
+  prefix = std::string(params.prefix) + "_iFreq_bucket.txt";
+  writeVector(itemRMSEs, prefix.c_str());
+   
+  std::cout << "\nPPR confidence: ";
+  std::vector<double> pprRMSEs = pprSampBucketRMSEsWInVal(fullModel, 
+      data.testMat, params.alpha, MAX_PR_ITER, data.graphMat, 10, 
+      invalUsers, invalItems, nSampUsers, params.seed);
   dispVector(pprRMSEs);
   prefix = std::string(params.prefix) + "_ppr_" + std::to_string(params.alpha) + "_bucket.txt";
   writeVector(pprRMSEs, prefix.c_str());
@@ -379,8 +441,6 @@ void computeBucksFrmFullModel(Data& data, Params& params) {
 void computeBucksEstFullModel(Data& data, Params& params) {
 
   ModelMF fullModel(params, params.seed);
-  //svdFrmSvdlibCSR(data.trainMat, fullModel.facDim, fullModel.uFac, 
-  //    fullModel.iFac); 
   ModelMF fullBestModel(fullModel);
   
   Model origModel(params, params.seed);
@@ -391,9 +451,20 @@ void computeBucksEstFullModel(Data& data, Params& params) {
   
   std::cout << "\nStarting full model train...";
   fullModel.train(data, fullBestModel, invalUsers, invalItems);
+ 
+  //save invalid users
+  std::cout << "\nTotal invalid users: " << invalUsers.size();
+  //write out invalid users
+  std::string prefix = std::string(params.prefix) + "_invalUsers.txt";
+  writeContainer(begin(invalUsers), end(invalUsers), prefix.c_str());
   
+  //save invalid items
+  std::cout << "\nTotal invalid items: " << invalItems.size();
+  //write out invalid users
+  prefix = std::string(params.prefix) + "_invalItems.txt";
+  writeContainer(begin(invalItems), end(invalItems), prefix.c_str());
+
   //save best model
-  std::string prefix(params.prefix);
   prefix = prefix + "_full";
   fullBestModel.save(prefix);
   
@@ -428,7 +499,7 @@ void computeBucksEstFullModel(Data& data, Params& params) {
   std::cout << "\nPPR confidence: ";
   std::vector<double> pprRMSEs = pprBucketRMSEsFrmPRWInVal(origModel, fullModel,
       params.nUsers, params.nItems, data.graphMat, 10, 
-      ".ppr", invalUsers, invalItems);
+      "flix_u1_i1_50Kx33027_0.8.ppr", invalUsers, invalItems);
   dispVector(pprRMSEs);
   prefix = std::string(params.prefix) + "_ppr_" + std::to_string(params.alpha) + "_bucket.txt";
   writeVector(pprRMSEs, prefix.c_str());
@@ -458,7 +529,7 @@ void computeConfScoresFrmModel(Data& data, Params& params) {
   }
 
   std::unordered_set<int> invalItems;
-  for (auto v: invalItems) {
+  for (auto v: invalItemsVec) {
     invalItems.insert(v);
   }
 
@@ -758,7 +829,7 @@ void computeConfCurvesFrmModel(Data& data, Params& params) {
   }
 
   std::unordered_set<int> invalItems;
-  for (auto v: invalItems) {
+  for (auto v: invalItemsVec) {
     invalItems.insert(v);
   }
 
@@ -851,7 +922,7 @@ void computeConfRMSECurvesFrmModel(Data& data, Params& params) {
   }
 
   std::unordered_set<int> invalItems;
-  for (auto v: invalItems) {
+  for (auto v: invalItemsVec) {
     invalItems.insert(v);
   }
 
@@ -1077,16 +1148,34 @@ int main(int argc , char* argv[]) {
   //computeConfScoresFrmModel(data, params);
   //computeConf(data, params);  
   //computeBucksEstFullModel(data, params);
+  //computeBucksFrmFullModel(data, params);
+  computeSampBucksFrmFullModel(data, params);
+
+  //writeTrainTestMat(data.trainMat,  "flix_u1_i1_50Kx33027.train.syn.csr", 
+  //   "flix_u1_i1_50Kx33027.val.syn.csr", 0.2,  params.seed);
   
+
+  /*
   ModelMFBias biasModel(params, params.seed);
   
-  std::unordered_set<int> invalUsers;
-  std::unordered_set<int> invalItems;
+  std::unordered_set<int> invalidUsers;
+  std::unordered_set<int> invalidItems;
   
   ModelMFBias bestModel(biasModel);
   std::cout << "\nStarting model train...";
-  biasModel.train(data, bestModel, invalUsers, invalItems);
-  std::cout << "\nTest RMSE: " << biasModel.RMSE(data.testMat);
+  biasModel.train(data, bestModel, invalidUsers, invalidItems);
+  
+  //write out invalid users
+  std::string prefix = std::string(params.prefix) + "_invalUsers.txt";
+  writeContainer(begin(invalidUsers), end(invalidUsers), prefix.c_str());
+
+  //write out invalid users
+  prefix = std::string(params.prefix) + "_invalItems.txt";
+  writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
+
+  std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
+      invalidItems);
+  */    
 
   return 0;
 }

@@ -305,6 +305,7 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
     std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems) {
   bool ret = false;
   double currObj = objective(data, invalidUsers, invalidItems);
+
   if (iter > 0) {
     
     if (currObj < bestObj) {
@@ -334,6 +335,55 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
   }
 
   prevObj = currObj;
+
+  return ret;
+}
+
+
+bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
+    int& bestIter, double& bestObj, double& prevObj, double& bestValRMSE,
+    double& prevValRMSE, std::unordered_set<int>& invalidUsers, 
+    std::unordered_set<int>& invalidItems) {
+  bool ret = false;
+  double currObj = objective(data, invalidUsers, invalidItems);
+  double currValRMSE = -1;
+  
+  if (data.valMat) {
+    currValRMSE = RMSE(data.valMat, invalidUsers, invalidItems);
+  }
+
+  if (iter > 0) {
+    
+    if (currValRMSE < bestValRMSE) {
+      bestModel = *this;
+      bestValRMSE = currValRMSE;
+      bestIter = iter;
+    }
+
+    if (iter - bestIter >= 500) {
+      //can't improve validation RMSE after 500 iterations
+      printf("\nNOT CONVERGED: bestIter:%d bestObj: %.10e bestValRMSE: %.10e"
+          " currIter:%d currObj: %.10e currValRMSE: %.10e", 
+          bestIter, bestObj, bestValRMSE, iter, currObj, currValRMSE);
+      ret = true;
+    }
+    
+    if (fabs(prevObj - currObj) < EPS) {
+      //convergence
+      printf("\nConverged in iteration: %d prevObj: %.10e currObj: %.10e", iter,
+              prevObj, currObj); 
+      ret = true;
+    }
+  }
+
+  if (iter == 0) {
+    bestObj = currObj;
+    bestValRMSE = currValRMSE;
+    bestIter = iter;
+  }
+
+  prevObj = currObj;
+  prevValRMSE = currValRMSE;
 
   return ret;
 }
