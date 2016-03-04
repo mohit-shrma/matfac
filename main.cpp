@@ -370,7 +370,7 @@ void computeBucksFrmFullModel(Data& data, Params& params) {
   std::cout << "\nPPR confidence: ";
   std::vector<double> pprRMSEs = pprBucketRMSEsFrmPRWInVal(origModel, fullModel,
       params.nUsers, params.nItems, data.graphMat, 10, 
-      "flix_u1_i1_50Kx33027_0.6.ppr", invalUsers, invalItems);
+      ".ppr", invalUsers, invalItems);
   dispVector(pprRMSEs);
   prefix = std::string(params.prefix) + "_ppr_" + std::to_string(params.alpha) + "_bucket.txt";
   writeVector(pprRMSEs, prefix.c_str());
@@ -379,11 +379,11 @@ void computeBucksFrmFullModel(Data& data, Params& params) {
 
 void computeSampBucksFrmFullModel(Data& data, Params& params) {
 
-  ModelMFBias fullModel(params, "ModelFull_1_uFac_229060_5_0.010000_0.001000.mat", 
-      "ModelFull_1_iFac_26779_5_0.010000_0.001000.mat",
-      "ModelFull_1_uBias_229060_0.010000_0.001000.vec", 
-      "ModelFull_1_iBias_26779_0.010000_0.001000.vec", 
-      "ModelFull_1_gBias_26779_0.010000_0.001000.vec",
+  ModelMFBias fullModel(params, "", 
+      "",
+      "", 
+      "", 
+      "",
       params.seed);
 
 
@@ -499,7 +499,7 @@ void computeBucksEstFullModel(Data& data, Params& params) {
   std::cout << "\nPPR confidence: ";
   std::vector<double> pprRMSEs = pprBucketRMSEsFrmPRWInVal(origModel, fullModel,
       params.nUsers, params.nItems, data.graphMat, 10, 
-      "flix_u1_i1_50Kx33027_0.8.ppr", invalUsers, invalItems);
+      ".ppr", invalUsers, invalItems);
   dispVector(pprRMSEs);
   prefix = std::string(params.prefix) + "_ppr_" + std::to_string(params.alpha) + "_bucket.txt";
   writeVector(pprRMSEs, prefix.c_str());
@@ -1151,8 +1151,8 @@ int main(int argc , char* argv[]) {
   //computeBucksFrmFullModel(data, params);
   computeSampBucksFrmFullModel(data, params);
 
-  //writeTrainTestMat(data.trainMat,  "flix_u1_i1_50Kx33027.train.syn.csr", 
-  //   "flix_u1_i1_50Kx33027.val.syn.csr", 0.2,  params.seed);
+  //writeTrainTestMat(data.trainMat,  ".train.syn.csr", 
+  //   ".val.syn.csr", 0.2,  params.seed);
   
 
   /*
