@@ -9,6 +9,7 @@
 #include <map>
 #include <cmath>
 #include <cstdlib>
+#include <fstream>
 
 void comparePPR2GPR(int nUsers, int nItems, gk_csr_t* graphMat, float lambda,
     int max_niter, const char* prFName, const char* opFName);
@@ -147,7 +148,24 @@ std::vector<double> itemFreqSampBucketRMSEsWInVal(gk_csr_t* mat,
     std::unordered_set<int>& invalItems, int nSampUsers, int seed);
 std::vector<double> pprSampBucketRMSEsWInVal(Model& fullModel, gk_csr_t *mat, 
     float lambda, int max_niter, gk_csr_t *graphMat, int nBuckets, 
-    std::unordered_set<int> invalUsers, std::unordered_set<int> invalItems, 
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
+    int nSampUsers, int seed);
+
+std::vector<double> gprSampBucketRMSEsWInVal(Model& fullModel, gk_csr_t *mat,
+    float lambda, int max_niter, gk_csr_t *graphMat, int nBuckets,
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
+     std::unordered_set<int>& filtItems, int nSampUsers, int seed);
+std::vector<double> itemFreqSampBucketRMSEsWInVal(gk_csr_t* mat, 
+    Model& fullModel, 
+    std::vector<double>& itemFreq, int nBuckets, 
+    std::unordered_set<int>& invalUsers, 
+    std::unordered_set<int>& invalItems, std::unordered_set<int>& filtItems,
+    int nSampUsers, int seed);
+
+std::vector<double> pprSampBucketRMSEsWInVal(Model& fullModel, gk_csr_t *mat, 
+    float lambda, int max_niter, gk_csr_t *graphMat, int nBuckets, 
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
+    std::unordered_set<int>& filtItems, 
     int nSampUsers, int seed);
 #endif
 

@@ -15,6 +15,7 @@ double meanRating(gk_csr_t* mat) {
   return avg;
 }
 
+
 //include start exclude end
 int nnzSubMat(gk_csr_t *mat, int uStart, int uEnd, int iStart, int iEnd) {
   
@@ -54,6 +55,7 @@ bool isInsideBlock(int u, int item, int uStart, int uEnd, int iStart,
   }
 }
 
+
 //compute standard deviation in vector
 double stddev(std::vector<double> v) {
   
@@ -72,6 +74,7 @@ double stddev(std::vector<double> v) {
   double stdev = sqrt(sq_sum / v.size());
   return stdev;
 }
+
 
 //return a min element of a vector
 template<typename T>
