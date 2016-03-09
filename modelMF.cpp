@@ -179,7 +179,9 @@ void ModelMF::train(const Data &data, Model &bestModel,
   //random engine
   std::mt19937 mt(trainSeed);
   //get user-item ratings from training data
-  auto uiRatings = getUIRatings(trainMat);
+  auto uiRatings = getUIRatings(trainMat, invalidUsers, invalidItems);
+  std::cout << "\nTrain NNZ after removing invalid users and items: " 
+    << uiRatings.size();
 
   for (iter = 0; iter < maxIter; iter++) {  
     start = std::chrono::system_clock::now();
@@ -192,23 +194,6 @@ void ModelMF::train(const Data &data, Model &bestModel,
       item    = std::get<1>(uiRating);
       itemRat = std::get<2>(uiRating);
       
-      //skip if u in invalidUsers    
-      /*
-      auto search = invalidUsers.find(u);
-      if (search != invalidUsers.end()) {
-        //found and skip
-        continue;
-      }
-      */
-      
-      /*
-      search = invalidItems.find(item);
-      if (search != invalidItems.end()) {
-        //found and skip
-        continue;
-      }
-      */
-
       //std::cout << "\nGradCheck u: " << u << " item: " << item;
       //gradCheck(u, item, itemRat);
 
@@ -249,9 +234,6 @@ void ModelMF::train(const Data &data, Model &bestModel,
     }
   
   }
-  
-  //std::cout << "\nNum Iter: " << iter << " Best Iter: " << bestIter
-  //  << " Best obj: " << std::scientific << bestObj ;
 
 }
 

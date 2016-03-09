@@ -35,8 +35,7 @@ void Model::save(std::string prefix) {
 
   //save global bias 
   std::vector<double> gBias = {mu};
-  std::string gBFName = prefix + "_gBias_" + std::to_string(nItems) + "_" 
-    + std::to_string(iReg) + "_" + std::to_string(learnRate) + ".vec";
+  std::string gBFName = prefix + "_gBias_";
   writeVector(gBias, gBFName.c_str());
 }
 
@@ -350,6 +349,9 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
   
   if (data.valMat) {
     currValRMSE = RMSE(data.valMat, invalidUsers, invalidItems);
+  } else {
+    std::cerr << "\nNo validation data" << std::endl;
+    exit(0);
   }
 
   if (iter > 0) {

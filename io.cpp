@@ -3,7 +3,9 @@
 
 void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
     const char *fileName) {
-  
+ 
+  std::cout << "Reading ... " << fileName << std::endl;
+
   std::string line, token;
   std::string delimiter = " ";
   std::ifstream inFile (fileName);
@@ -108,6 +110,56 @@ void dispVector(std::vector<double>& vec) {
   std::cout << std::endl;
 }
 
+
+void writeTrainTestValMat(gk_csr_t *mat,  const char* trainFileName, 
+    const char* testFileName, const char *valFileName, float testPc, 
+    float valPc, int seed) {
+  int k, i;
+  int nnz = getNNZ(mat);
+  int nTest = testPc * nnz;
+  int nVal = valPc * nnz;
+  int* color = (int*) malloc(sizeof(int)*nnz);
+  memset(color, 0, sizeof(int)*nnz);
+ 
+  //initialize uniform random engine
+  std::mt19937 mt(seed);
+  //nnz dist
+  std::uniform_int_distribution<int> nnzDist(0, nnz-1);
+
+  for (i = 0; i < nTest; i++) {
+    k = nnzDist(mt);
+    color[k] = 1;
+  }
+  
+  i = 0;
+  while (i < nVal) {
+    k = nnzDist(mt);
+    if (!color[k]) {
+      color[k] = 2;
+      i++;
+    }
+  }
+
+
+  //split the matrix based on color
+  gk_csr_t** mats = gk_csr_Split(mat, color);
+  
+  //save first matrix as train
+  gk_csr_Write(mats[0], (char*) trainFileName, GK_CSR_FMT_CSR, 1, 0);
+
+  //save second matrix as test
+  gk_csr_Write(mats[1], (char*) testFileName, GK_CSR_FMT_CSR, 1, 0);
+
+  //save third matrix as val
+  gk_csr_Write(mats[2], (char*) valFileName, GK_CSR_FMT_CSR, 1, 0);
+  
+  free(color);
+  gk_csr_Free(&mats[0]);
+  gk_csr_Free(&mats[1]);
+  gk_csr_Free(&mats[2]);
+  //TODO: free mats
+  //gk_csr_Free(&mats);
+}
 
 
 void writeTrainTestMat(gk_csr_t *mat,  const char* trainFileName, 

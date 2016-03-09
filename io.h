@@ -27,6 +27,9 @@ std::vector<int> readVector(const char *ipFileName);
 std::vector<double> readDVector(const char *ipFileName);
 void writeTrainTestMat(gk_csr_t *mat,  const char* trainFileName, 
      const char* testFileName, float testPc, int seed);
+void writeTrainTestValMat(gk_csr_t *mat,  const char* trainFileName, 
+    const char* testFileName, const char *valFileName, float testPc, 
+    float valPc, int seed);
 
 bool isFileExist(const char *fileName);
 

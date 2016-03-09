@@ -10,6 +10,7 @@
 #ifndef _UTIL_H_
 #define _UTIL_H_
 
+double compRecall(std::vector<int> order1, std::vector<int> order2, int N);
 double meanRating(gk_csr_t* mat);
 int nnzSubMat(gk_csr_t *mat, int uStart, int uEnd, int iStart, int iEnd);
 bool isInsideBlock(int u, int item, int uStart, int uEnd, int iStart, 

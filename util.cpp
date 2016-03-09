@@ -1,6 +1,37 @@
 #include "util.h"
 
 
+double compRecall(std::vector<int> order1, std::vector<int> order2, int N) {
+
+  //change N to smaller of the list, in case N is larger than the either one
+  N = N < order1.size()? N : order1.size();
+  N = N < order2.size()? N : order2.size();
+
+  std::unordered_set<int> set1;
+  for (int i  = 0; i < N; i++) {
+    set1.insert(order1[i]);
+  }
+
+  std::unordered_set<int> set2;
+  for (int i  = 0; i < N; i++) {
+    set2.insert(order2[i]);
+  }
+
+  //compute overlap
+  double overlap = 0;
+  for (int item: set1) {
+    auto search = set2.find(item);
+    if (search != set2.end()) {
+      //found item
+      overlap += 1;
+    }
+  }
+  
+  return overlap/N;
+}
+
+
+
 double meanRating(gk_csr_t* mat) {
   int u, ii, nnz;
   double avg = 0;
