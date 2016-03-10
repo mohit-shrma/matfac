@@ -12,10 +12,9 @@ void ModelMF::updateAdaptiveFac(std::vector<double> &fac, std::vector<double> &g
 
 void ModelMF::computeUGrad(int user, int item, float r_ui, 
         std::vector<double> &uGrad) {
-  //estimate rating on the item
+  //estimate and actual rating difference
   double diff = r_ui - dotProd(uFac[user], iFac[item], facDim);
 
-  //initialize gradients to 0
   for (int i = 0; i < facDim; i++) {
     uGrad[i] = -2.0*diff*iFac[item][i] + 2.0*uReg*uFac[user][i];
   }
@@ -25,10 +24,9 @@ void ModelMF::computeUGrad(int user, int item, float r_ui,
 
 void ModelMF::computeIGrad(int user, int item, float r_ui, 
         std::vector<double> &iGrad) {
-  //estimate rating on the item
+  //estimate and actual rating difference
   double diff = r_ui - dotProd(uFac[user], iFac[item], facDim);
 
-  //initialize gradients to 0
   for (int i = 0; i < facDim; i++) {
     iGrad[i] = -2.0*diff*uFac[user][i] + 2.0*iReg*iFac[item][i];
   }
@@ -144,6 +142,7 @@ void ModelMF::train(const Data &data, Model &bestModel,
 
   int u, item, iter, bestIter; 
   float itemRat;
+  double diff, r_ui_est;
   double bestObj, prevObj;
   double bestValRMSE, prevValRMSE;
 
@@ -167,6 +166,7 @@ void ModelMF::train(const Data &data, Model &bestModel,
 
 
   std::chrono::time_point<std::chrono::system_clock> start, end;
+  std::chrono::duration<double> duration;
   
   std::vector<std::unordered_set<int>> uISet(nUsers);
   genStats(trainMat, uISet, std::to_string(trainSeed));
@@ -180,40 +180,67 @@ void ModelMF::train(const Data &data, Model &bestModel,
   std::mt19937 mt(trainSeed);
   //get user-item ratings from training data
   auto uiRatings = getUIRatings(trainMat, invalidUsers, invalidItems);
+  //index to above uiRatings pair
+  std::vector<size_t> uiRatingInds(uiRatings.size());
+  std::iota(uiRatingInds.begin(), uiRatingInds.end(), 0);
+
+
   std::cout << "\nTrain NNZ after removing invalid users and items: " 
     << uiRatings.size();
-
+  double subIterDuration = 0;
   for (iter = 0; iter < maxIter; iter++) {  
-    start = std::chrono::system_clock::now();
+    
+    //shuffle the user item rating indexes
+    std::shuffle(uiRatingInds.begin(), uiRatingInds.end(), mt);
 
-    //shuffle the user item ratings
-    std::shuffle(uiRatings.begin(), uiRatings.end(), mt);
-    for (auto&& uiRating: uiRatings) {
+    start = std::chrono::system_clock::now();
+    for (auto&& ind: uiRatingInds) {
       //get user, item and rating
-      u       = std::get<0>(uiRating);
-      item    = std::get<1>(uiRating);
-      itemRat = std::get<2>(uiRating);
+      u       = std::get<0>(uiRatings[ind]);
+      item    = std::get<1>(uiRatings[ind]);
+      itemRat = std::get<2>(uiRatings[ind]);
       
       //std::cout << "\nGradCheck u: " << u << " item: " << item;
       //gradCheck(u, item, itemRat);
+      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      diff = itemRat - r_ui_est;
 
       //compute user gradient
-      computeUGrad(u, item, itemRat, uGrad);
+      //computeUGrad(u, item, itemRat, uGrad);
+       
+      for (int i = 0; i < facDim; i++) {
+        uGrad[i] = -2.0*diff*iFac[item][i] + 2.0*uReg*uFac[u][i];
+      }
 
       //update user
       //updateAdaptiveFac(uFac[u], uGrad, uGradsAcc[u]); 
-      updateFac(uFac[u], uGrad); 
+      //updateFac(uFac[u], uGrad); 
+      for (int i = 0; i < facDim; i++) {
+        uFac[u][i] -= learnRate * uGrad[i];
+      }
 
+      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      diff = itemRat - r_ui_est;
+    
       //compute item gradient
-      computeIGrad(u, item, itemRat, iGrad);
+      //computeIGrad(u, item, itemRat, iGrad);
+      for (int i = 0; i < facDim; i++) {
+        iGrad[i] = -2.0*diff*uFac[u][i] + 2.0*iReg*iFac[item][i];
+      }
 
       //update item
       //updateAdaptiveFac(iFac[item], iGrad, iGradsAcc[item]);
-      updateFac(iFac[item], iGrad);
-    }
+      //updateFac(iFac[item], iGrad);
+      for (int i = 0; i < facDim; i++) {
+        iFac[item][i] -= learnRate * iGrad[i];
+      }
 
+    }
     end = std::chrono::system_clock::now();  
-    
+   
+    duration =  end - start;
+    subIterDuration += duration.count();
+
     //check objective
     if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
@@ -226,8 +253,7 @@ void ModelMF::train(const Data &data, Model &bestModel,
                 << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)
                 << " Val RMSE: " << prevValRMSE
                 << std::endl;
-      std::chrono::duration<double> duration =  (end - start) ;
-      std::cout << "\nsub duration: " << duration.count() << std::endl;
+      std::cout << "\navg sub duration: " << subIterDuration/(iter+1) << std::endl;
       //save best model found till now
       std::string modelFName = "ModelFull_" + std::to_string(trainSeed);
       bestModel.save(modelFName);
