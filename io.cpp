@@ -4,7 +4,7 @@
 void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
     const char *fileName) {
  
-  std::cout << "Reading ... " << fileName << std::endl;
+  std::cout << "\nReading ... " << fileName << std::endl;
 
   std::string line, token;
   std::string delimiter = " ";
@@ -188,6 +188,49 @@ void writeTrainTestMat(gk_csr_t *mat,  const char* trainFileName,
 
   //save second matrix as test
   gk_csr_Write(mats[1], (char*) testFileName, GK_CSR_FMT_CSR, 1, 0);
+
+  free(color);
+  gk_csr_Free(&mats[0]);
+  gk_csr_Free(&mats[1]);
+  //TODO: free mats
+  //gk_csr_Free(&mats);
+}
+
+
+void writeSubSampledMat(gk_csr_t *mat,  const char* sampFileName, 
+    float sampPc, int seed) {
+
+  int k;
+  int nnz = getNNZ(mat);
+  int nSamp = sampPc * nnz;
+  int* color = (int*) malloc(sizeof(int)*nnz);
+  memset(color, 0, sizeof(int)*nnz);
+ 
+  //initialize uniform random engine
+  std::mt19937 mt(seed);
+  //nnz dist
+  std::uniform_int_distribution<int> nnzDist(0, nnz-1);
+
+  int sumColor = 0;
+  while (sumColor < nSamp) {
+    k = nnzDist(mt);
+    if (!color[k]) {
+      color[k] = 1;
+      sumColor++;
+    }
+  }
+
+  //split the matrix based on color
+  gk_csr_t** mats = gk_csr_Split(mat, color);
+
+  int sampNNZ = getNNZ(mats[1]);
+  std::cout << "\nparent NNZ: " << nnz << " sample NNZ: " << sampNNZ;
+  std::cout << "\nPercent nnz in sample matrix: " 
+    << (float)sampNNZ/(float)nnz << std::endl;
+  
+  //save first matrix as sample mat
+  gk_csr_Write(mats[1], (char*) sampFileName, GK_CSR_FMT_CSR, 1, 0);
+
 
   free(color);
   gk_csr_Free(&mats[0]);

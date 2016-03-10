@@ -25,17 +25,15 @@ void Model::save(std::string prefix) {
   std::string uBFName = prefix + "_uBias_" + std::to_string(nUsers) + "_" 
     + std::to_string(uReg) + "_" + std::to_string(learnRate) + ".vec";
   writeVector(uBias, uBFName.c_str());
-  std::cout << "\nuser bias norm: " << normVec(uBias);
 
   //save item bias
   std::string iBFName = prefix + "_iBias_" + std::to_string(nItems) + "_" 
     + std::to_string(iReg) + "_" + std::to_string(learnRate) + ".vec";
   writeVector(iBias, iBFName.c_str());
-  std::cout << "\nitem bias norm: " << normVec(iBias);
 
   //save global bias 
   std::vector<double> gBias = {mu};
-  std::string gBFName = prefix + "_gBias_";
+  std::string gBFName = prefix + "_gBias";
   writeVector(gBias, gBFName.c_str());
 }
 
@@ -376,6 +374,13 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
               prevObj, currObj); 
       ret = true;
     }
+
+    if (fabs(prevValRMSE - currValRMSE) < 0.001) {
+      printf("\nvalidation RMSE in iteration: %d prev: %.10e curr: %.10e", iter,
+              prevValRMSE, currValRMSE); 
+      ret = true;
+    }
+
   }
 
   if (iter == 0) {

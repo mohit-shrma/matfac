@@ -22,7 +22,6 @@ void writeCSRWSparsityStructure(gk_csr_t *mat, const char *opFileName,
 void writeCSRWHalfSparsity(gk_csr_t *mat, const char *opFileName, int uStart,
     int uEnd, int iStart, int iEnd);
 void writeVector(std::vector<double>& vec, const char *opFileName);
-
 std::vector<int> readVector(const char *ipFileName);
 std::vector<double> readDVector(const char *ipFileName);
 void writeTrainTestMat(gk_csr_t *mat,  const char* trainFileName, 
@@ -30,7 +29,8 @@ void writeTrainTestMat(gk_csr_t *mat,  const char* trainFileName,
 void writeTrainTestValMat(gk_csr_t *mat,  const char* trainFileName, 
     const char* testFileName, const char *valFileName, float testPc, 
     float valPc, int seed);
-
+void writeSubSampledMat(gk_csr_t *mat,  const char* sampFileName, 
+    float sampPc, int seed);
 bool isFileExist(const char *fileName);
 
 template <typename Iter>
