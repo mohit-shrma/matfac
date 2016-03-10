@@ -167,6 +167,25 @@ std::vector<double> pprSampBucketRMSEsWInVal(Model& fullModel, gk_csr_t *mat,
     std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
     std::unordered_set<int>& filtItems, 
     int nSampUsers, int seed);
+
+
+std::vector<double> itemFreqSampBucketRMSEsWInVal(Model& origModel, 
+    Model& fullModel, int nUsers, int nItems, 
+    std::vector<double>& itemFreq, int nBuckets, 
+    std::unordered_set<int>& invalUsers, 
+    std::unordered_set<int>& invalItems, int nSampUsers, int seed);
+std::vector<double> gprSampBucketRMSEsWInVal(Model& origModel, 
+    Model& fullModel, 
+    int nUsers, int nItems,
+    float lambda, int max_niter, gk_csr_t *graphMat, int nBuckets,
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
+    int nSampUsers, int seed);
+std::vector<double> pprSampBucketRMSEsWInVal(Model &origModel,
+    Model& fullModel, int nUsers, int nItems, 
+    float lambda, int max_niter, gk_csr_t *graphMat, int nBuckets, 
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
+    int nSampUsers, int seed);
+
 #endif
 
 
