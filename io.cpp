@@ -14,7 +14,7 @@ void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols,
 
   if (inFile.is_open()) {
     i = 0;
-    while (getline(inFile, line)) {
+    while (getline(inFile, line) && i < nrows) {
       j = 0;
       //split the line
       while((pos = line.find(delimiter)) != std::string::npos) {

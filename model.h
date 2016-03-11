@@ -110,7 +110,9 @@ class Model {
     double fullRMSE(const Data& data);
     virtual double estRating(int user, int item);
     void save(std::string prefix);
+    void saveFacs(std::string prefix);
     void load(std::string prefix);
+    void loadFacs(std::string prefix);
     void load(const char* uFacName, const char *iFacName);
     void load(const char* uFacName, const char* iFacName, const char* uBFName,
       const char* iBFName, const char*gBFName);

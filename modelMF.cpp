@@ -131,7 +131,7 @@ void ModelMF::train(const Data &data, Model &bestModel,
   std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
   startSVD = std::chrono::system_clock::now();
   //initialization with svd of the passed matrix
-  svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac); 
+  //svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac); 
   //svdUsingLapack(data.trainMat, facDim, uFac, iFac);
   //svdFrmCSR(data.trainMat, facDim, uFac, iFac);
   //svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
@@ -255,8 +255,8 @@ void ModelMF::train(const Data &data, Model &bestModel,
                 << std::endl;
       std::cout << "\navg sub duration: " << subIterDuration/(iter+1) << std::endl;
       //save best model found till now
-      std::string modelFName = "ModelFull_" + std::to_string(trainSeed);
-      bestModel.save(modelFName);
+      std::string modelFName = std::string(data.prefix);
+      bestModel.saveFacs(modelFName);
     }
   
   }

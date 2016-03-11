@@ -38,6 +38,21 @@ void Model::save(std::string prefix) {
 }
 
 
+void Model::saveFacs(std::string prefix) {
+  //save user latent factors
+  std::string uFacName = prefix + "_uFac_" + std::to_string(nUsers) + "_" 
+    + std::to_string(facDim) + "_" + std::to_string(uReg) + "_"
+    + std::to_string(learnRate) + ".mat";
+  writeMat(uFac, nUsers, facDim, uFacName.c_str());
+  
+  //save item latent factors
+  std::string iFacName = prefix + "_iFac_" + std::to_string(nItems) + "_" 
+    + std::to_string(facDim) + "_" + std::to_string(iReg) + "_"
+    + std::to_string(learnRate) +  ".mat";
+  writeMat(iFac, nItems, facDim, iFacName.c_str());
+}
+
+
 void Model::load(std::string prefix) {
   //read user latent factors
   std::string uFacName = prefix + "_uFac_" + std::to_string(nUsers) + "_" 
@@ -67,6 +82,21 @@ void Model::load(std::string prefix) {
     + std::to_string(iReg) + "_" + std::to_string(learnRate) + ".vec";
   gBias = readDVector(gBFName.c_str());
   mu = gBias[0];  
+}
+
+
+void Model::loadFacs(std::string prefix) {
+  //read user latent factors
+  std::string uFacName = prefix + "_uFac_" + std::to_string(nUsers) + "_" 
+    + std::to_string(facDim) + "_" + std::to_string(uReg) + "_"
+    + std::to_string(learnRate) + ".mat";
+  readMat(uFac, nUsers, facDim, uFacName.c_str());
+  
+  //read item latent factors
+  std::string iFacName = prefix + "_iFac_" + std::to_string(nItems) + "_" 
+    + std::to_string(facDim) + "_" + std::to_string(iReg) + "_"
+    + std::to_string(learnRate) +  ".mat";
+  readMat(iFac, nItems, facDim, iFacName.c_str());
 }
 
 

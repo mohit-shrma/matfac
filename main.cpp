@@ -377,22 +377,45 @@ void computeBucksFrmFullModel(Data& data, Params& params) {
 }
 
 
+void computeSampPPRGPRBucksFrmFullModel(ModelMF& fullModel, ModelMF& origModel, 
+    Data& data, Params& params, float lambda, int nSampUsers,
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems) {
+
+  std::cout << "\nGPR confidence... " << lambda ;
+  std::vector<double> gprRMSEs = gprSampBucketRMSEsWInVal(origModel, fullModel, 
+      params.nUsers, params.nItems,
+      lambda, MAX_PR_ITER, data.graphMat, 10, invalUsers, invalItems, 
+      nSampUsers, params.seed);
+  std::string prefix = std::string(params.prefix) + "_gpr_" + std::to_string(lambda) + "_bucket.txt";
+  writeVector(gprRMSEs, prefix.c_str());
+    
+  std::cout << "\nPPR confidence... " << lambda;
+  std::vector<double> pprRMSEs = pprSampBucketRMSEsWInVal(origModel, fullModel, 
+      params.nUsers, params.nItems, lambda, MAX_PR_ITER, data.graphMat, 10, 
+      invalUsers, invalItems, nSampUsers, params.seed);
+  prefix = std::string(params.prefix) + "_ppr_" + std::to_string(lambda) + "_bucket.txt";
+  writeVector(pprRMSEs, prefix.c_str());
+}
+
+
 void computeSampBucksFrmFullModel(Data& data, Params& params) {
+  std::cout << "\nCreating full model...";
+  ModelMF fullModel(params, params.seed);
+  fullModel.loadFacs(params.prefix);
 
-  ModelMF fullModel(params, "ModelFull_1_uFac_229060_50_0.010000_0.001000.mat",
-      "ModelFull_1_iFac_26779_50_0.010000_0.001000.mat",
+  std::cout << "\nCreating original model...";
+  ModelMF origModel(params, params.origUFacFile, params.origIFacFile, 
       params.seed);
-
-  ModelMF origModel(params, "uFac_229060_50.txt", 
-      "iFac_26779_50.txt", params.seed);
 
   //get number of ratings per user and item, i.e. frequency
   auto rowColFreq = getRowColFreq(data.trainMat);
   auto userFreq = rowColFreq.first;
   auto itemFreq = rowColFreq.second;
 
-  std::vector<int> invalUsersVec = readVector("mf2_invalUsers.txt");
-  std::vector<int> invalItemsVec = readVector("mf2_invalItems.txt");
+  std::string prefix = std::string(params.prefix) + "_invalUsers.txt";
+  std::vector<int> invalUsersVec = readVector(prefix.c_str());
+  prefix = std::string(params.prefix) + "_invalItems.txt";
+  std::vector<int> invalItemsVec = readVector(prefix.c_str());
   
   std::unordered_set<int> invalUsers;
   for (auto v: invalUsersVec) {
@@ -422,35 +445,37 @@ void computeSampBucksFrmFullModel(Data& data, Params& params) {
     return a.second > b.second; 
   };
   std::sort(itemFreqPairs.begin(), itemFreqPairs.end(), comparePair);
-  
 
   int nSampUsers = 5000;
-  
-  std::cout << "\nGPR confidence: ";
-  std::vector<double> gprRMSEs = gprSampBucketRMSEsWInVal(origModel, fullModel, 
-      params.nUsers, params.nItems,
-      params.alpha, MAX_PR_ITER, data.graphMat, 10, invalUsers, invalItems, 
-      nSampUsers, params.seed);
-  dispVector(gprRMSEs);
-  std::string prefix = std::string(params.prefix) + "_gpr_" + std::to_string(params.alpha) + "_bucket.txt";
-  writeVector(gprRMSEs, prefix.c_str());
-    
+  int nUsers = data.trainMat->nrows;
+  int nItems = data.trainMat->ncols;
+
+  //compute item frequency buckets
   std::cout << "\nItem Freq confidence: ";
   std::vector<double> itemRMSEs = itemFreqSampBucketRMSEsWInVal(origModel,
-      fullModel, params.nUsers, params.nItems,
+      fullModel, nUsers, nItems,
       itemFreq, 10, invalUsers, invalItems, nSampUsers, params.seed);
   dispVector(itemRMSEs);
   prefix = std::string(params.prefix) + "_iFreq_bucket.txt";
   writeVector(itemRMSEs, prefix.c_str());
-  
-  std::cout << "\nPPR confidence: ";
-  std::vector<double> pprRMSEs = pprSampBucketRMSEsWInVal(origModel, fullModel, 
-      params.nUsers, params.nItems, params.alpha, MAX_PR_ITER, data.graphMat, 10, 
-      invalUsers, invalItems, nSampUsers, params.seed);
-  dispVector(pprRMSEs);
-  prefix = std::string(params.prefix) + "_ppr_" + std::to_string(params.alpha) + "_bucket.txt";
-  writeVector(pprRMSEs, prefix.c_str());
-  
+
+  std::vector<float> lambdas = {0.2, 0.4, 0.6, 0.8};
+  int nThreads = lambdas.size() - 1;
+  std::vector<std::thread> threads(nThreads);
+  for (int thInd = 0; thInd < nThreads; thInd++) {
+    threads[thInd] = std::thread(computeSampPPRGPRBucksFrmFullModel,
+        std::ref(fullModel), std::ref(origModel), std::ref(data), 
+        std::ref(params), lambdas[thInd], nSampUsers, 
+        std::ref(invalUsers), std::ref(invalItems));
+  }
+  //last parameter in main thread
+  computeSampPPRGPRBucksFrmFullModel(fullModel, origModel, data, params,
+      lambdas[nThreads], nSampUsers, invalUsers, invalItems);
+
+  //wait for the threads to finish
+  std::cout << "\nWaiting for threads to finish..." << std::endl;
+  std::for_each(threads.begin(), threads.end(), std::mem_fn(&std::thread::join));
+
 }
 
 
@@ -1166,20 +1191,22 @@ int main(int argc , char* argv[]) {
   //computeConf(data, params);  
   //computeBucksEstFullModel(data, params);
   //computeBucksFrmFullModel(data, params);
-  computeSampBucksFrmFullModel(data, params);
 
   //writeSubSampledMat(data.trainMat, 
-  //    "ratings_229060x26779_50_0.6.syn.csr", 0.6, params.seed);
+  //    "ratings_229060x26779_50_0.2.syn.csr", 0.2, params.seed);
   //writeTrainTestMat(data.trainMat,  "ratings.train.csr", 
   //   "ratings.val.csr", 0.4,  params.seed);
-  //writeTrainTestValMat(data.trainMat,  "ratings_229060x26779_50_0.6.syn.train.csr",
-  //    "ratings_229060x26779_50_0.6.syn.test.csr",
-  //    "ratings_229060x26779_50_0.6.syn.val.csr", 
+  //writeTrainTestValMat(data.trainMat,  "ratings_229060x26779_5_0.2.syn.train.csr",
+  //    "ratings_229060x26779_5_0.2.syn.test.csr",
+  //    "ratings_229060x26779_5_0.2.syn.val.csr", 
   //    0.1, 0.1, params.seed);
   
- 
-  /*
+  //ModelMF mfModel(params, params.initUFacFile, 
+  //    params.initIFacFile, params.seed);
+  
   ModelMF mfModel(params, params.seed);
+  //initialize model with svd
+  svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac);
   
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
@@ -1198,8 +1225,9 @@ int main(int argc , char* argv[]) {
 
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
       invalidItems);
-  */
-
+  
+  computeSampBucksFrmFullModel(data, params);
+  
   return 0;
 }
 

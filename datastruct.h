@@ -59,6 +59,8 @@ class Params {
  class Data {
 
   public:
+    char *prefix;
+
     gk_csr_t *trainMat;
     gk_csr_t *testMat;
     gk_csr_t *valMat;
@@ -102,6 +104,7 @@ class Params {
       origFacDim = params.origFacDim;
       nUsers = params.nUsers;
       nItems = params.nItems;
+      prefix = params.prefix;
 
       if (origFacDim > 0) {
         if (NULL != params.origUFacFile) {
@@ -132,6 +135,13 @@ class Params {
       
       std::cout <<"\ntrain nnz = " << trainNNZ;
       std::cout <<"\ntrain nrows: " << trainMat->nrows << " ncols: " << trainMat->ncols;
+      
+      if (trainMat->nrows != nUsers || trainMat->ncols != nItems) {
+        std::cout << "\n!!passed parameter of nUsers and nItems dont match...";
+        nUsers = trainMat->nrows;
+        nItems = trainMat->ncols;
+      }
+
       testMat = NULL;
       if (NULL != params.testMatFile) {
         std::cout << "\nReading test matrix 0-indexed... ";
