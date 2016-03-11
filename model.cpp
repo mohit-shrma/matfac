@@ -375,7 +375,7 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
       ret = true;
     }
 
-    if (fabs(prevValRMSE - currValRMSE) < 0.001) {
+    if (fabs(prevValRMSE - currValRMSE) < 0.0001) {
       printf("\nvalidation RMSE in iteration: %d prev: %.10e curr: %.10e", iter,
               prevValRMSE, currValRMSE); 
       ret = true;
