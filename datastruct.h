@@ -123,14 +123,28 @@ class Params {
 
       trainMat = NULL;
       if (NULL != params.trainMatFile) {
-        std::cout << "\nReading partial train matrix 0-indexed... ";
+        std::cout << "\nReading partial train matrix 0-indexed... " 
+          << params.trainMatFile;
         trainMat = gk_csr_Read(params.trainMatFile, GK_CSR_FMT_CSR, 1, 0);
         gk_csr_CreateIndex(trainMat, GK_CSR_COL);
         //get nnz in train matrix
         trainNNZ = 0;
+        int minItemInd = trainMat->ncols;
+        int maxItemInd = -1;
         for (int u = 0; u < trainMat->nrows; u++) {
           trainNNZ += trainMat->rowptr[u+1] - trainMat->rowptr[u];
+          for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1];
+              ii++) {
+            int item = trainMat->rowind[ii];
+            if (item < minItemInd) {
+              minItemInd = item;
+            }
+            if (item > maxItemInd) {
+              maxItemInd = item;
+            }
+          }
         }
+        std::cout << "\nminItem: " << minItemInd << " maxItem: " <<  maxItemInd;
       }
       
       std::cout <<"\ntrain nnz = " << trainNNZ;
@@ -146,14 +160,16 @@ class Params {
 
       testMat = NULL;
       if (NULL != params.testMatFile) {
-        std::cout << "\nReading test matrix 0-indexed... ";
+        std::cout << "\nReading test matrix 0-indexed... " 
+          << params.testMatFile;
         testMat = gk_csr_Read(params.testMatFile, GK_CSR_FMT_CSR, 1, 0);
         gk_csr_CreateIndex(testMat, GK_CSR_COL);
       }
       
       valMat = NULL;
       if (NULL != params.valMatFile) {
-        std::cout << "\nReading val matrix 0-indexed... ";
+        std::cout << "\nReading val matrix 0-indexed... " 
+          << params.valMatFile;
         valMat = gk_csr_Read(params.valMatFile, GK_CSR_FMT_CSR, 1, 0);
         gk_csr_CreateIndex(valMat, GK_CSR_COL);
       }

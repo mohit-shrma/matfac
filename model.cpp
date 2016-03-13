@@ -171,7 +171,7 @@ double Model::RMSE(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
       i = mat->rowind[ii];
       //skip if invalid item
       search = invalidItems.find(i);
-      if (search != invalidItems.end()) {
+      if (search != invalidItems.end() || i >= nItems) {
         //found and skip
         continue;
       }

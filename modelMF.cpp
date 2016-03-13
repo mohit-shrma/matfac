@@ -186,7 +186,7 @@ void ModelMF::train(const Data &data, Model &bestModel,
 
 
   std::cout << "\nTrain NNZ after removing invalid users and items: " 
-    << uiRatings.size();
+    << uiRatings.size() << std::endl;
   double subIterDuration = 0;
   for (iter = 0; iter < maxIter; iter++) {  
     
