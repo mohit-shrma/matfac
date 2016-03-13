@@ -1933,10 +1933,14 @@ std::vector<double> pprSampBucketRMSEsWInVal(Model &origModel,
     //sort items in decreasing order of score
     std::sort(itemScores.begin(), itemScores.end(), comparePair);
     sortedItems.clear();
+    //NOTE: to zoom in ignore items in other bucket
     for (auto&& itemScore: itemScores) {
+    //for (int i = 0; i < itemScores.size()*0.1; i++) {
+      //auto itemScore = itemScores[i];
       sortedItems.push_back(itemScore.first);
     }
-
+    //std::cout << "\nsortedItems size: " << sortedItems.size();
+    nItemsPerBuck = sortedItems.size()/nBuckets;
 
     updateBucketsSorted(user, bucketScores, bucketNNZ, sortedItems, 
         origModel, fullModel, nBuckets, nItemsPerBuck);
@@ -2354,7 +2358,10 @@ std::vector<double> gprSampBucketRMSEsWInVal(Model& origModel,
   std::sort(itemScores.begin(), itemScores.end(), comparePair);  
   
   std::vector<int> sortedItems;
+  //NOTE: to zoomin on a particular bucket ignore items in other buckets 
   for (auto const& itemScore: itemScores) {
+  //for (int i = 0; i < itemScores.size() && sortedItems.size() < itemScores.size()*0.1; i++) {
+    //auto itemScore = itemScores[i];
     int item = itemScore.first;
       //check if invalid item
       auto search = invalItems.find(item);
@@ -2364,6 +2371,9 @@ std::vector<double> gprSampBucketRMSEsWInVal(Model& origModel,
       }
     sortedItems.push_back(item);
   }
+
+  //std::cout << "\nSorted items size: " << sortedItems.size() << std::endl;
+  nItemsPerBuck = sortedItems.size()/nBuckets;
 
   std::map<int, float> itemRatings;
   //initialize random engine
@@ -2733,10 +2743,15 @@ std::vector<double> itemFreqSampBucketRMSEsWInVal(Model& origModel,
   //sort items by DECREASING order in score
   std::sort(itemScores.begin(), itemScores.end(), comparePair);  
   
+  //NOTE: to zoom in a bucket ignore items in other bucket here
   std::vector<int> sortedItems;
   for (auto const& itemScore: itemScores) {
+  //for (int i = 0; i < itemScores.size()*0.1; i++) {
+    //auto itemScore = itemScores[i];
     sortedItems.push_back(itemScore.first);
   }
+  //std::cout << "\nSorted items size: " << sortedItems.size();
+  nItemsPerBuck = sortedItems.size()/nBuckets;
 
   std::map<int, float> itemRatings;
   //initialize random engine

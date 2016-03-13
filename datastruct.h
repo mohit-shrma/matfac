@@ -137,9 +137,11 @@ class Params {
       std::cout <<"\ntrain nrows: " << trainMat->nrows << " ncols: " << trainMat->ncols;
       
       if (trainMat->nrows != nUsers || trainMat->ncols != nItems) {
-        std::cout << "\n!!passed parameter of nUsers and nItems dont match...";
+        std::cout << "\n!!passed parameter of nUsers and nItems dont match!!"
+            << std:: endl;
         nUsers = trainMat->nrows;
         nItems = trainMat->ncols;
+        exit(0);
       }
 
       testMat = NULL;
