@@ -353,3 +353,9 @@ double normVec(std::vector<double>& vec) {
 }
 
 
+bool descComp(std::pair<int, double>& a, std::pair<int, double>& b) {
+  return a.second > b.second;
+}
+
+
+

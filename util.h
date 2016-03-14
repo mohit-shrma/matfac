@@ -42,5 +42,6 @@ std::vector<std::tuple<int, int, float>> getUIRatings(gk_csr_t* mat,
     std::unordered_set<int>& invalidUsers, 
     std::unordered_set<int>& invalidItems);
 double normVec(std::vector<double>& vec);
+bool descComp(std::pair<int, double>& a, std::pair<int, double>& b);
 #endif
 
