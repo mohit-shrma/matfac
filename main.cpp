@@ -9,7 +9,7 @@
 #include "modelMF.h"
 #include "modelMFBias.h"
 #include "confCompute.h"
-
+#include "topBucketComp.h"
 
 Params parse_cmd_line(int argc, char *argv[]) {
   
@@ -380,7 +380,7 @@ void computeBucksFrmFullModel(Data& data, Params& params) {
 void computeSampPPRGPRBucksFrmFullModel(ModelMF& fullModel, ModelMF& origModel, 
     Data& data, Params& params, float lambda, int nSampUsers,
     std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems) {
-
+  
   std::cout << "\nGPR confidence... " << lambda ;
   std::vector<double> gprRMSEs = gprSampBucketRMSEsWInVal(origModel, fullModel, 
       params.nUsers, params.nItems,
@@ -458,7 +458,7 @@ void computeSampBucksFrmFullModel(Data& data, Params& params) {
   dispVector(itemRMSEs);
   prefix = std::string(params.prefix) + "_iFreq_bucket.txt";
   writeVector(itemRMSEs, prefix.c_str());
-
+  
   std::vector<float> lambdas = {0.2, 0.4, 0.6, 0.8};
   int nThreads = lambdas.size() - 1;
   std::vector<std::thread> threads(nThreads);
@@ -468,14 +468,101 @@ void computeSampBucksFrmFullModel(Data& data, Params& params) {
         std::ref(params), lambdas[thInd], nSampUsers, 
         std::ref(invalUsers), std::ref(invalItems));
   }
+  
   //last parameter in main thread
   computeSampPPRGPRBucksFrmFullModel(fullModel, origModel, data, params,
       lambdas[nThreads], nSampUsers, invalUsers, invalItems);
-
+  
+  //computeSampPPRGPRBucksFrmFullModel(fullModel, origModel, data, params,
+  //    params.alpha, nSampUsers, invalUsers, invalItems);
+  
+  
   //wait for the threads to finish
   std::cout << "\nWaiting for threads to finish..." << std::endl;
   std::for_each(threads.begin(), threads.end(), std::mem_fn(&std::thread::join));
+    
+}
 
+
+void computeSampTopNFrmFullModel(Data& data, Params& params) {
+  
+  std::cout << "\nCreating full model...";
+  ModelMF fullModel(params, params.seed);
+  fullModel.loadFacs(params.prefix);
+
+  std::cout << "\nCreating original model...";
+  ModelMF origModel(params, params.origUFacFile, params.origIFacFile, 
+      params.seed);
+
+  //get number of ratings per user and item, i.e. frequency
+  auto rowColFreq = getRowColFreq(data.trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+
+  std::string prefix = std::string(params.prefix) + "_invalUsers.txt";
+  std::vector<int> invalUsersVec = readVector(prefix.c_str());
+  prefix = std::string(params.prefix) + "_invalItems.txt";
+  std::vector<int> invalItemsVec = readVector(prefix.c_str());
+  
+  std::unordered_set<int> invalUsers;
+  for (auto v: invalUsersVec) {
+    invalUsers.insert(v);
+  }
+  
+  std::unordered_set<int> invalItems;
+  for (auto v: invalItemsVec) {
+    invalItems.insert(v);
+  }
+
+  std::cout << "\nTrain RMSE: " << fullModel.RMSE(data.trainMat, invalUsers, invalItems);
+  std::cout << "\nTest RMSE: " << fullModel.RMSE(data.testMat, invalUsers, invalItems);
+  std::cout << "\nVal RMSE: " << fullModel.RMSE(data.valMat, invalUsers, invalItems);
+  
+  //order item in decreasing order of frequency 
+  std::vector<std::pair<int, double>> itemFreqPairs;
+  for (int i = 0; i < itemFreq.size(); i++) {
+    itemFreqPairs.push_back(std::make_pair(i, itemFreq[i]));
+  }
+  //comparison to sort in decreasing order
+  std::sort(itemFreqPairs.begin(), itemFreqPairs.end(), descComp);
+  
+  int N = 100;
+  int nSampUsers = 5000;
+  int nUsers = data.trainMat->nrows;
+  int nItems = data.trainMat->ncols;
+
+  //add top-N frequent items to filtered items
+  std::unordered_set<int> filtItems;
+  for (int i = 0; i < N; i++) {
+    filtItems.insert(itemFreqPairs[i].first);
+  }
+  
+  std::cout << "\nnInvalidUsers: " << invalUsers.size();
+  std::cout << "\nnInvalidItems: " << invalItems.size() <<std::endl;
+
+  std::vector<float> lambdas = {0.2, 0.4, 0.6, 0.8};
+  
+  int nThreads = lambdas.size() - 1;
+  std::vector<std::thread> threads(nThreads);
+  for (int thInd = 0; thInd < nThreads; thInd++) {
+    prefix = std::string(params.prefix) + "_" + std::to_string(lambdas[thInd]) 
+      + "_" + std::to_string(N);
+    threads[thInd] = std::thread(writeTopBuckRMSEs,
+        std::ref(fullModel), std::ref(origModel), data.graphMat, 
+        lambdas[thInd], MAX_PR_ITER, std::ref(invalUsers), std::ref(invalItems),
+        std::ref(filtItems), nSampUsers, params.seed, N, std::ref(prefix));
+  }
+  
+  //last parameter in main thread
+  prefix = std::string(params.prefix) + std::to_string(lambdas[nThreads])
+    + "_" + std::to_string(N);
+  writeTopBuckRMSEs(fullModel, origModel, data.graphMat, lambdas[nThreads],
+      MAX_PR_ITER, invalUsers, invalItems, filtItems, nSampUsers, params.seed,
+      N, prefix);
+  
+  //wait for the threads to finish
+  std::cout << "\nWaiting for threads to finish..." << std::endl;
+  std::for_each(threads.begin(), threads.end(), std::mem_fn(&std::thread::join));
 }
 
 
@@ -1183,7 +1270,7 @@ int main(int argc , char* argv[]) {
 
   Data data (params);
 
-  //writeCSRWSparsityStructure(data.trainMat, "ratings_200000x136736_50.syn.csr",
+  //writeCSRWSparsityStructure(data.trainMat, "y_u2_i34_100Kx50K_50.syn.csr",
   //    data.origUFac, data.origIFac, params.facDim);
   //writeBlkDiagJoinedCSR("", "", "");
 
@@ -1193,17 +1280,22 @@ int main(int argc , char* argv[]) {
   //computeBucksFrmFullModel(data, params);
 
   //writeSubSampledMat(data.trainMat, 
-  //    "ratings_229060x26779_50_0.2.syn.csr", 0.2, params.seed);
-  //writeTrainTestMat(data.trainMat,  "ratings.train.csr", 
-  //   "ratings.val.csr", 0.4,  params.seed);
-  //writeTrainTestValMat(data.trainMat,  "ratings_229060x26779_5_0.2.syn.train.csr",
-  //    "ratings_229060x26779_5_0.2.syn.test.csr",
-  //    "ratings_229060x26779_5_0.2.syn.val.csr", 
-  //    0.1, 0.1, params.seed);
+  //    "ratings_229060x26779_25_0.6.syn.csr2", 0.6, params.seed);
+  //writeTrainTestMat(data.trainMat,  "", 
+  //   "", ,  params.seed);
   
+  /*
+  writeTrainTestValMat(data.trainMat,  
+      "y_u2_i34_100Kx50K_50.syn.train.csr",
+      "y_u2_i34_100Kx50K_50.syn.test.csr",
+      "y_u2_i34_100Kx50K_50.syn.val.csr",
+      0.1, 0.1, params.seed); 
+  */
+
   //ModelMF mfModel(params, params.initUFacFile, 
   //    params.initIFacFile, params.seed);
-  
+ 
+  /*
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
   svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac);
@@ -1225,9 +1317,10 @@ int main(int argc , char* argv[]) {
 
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
       invalidItems);
+  */ 
   
-  computeSampBucksFrmFullModel(data, params);
-  
+  computeSampTopNFrmFullModel(data, params);  
+
   return 0;
 }
 

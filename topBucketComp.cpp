@@ -69,6 +69,9 @@ std::map<int, std::vector<int>> pprSampTopNItemsUsers(gk_csr_t *graphMat,
       itemUsers[item].push_back(user);
     }
 
+    if (sampUsers.size() % PROGU == 0) {
+      std::cout << "Done... " << user << " :" << lambda << std::endl;
+    }
   }
 
   free(pr);
@@ -132,8 +135,8 @@ std::map<int, double> itemAllRMSE(Model& origModel, Model& fullModel,
 
 void writeTopBuckRMSEs(Model& origModel, Model& fullModel, gk_csr_t* graphMat,
     float lambda, int max_niter, std::unordered_set<int>& invalUsers, 
-    std::unordered_set<int>& invalItems, int nSampUsers, int seed, int N,
-    std::string& prefix) {
+    std::unordered_set<int>& invalItems, std::unordered_set<int>& filtItems,
+    int nSampUsers, int seed, int N, std::string& prefix) {
   
   auto itemUsers = pprSampTopNItemsUsers(graphMat, fullModel.nUsers, 
       fullModel.nItems, lambda, max_niter, invalUsers, invalItems, nSampUsers,
@@ -148,11 +151,17 @@ void writeTopBuckRMSEs(Model& origModel, Model& fullModel, gk_csr_t* graphMat,
 
   auto itemARMSE = itemAllRMSE(origModel, fullModel, items, invalUsers, invalItems);
   
-  std::string fname = prefix + "topBuckItemRMSE.txt";
+  std::string fname = prefix + "_topBuckItemRMSE.txt";
   
   std::ofstream opFile(fname);
   if (opFile.is_open()) {
     for (auto&& item: items) {
+      //ignore if item in filtItems
+      auto search = filtItems.find(item);
+      if (search != filtItems.end()) {
+        //found in filtered items
+        continue;
+      }
       opFile << itemURMSE[item] << " " << itemARMSE[item];
     }
     opFile.close();

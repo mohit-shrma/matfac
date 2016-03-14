@@ -13,8 +13,7 @@
 
 void writeTopBuckRMSEs(Model& origModel, Model& fullModel, gk_csr_t* graphMat,
     float lambda, int max_niter, std::unordered_set<int>& invalUsers, 
-    std::unordered_set<int>& invalItems, int nSampUsers, int seed, int N,
-    std::string& prefix);
-
+    std::unordered_set<int>& invalItems, std::unordered_set<int>& filtItems,
+    int nSampUsers, int seed, int N, std::string& prefix);
 
 #endif
