@@ -170,7 +170,7 @@ void writeTopBuckRMSEs(Model& origModel, Model& fullModel, gk_csr_t* graphMat,
         //found in filtered items
         continue;
       }
-      opFile << item << " " << itemURMSE[item] << " " << itemARMSE[item];
+      opFile << item << " " << itemURMSE[item] << " " << itemARMSE[item] << std::endl;
     }
     opFile.close();
   }
