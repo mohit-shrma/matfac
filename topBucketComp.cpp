@@ -144,7 +144,15 @@ void writeTopBuckRMSEs(Model& origModel, Model& fullModel, gk_csr_t* graphMat,
       fullModel.nItems, lambda, max_niter, invalUsers, invalItems, nSampUsers,
       seed, N);
 
-  std::cout << "\nSize itemUsers: " << itemUsers.size() << " : " 
+  std::cout << "\nBefore filter itemUsers size: " << itemUsers.size() << " : " 
+    << lambda << std::endl; 
+
+  //remove filtItems from itemUsers map
+  for (auto&& item: filtItems) {
+    itemUsers.erase(item);
+  }
+
+  std::cout << "\nAfter filter itemUsers size: " << itemUsers.size() << " : " 
     << lambda << std::endl; 
 
   std::cout << "\nGetting itemURMSE... : " << lambda << std::endl;
@@ -164,12 +172,6 @@ void writeTopBuckRMSEs(Model& origModel, Model& fullModel, gk_csr_t* graphMat,
   std::ofstream opFile(fname);
   if (opFile.is_open()) {
     for (auto&& item: items) {
-      //ignore if item in filtItems
-      auto search = filtItems.find(item);
-      if (search != filtItems.end()) {
-        //found in filtered items
-        continue;
-      }
       opFile << item << " " << itemURMSE[item] << " " << itemARMSE[item] << std::endl;
     }
     opFile.close();
