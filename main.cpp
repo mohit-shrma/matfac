@@ -550,11 +550,11 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
     threads[thInd] = std::thread(writeTopBuckRMSEs,
         std::ref(fullModel), std::ref(origModel), data.graphMat, 
         lambdas[thInd], MAX_PR_ITER, std::ref(invalUsers), std::ref(invalItems),
-        std::ref(filtItems), nSampUsers, params.seed, N, std::ref(prefix));
+        std::ref(filtItems), nSampUsers, params.seed, N, prefix);
   }
   
   //last parameter in main thread
-  prefix = std::string(params.prefix) + std::to_string(lambdas[nThreads])
+  prefix = std::string(params.prefix) + "_" + std::to_string(lambdas[nThreads])
     + "_" + std::to_string(N);
   writeTopBuckRMSEs(fullModel, origModel, data.graphMat, lambdas[nThreads],
       MAX_PR_ITER, invalUsers, invalItems, filtItems, nSampUsers, params.seed,
