@@ -138,10 +138,16 @@ void writeTopBuckRMSEs(Model& origModel, Model& fullModel, gk_csr_t* graphMat,
     std::unordered_set<int>& invalItems, std::unordered_set<int>& filtItems,
     int nSampUsers, int seed, int N, std::string& prefix) {
   
+  std::cout << "\nGetting itemUsers... : " << lambda << std::endl;
+
   auto itemUsers = pprSampTopNItemsUsers(graphMat, fullModel.nUsers, 
       fullModel.nItems, lambda, max_niter, invalUsers, invalItems, nSampUsers,
       seed, N);
 
+  std::cout << "\nSize itemUsers: " << itemUsers.size() << " : " 
+    << lambda << std::endl; 
+
+  std::cout << "\nGetting itemURMSE... : " << lambda << std::endl;
   auto itemURMSE = itemUsersRMSE(origModel, fullModel, itemUsers);
   
   std::vector<int> items;
@@ -149,10 +155,12 @@ void writeTopBuckRMSEs(Model& origModel, Model& fullModel, gk_csr_t* graphMat,
     items.push_back(kv.first);
   }
 
+  std::cout << "\nGetting itemARMSE... : " << lambda << std::endl;
   auto itemARMSE = itemAllRMSE(origModel, fullModel, items, invalUsers, invalItems);
   
   std::string fname = prefix + "_topBuckItemRMSE.txt";
   
+  std::cout << "\nWriting op... : " << lambda << std::endl;
   std::ofstream opFile(fname);
   if (opFile.is_open()) {
     for (auto&& item: items) {
