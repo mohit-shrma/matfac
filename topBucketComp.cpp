@@ -70,7 +70,7 @@ std::map<int, std::vector<int>> pprSampTopNItemsUsers(gk_csr_t *graphMat,
     }
 
     if (sampUsers.size() % PROGU == 0) {
-      std::cout << "Done... " << user << " :" << lambda << std::endl;
+      std::cout << "Done... " << sampUsers.size() << " :" << lambda << std::endl;
     }
   }
 
