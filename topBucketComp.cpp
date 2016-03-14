@@ -172,7 +172,8 @@ void writeTopBuckRMSEs(Model& origModel, Model& fullModel, gk_csr_t* graphMat,
   std::ofstream opFile(fname);
   if (opFile.is_open()) {
     for (auto&& item: items) {
-      opFile << item << " " << itemURMSE[item] << " " << itemARMSE[item] << std::endl;
+      opFile << item << " " << itemUsers[item].size() << " "
+        << itemURMSE[item] << " " << itemARMSE[item] << std::endl;
     }
     opFile.close();
   }
