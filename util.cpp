@@ -47,6 +47,30 @@ double meanRating(gk_csr_t* mat) {
 }
 
 
+std::pair<double, double> getMeanVar(std::vector<std::vector<double>> uFac,
+    std::vector<std::vector<double>> iFac, int facDim, int nUsers, int nItems) {
+  
+  double mean = 0, var = 0, diff = 0;
+  int nnz = 0;
+  for (int u = 0; u < nUsers; u++) {
+    for (int item = 0; item < nItems; item++) {
+      mean += dotProd(uFac[u], iFac[item], facDim);
+    }
+  }
+  mean = mean/(nItems*nUsers);
+
+  for(int u = 0; u < nUsers; u++) {
+    for (int item = 0; item < nItems; item++) {
+      diff = dotProd(uFac[u], iFac[item], facDim) - mean;
+      var += diff*diff;
+    }
+  }
+  var = var/(1.0/(nnz - 1));
+
+  return std::make_pair(mean, var);
+}
+
+
 //include start exclude end
 int nnzSubMat(gk_csr_t *mat, int uStart, int uEnd, int iStart, int iEnd) {
   

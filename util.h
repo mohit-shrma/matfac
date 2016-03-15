@@ -43,5 +43,7 @@ std::vector<std::tuple<int, int, float>> getUIRatings(gk_csr_t* mat,
     std::unordered_set<int>& invalidItems);
 double normVec(std::vector<double>& vec);
 bool descComp(std::pair<int, double>& a, std::pair<int, double>& b);
+std::pair<double, double> getMeanVar(std::vector<std::vector<double>> uFac,
+    std::vector<std::vector<double>> iFac, int facDim, int nUsers, int nItems);
 #endif
 
