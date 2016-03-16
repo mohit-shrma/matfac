@@ -243,6 +243,10 @@ std::map<int, std::vector<int>> pprSampTopNItemsUsers(gk_csr_t *graphMat,
 
   }
 
+  for (size_t i = 0; i < bucketScores.size(); i++) {
+    bucketScores[i] = sqrt(bucketScores[i]/bucketNNZ[i]);
+  }
+
   free(pr);
 
   //write out bucket scores
