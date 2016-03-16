@@ -552,25 +552,35 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
         lambdas[thInd], MAX_PR_ITER, std::ref(invalUsers), std::ref(invalItems),
         std::ref(filtItems), nSampUsers, params.seed, N, prefix);
   }
-  
+
   //last parameter in main thread
   prefix = std::string(params.prefix) + "_" + std::to_string(lambdas[nThreads])
     + "_" + std::to_string(N);
   writeTopBuckRMSEs(fullModel, origModel, data.graphMat, lambdas[nThreads],
       MAX_PR_ITER, invalUsers, invalItems, filtItems, nSampUsers, params.seed,
       N, prefix);
+  */
   
+  
+  //last parameter in main thread
+  prefix = std::string(params.prefix) + "_" + std::to_string(params.alpha)
+    + "_" + std::to_string(N);
+  writeTopBuckRMSEs(fullModel, origModel, data.graphMat, params.alpha,
+      MAX_PR_ITER, invalUsers, invalItems, filtItems, nSampUsers, params.seed,
+      N, prefix);
+    
+  /*
   //wait for the threads to finish
   std::cout << "\nWaiting for threads to finish..." << std::endl;
   std::for_each(threads.begin(), threads.end(), std::mem_fn(&std::thread::join));
   */
 
-  
+  /* 
   prefix = std::string(params.prefix) + "_" + std::to_string(params.alpha);
   pprSampUsersRMSEProb(data.graphMat, nUsers, nItems, origModel, fullModel,
       params.alpha, MAX_PR_ITER, invalUsers, invalItems, filtItems, 100, 
       params.seed, prefix);
-  
+  */
 }
 
 
