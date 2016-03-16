@@ -526,7 +526,7 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   //comparison to sort in decreasing order
   std::sort(itemFreqPairs.begin(), itemFreqPairs.end(), descComp);
   
-  int N = 100;
+  int N = 500;
   int nSampUsers = 5000;
   int nUsers = data.trainMat->nrows;
   int nItems = data.trainMat->ncols;
@@ -539,9 +539,9 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   
   std::cout << "\nnInvalidUsers: " << invalUsers.size();
   std::cout << "\nnInvalidItems: " << invalItems.size() <<std::endl;
-
-  std::vector<float> lambdas = {0.2, 0.4, 0.6, 0.8};
   
+  /* 
+  std::vector<float> lambdas = {0.2, 0.4, 0.6, 0.8};
   int nThreads = lambdas.size() - 1;
   std::vector<std::thread> threads(nThreads);
   for (int thInd = 0; thInd < nThreads; thInd++) {
@@ -563,6 +563,14 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   //wait for the threads to finish
   std::cout << "\nWaiting for threads to finish..." << std::endl;
   std::for_each(threads.begin(), threads.end(), std::mem_fn(&std::thread::join));
+  */
+
+  
+  prefix = std::string(params.prefix) + "_" + std::to_string(params.alpha);
+  pprSampUsersRMSEProb(data.graphMat, nUsers, nItems, origModel, fullModel,
+      params.alpha, MAX_PR_ITER, invalUsers, invalItems, filtItems, 100, 
+      params.seed, prefix);
+  
 }
 
 
@@ -1269,6 +1277,14 @@ int main(int argc , char* argv[]) {
   std::srand(params.seed);
 
   Data data (params);
+
+  /*
+  auto meanVar = getMeanVar(data.origUFac, data.origIFac, data.origFacDim, 
+      data.nUsers, data.nItems);
+
+  std::cout << "\nmean = " << meanVar.first << " variance = " 
+    << meanVar.second << std::endl;
+  */
 
   //writeCSRWSparsityStructure(data.trainMat, "y_u2_i34_100Kx50K_50.syn.csr",
   //    data.origUFac, data.origIFac, params.facDim);

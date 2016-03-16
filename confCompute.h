@@ -186,6 +186,10 @@ std::vector<double> pprSampBucketRMSEsWInVal(Model &origModel,
     std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
     int nSampUsers, int seed);
 
+void updateBucketsSorted(int user, std::vector<double>& bucketScores, 
+    std::vector<double>& bucketNNZ, 
+    std::vector<int>& sortedItems, Model& origModel,
+    Model& fullModel, int nBuckets, int nItemsPerBuck);
 #endif
 
 
