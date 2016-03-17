@@ -31,7 +31,6 @@ double compRecall(std::vector<int> order1, std::vector<int> order2, int N) {
 }
 
 
-
 double meanRating(gk_csr_t* mat) {
   int u, ii, nnz;
   double avg = 0;
@@ -242,6 +241,42 @@ void genStats(gk_csr_t *mat,
     << nItemsWithMinRatCount << " opPrefix: " << opPrefix;
   std::cout << "\nnItems with maxRatCount(" << maxItemIgRatCount << "): "
     << nItemsWithMaxRatcount << " opPrefix: " << opPrefix;
+}
+
+
+void getUserStats(std::vector<int>& users, gk_csr_t* mat) {
+
+  auto rowColFreq = getRowColFreq(mat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+
+  std::ofstream opFile("user_stats.txt"); 
+  
+  for (auto&& user: users) {
+    
+    int nUserItems = 0;
+    std::unordered_set<int>  items;
+    for (int ii = mat->rowptr[user]; 
+        ii < mat->rowptr[user+1]; ii++) {
+      int item = mat->rowind[ii];
+      items.insert(item);
+      nUserItems += 1;
+    }
+   
+    //find no. of users that rated the items rated by user
+    std::unordered_set<int> adjUsers;
+    for (auto&& item: items) {
+      for (int jj = mat->colptr[item]; jj < mat->colptr[item+1];
+          jj++) {
+        int u = mat->colind[jj];
+        adjUsers.insert(u);
+      }
+    }
+
+    opFile << user << " " << nUserItems << " " << adjUsers.size() << std::endl;
+  }
+
+  opFile.close();
 }
 
 

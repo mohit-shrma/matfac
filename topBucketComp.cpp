@@ -19,6 +19,115 @@ void updateBucketsArr(std::vector<double>& bucketScores,
 }
 
 
+void itemRMSEsProb(int user, gk_csr_t *graphMat, float lambda, int nUsers,
+    int nItems, std::unordered_set<int>& invalItems,
+    Model& fullModel, Model& origModel,
+    std::vector<double>& itemsRMSE, std::vector<double>& itemsProb) {
+  
+  std::vector<std::pair<int, double>> itemScores;
+  float *pr = (float*) malloc(sizeof(float)*graphMat->nrows);
+  memset(pr, 0, sizeof(float)*graphMat->nrows);
+  pr[user] = 1.0;
+  
+  //run personalized page rank on the graph w.r.t. u
+  gk_rw_PageRank(graphMat, lambda, 0.0001, MAX_PR_ITER, pr);
+  
+  //get pr scores of items
+  itemScores.clear();
+  for (int i = nUsers; i < nUsers + nItems; i++) {
+    int item = i - nUsers;
+    //skip if item is invalid
+    auto search = invalItems.find(item);
+    if (search != invalItems.end()) {
+      //found, invalid, skip
+      continue;
+    }
+    itemScores.push_back(std::make_pair(item, pr[i]));
+  }
+  
+  //sort items in decreasing order of score
+  std::sort(itemScores.begin(), itemScores.end(), descComp);
+
+  itemsRMSE.clear();
+  itemsProb.clear();
+  for (auto&& itemScore: itemScores) {
+    int item = itemScore.first;
+    double score = itemScore.second;
+    double r_ui = origModel.estRating(user, item);
+    double r_ui_est = fullModel.estRating(user, item);
+    double se = (r_ui - r_ui_est)*(r_ui - r_ui_est);
+    itemsRMSE.push_back(se);
+    itemsProb.push_back(score);
+  }
+
+  free(pr);
+}
+
+
+void pprUsersRMSEProb(gk_csr_t *graphMat, 
+    int nUsers, int nItems, Model& origModel, Model& fullModel,
+    float lambda, std::unordered_set<int>& invalUsers, 
+    std::unordered_set<int>& invalItems, 
+    std::vector<int> users, std::string& prefix) {
+  
+  int nBuckets = 10;
+  int nItemsPerBuck = nItems/nBuckets;
+
+  std::vector<double> uRMSEScores(nBuckets, 0);
+  std::vector<double> uProbs(nBuckets, 0);
+  std::vector<double> uBucketNNZ(nBuckets, 0);
+
+  float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
+  
+  std::vector<std::pair<int, double>> itemScores;
+  std::vector<double> itemsRMSE;
+  std::vector<double> itemsProb;
+
+  std::string rmseFName = prefix + "_uRMSE.txt" ;
+  std::ofstream rmseOpFile(rmseFName.c_str()); 
+
+  std::string probFName = prefix + "_uProbs.txt";
+  std::ofstream probOpFile(probFName.c_str());
+
+  for (auto&& user: users) {
+    //skip if user is invalid
+    auto search = invalUsers.find(user);
+    if (search != invalUsers.end()) {
+      //found n skip
+      continue;
+    }
+ 
+    itemRMSEsProb(user, graphMat, lambda, nUsers, nItems, invalItems, 
+        fullModel, origModel, itemsRMSE, itemsProb);
+    
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uRMSEScores.begin(), uRMSEScores.end(), 0);
+    updateBucketsArr(uRMSEScores, uBucketNNZ, itemsRMSE, nBuckets);
+    
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uProbs.begin(), uProbs.end(), 0);
+    updateBucketsArr(uProbs, uBucketNNZ, itemsProb, nBuckets);
+
+    //write and update aggregated buckets
+    rmseOpFile << user << " ";
+    probOpFile << user << " ";
+    for (int i = 0; i < nBuckets; i++) {
+      rmseOpFile << sqrt(uRMSEScores[i]/uBucketNNZ[i]) << " ";
+      probOpFile << uProbs[i]/uBucketNNZ[i] << " ";
+    }
+    rmseOpFile << std::endl;
+    probOpFile << std::endl;
+  }
+
+  free(pr);
+
+  rmseOpFile.close();
+  probOpFile.close();
+}
+
+
 void pprSampUsersRMSEProb(gk_csr_t *graphMat, 
     int nUsers, int nItems, Model& origModel, Model& fullModel,
     float lambda, int max_niter, std::unordered_set<int>& invalUsers, 
@@ -75,41 +184,10 @@ void pprSampUsersRMSEProb(gk_csr_t *graphMat,
  
     //insert the sampled user
     sampUsers.insert(user);
+
+    itemRMSEsProb(user, graphMat, lambda, nUsers, nItems, invalItems, 
+        fullModel, origModel, itemsRMSE, itemsProb);
     
-    memset(pr, 0, sizeof(float)*graphMat->nrows);
-    pr[user] = 1.0;
-
-    //run personalized page rank on the graph w.r.t. u
-    gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
-
-    //get pr score of items
-    itemScores.clear();
-    for (int i = nUsers; i < nUsers + nItems; i++) {
-      int item = i - nUsers;
-      //skip if item is invalid
-      search = invalItems.find(item);
-      if (search != invalItems.end()) {
-        //found, invalid, skip
-        continue;
-      }
-      itemScores.push_back(std::make_pair(item, pr[i]));
-    }
-
-    //sort items in decreasing order of score
-    std::sort(itemScores.begin(), itemScores.end(), descComp);
-    
-    itemsRMSE.clear();
-    itemsProb.clear();
-    for (auto&& itemScore: itemScores) {
-      int item = itemScore.first;
-      double score = itemScore.second;
-      double r_ui = origModel.estRating(user, item);
-      double r_ui_est = fullModel.estRating(user, item);
-      double se = (r_ui - r_ui_est)*(r_ui - r_ui_est);
-      itemsRMSE.push_back(se);
-      itemsProb.push_back(score);
-    }
-
     //reset user specific vec to 0
     std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
     std::fill(uRMSEScores.begin(), uRMSEScores.end(), 0);
@@ -361,4 +439,5 @@ void writeTopBuckRMSEs(Model& origModel, Model& fullModel, gk_csr_t* graphMat,
   }
 
 }
+
 

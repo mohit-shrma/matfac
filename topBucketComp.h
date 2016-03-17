@@ -21,5 +21,9 @@ void pprSampUsersRMSEProb(gk_csr_t *graphMat,
     float lambda, int max_niter, std::unordered_set<int>& invalUsers, 
     std::unordered_set<int>& invalItems, std::unordered_set<int>& filtItems, 
     int nSampUsers, int seed, std::string& prefix);
-
+void pprUsersRMSEProb(gk_csr_t *graphMat, 
+    int nUsers, int nItems, Model& origModel, Model& fullModel,
+    float lambda, std::unordered_set<int>& invalUsers, 
+    std::unordered_set<int>& invalItems, 
+    std::vector<int> users, std::string& prefix);
 #endif

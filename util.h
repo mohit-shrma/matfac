@@ -1,14 +1,15 @@
+#ifndef _UTIL_H_
+#define _UTIL_H_
 #include <vector>
 #include <functional>
 #include <algorithm>
 #include <unordered_set>
 #include <iostream>
+#include <fstream>
 #include <cmath>
 #include <tuple>
 #include "GKlib.h"
 
-#ifndef _UTIL_H_
-#define _UTIL_H_
 
 double compRecall(std::vector<int> order1, std::vector<int> order2, int N);
 double meanRating(gk_csr_t* mat);
@@ -45,5 +46,6 @@ double normVec(std::vector<double>& vec);
 bool descComp(std::pair<int, double>& a, std::pair<int, double>& b);
 std::pair<double, double> getMeanVar(std::vector<std::vector<double>> uFac,
     std::vector<std::vector<double>> iFac, int facDim, int nUsers, int nItems);
+void getUserStats(std::vector<int>& users, gk_csr_t* mat);
 #endif
 
