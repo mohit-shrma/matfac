@@ -244,13 +244,25 @@ void genStats(gk_csr_t *mat,
 }
 
 
-void getUserStats(std::vector<int>& users, gk_csr_t* mat) {
+void getUserStats(std::vector<int>& users, gk_csr_t* mat, 
+    std::unordered_set<int>& filtItems, const char* opFName) {
 
   auto rowColFreq = getRowColFreq(mat);
   auto userFreq = rowColFreq.first;
   auto itemFreq = rowColFreq.second;
 
-  std::ofstream opFile("user_stats.txt"); 
+  std::vector<std::pair<int, double>> itemFreqP;
+  for (int i = 0; i < itemFreq.size(); i++) {
+    itemFreqP.push_back(std::make_pair(i, itemFreq[i]));
+  }
+  std::sort(itemFreqP.begin(), itemFreqP.end(), descComp);
+
+  std::unordered_set<int> top500Items;
+  for (int i = 0; i < 500; i++) {
+    top500Items.insert(itemFreqP[i].first);
+  }
+
+  std::ofstream opFile(opFName); 
   
   for (auto&& user: users) {
     
@@ -259,21 +271,37 @@ void getUserStats(std::vector<int>& users, gk_csr_t* mat) {
     for (int ii = mat->rowptr[user]; 
         ii < mat->rowptr[user+1]; ii++) {
       int item = mat->rowind[ii];
+      auto search = filtItems.find(item);
+      if (search != filtItems.end()) {
+        //found n skip
+        continue;
+      }
       items.insert(item);
       nUserItems += 1;
     }
    
-    //find no. of users that rated the items rated by user
+    //no. of users that rated the items rated by user
     std::unordered_set<int> adjUsers;
+    //mean freq of items
+    float meanFreq = 0;
+    int top500Count = 0;
     for (auto&& item: items) {
       for (int jj = mat->colptr[item]; jj < mat->colptr[item+1];
           jj++) {
         int u = mat->colind[jj];
         adjUsers.insert(u);
       }
+      meanFreq += itemFreq[item];
+      auto search = top500Items.find(item);
+      if (search != top500Items.end()) {
+        //found in top 500 items
+        top500Count++;
+      }
     }
+    meanFreq = meanFreq/items.size();
 
-    opFile << user << " " << nUserItems << " " << adjUsers.size() << std::endl;
+    opFile << user << " " << nUserItems << " " << adjUsers.size() << " " 
+      << meanFreq << " " << top500Count << std::endl;
   }
 
   opFile.close();
@@ -416,5 +444,65 @@ bool descComp(std::pair<int, double>& a, std::pair<int, double>& b) {
   return a.second > b.second;
 }
 
+
+float sparseRowDotProd(gk_csr_t* mat1, int i, gk_csr_t* mat2, int j) {
+  float sim = 0;
+  for (int ii = mat1->rowptr[i]; ii < mat1->rowptr[i+1]; ii++) {
+    
+    int ind1   = mat1->rowind[ii];
+    float val1 = mat1->rowval[ii];
+
+    for (int ii2 = mat2->rowptr[j]; ii2 < mat2->rowptr[j+1]; ii2++) {
+      
+      int ind2   = mat2->rowind[ii2];
+      float val2 = mat2->rowval[ii2];
+      
+      if (ind1 == ind2 ) {
+        sim += val1*val2;
+        break;
+      }
+
+    }
+  } 
+  return sim;
+}
+
+
+float sparseColDotProd(gk_csr_t* mat1, int i, gk_csr_t* mat2, int j) {
+  float sim = 0;
+  for (int jj1 = mat1->colptr[i]; jj1 < mat1->colptr[i+1]; jj1++) {
+    
+    int ind1   = mat1->colind[jj1];
+    float val1 = mat1->colval[jj1];
+
+    for (int jj2 = mat2->colptr[j]; jj2 < mat2->colptr[j+1]; jj2++) {
+      
+      int ind2   = mat2->colind[jj2];
+      float val2 = mat2->colval[jj2];
+      
+      if (ind1 == ind2 ) {
+        sim += val1*val2;
+        break;
+      }
+
+    }
+  } 
+  return sim;
+}
+
+
+//return 1 for atleast one corated user
+int sparseBinColDotProd(gk_csr_t* mat1, int i, gk_csr_t* mat2, int j) {
+  for (int jj1 = mat1->colptr[i]; jj1 < mat1->colptr[i+1]; jj1++) {
+    int ind1   = mat1->colind[jj1];
+    for (int jj2 = mat2->colptr[j]; jj2 < mat2->colptr[j+1]; jj2++) {
+      int ind2   = mat2->colind[jj2];
+      if (ind1 == ind2 ) {
+        return 1;
+      }
+    }
+  } 
+  return 0;
+}
 
 

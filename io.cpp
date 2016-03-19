@@ -349,3 +349,20 @@ void writeBlkDiagJoinedCSR(const char* mat1Name, const char* mat2Name,
 }
 
 
+void writeItemSimMat(gk_csr_t *mat, const char* fName) {
+  std::cout << "\nWriting... " << fName << std::endl;
+  std::ofstream opFile(fName);
+  for (int item1 = 0; item1 < mat->ncols; item1++) {
+    for (int item2 = 0; item2 < mat->ncols; item2++) {
+      if(sparseBinColDotProd(mat, item1, mat, item2)) {
+        opFile << item2 << " "; 
+      }
+    }
+    opFile << std::endl;
+    if (item1 % 1000 == 0) {
+      std::cout << "\nDone... Items " << item1 << std::endl;
+    } 
+  }
+}
+
+

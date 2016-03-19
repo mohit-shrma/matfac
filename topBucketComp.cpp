@@ -19,21 +19,19 @@ void updateBucketsArr(std::vector<double>& bucketScores,
 }
 
 
-void itemRMSEsProb(int user, gk_csr_t *graphMat, float lambda, int nUsers,
-    int nItems, std::unordered_set<int>& invalItems,
-    Model& fullModel, Model& origModel,
-    std::vector<double>& itemsRMSE, std::vector<double>& itemsProb) {
-  
+std::vector<std::pair<int, double>> uIGraphItemScores(int user, 
+    gk_csr_t *graphMat, float lambda, int nUsers, int nItems,
+    std::unordered_set<int>& invalItems) {
+
   std::vector<std::pair<int, double>> itemScores;
   float *pr = (float*) malloc(sizeof(float)*graphMat->nrows);
   memset(pr, 0, sizeof(float)*graphMat->nrows);
   pr[user] = 1.0;
-  
+
   //run personalized page rank on the graph w.r.t. u
   gk_rw_PageRank(graphMat, lambda, 0.0001, MAX_PR_ITER, pr);
-  
+
   //get pr scores of items
-  itemScores.clear();
   for (int i = nUsers; i < nUsers + nItems; i++) {
     int item = i - nUsers;
     //skip if item is invalid
@@ -47,7 +45,66 @@ void itemRMSEsProb(int user, gk_csr_t *graphMat, float lambda, int nUsers,
   
   //sort items in decreasing order of score
   std::sort(itemScores.begin(), itemScores.end(), descComp);
+  
+  free(pr);
 
+  return itemScores;
+}
+
+
+std::vector<std::pair<int, double>> itemGraphItemScores(int user, 
+    gk_csr_t *graphMat, gk_csr_t *mat, float lambda, int nUsers, 
+    int nItems, std::unordered_set<int>& invalItems) {
+
+  std::vector<std::pair<int, double>> itemScores;
+  float *pr = (float*) malloc(sizeof(float)*graphMat->nrows);
+  memset(pr, 0, sizeof(float)*graphMat->nrows);
+
+  if (graphMat->nrows != nItems) {
+    std::cerr << "No. of items not equal to nodes in graph" << std::endl;
+  }
+
+  int nUserRat = mat->rowptr[user+1] - mat->rowptr[user];
+  for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
+    int item = mat->rowind[ii];
+    pr[item] = 1.0/nUserRat;
+  }
+
+  //run personalized page rank on the graph w.r.t. u
+  int iter = gk_rw_PageRank(graphMat, lambda, 0.0001, MAX_PR_ITER, pr);
+  
+  if (iter > MAX_PR_ITER) {
+    std::cerr << "\n page rank not converged: " << user;
+  }
+
+  //get pr scores of items
+  for (int item = 0; item < nItems; item++) {
+    //skip if item is invalid
+    auto search = invalItems.find(item);
+    if (search != invalItems.end()) {
+      //found, invalid, skip
+      continue;
+    }
+    itemScores.push_back(std::make_pair(item, pr[item]));
+  }
+  
+  //sort items in decreasing order of score
+  std::sort(itemScores.begin(), itemScores.end(), descComp);
+  
+  free(pr);
+
+  return itemScores;
+}
+
+
+void itemRMSEsProb(int user, gk_csr_t *graphMat, gk_csr_t *trainMat, 
+    float lambda, int nUsers, int nItems, std::unordered_set<int>& invalItems,
+    std::unordered_set<int>& filtItems, Model& fullModel, Model& origModel,
+    std::vector<double>& itemsRMSE, std::vector<double>& itemsProb) {
+  
+  std::vector<std::pair<int, double>> itemScores = itemGraphItemScores(user, 
+      graphMat, trainMat, lambda, nUsers, nItems, invalItems);
+  
   itemsRMSE.clear();
   itemsProb.clear();
   for (auto&& itemScore: itemScores) {
@@ -59,15 +116,13 @@ void itemRMSEsProb(int user, gk_csr_t *graphMat, float lambda, int nUsers,
     itemsRMSE.push_back(se);
     itemsProb.push_back(score);
   }
-
-  free(pr);
 }
 
 
-void pprUsersRMSEProb(gk_csr_t *graphMat, 
+void pprUsersRMSEProb(gk_csr_t *graphMat, gk_csr_t *trainMat, 
     int nUsers, int nItems, Model& origModel, Model& fullModel,
     float lambda, std::unordered_set<int>& invalUsers, 
-    std::unordered_set<int>& invalItems, 
+    std::unordered_set<int>& invalItems, std::unordered_set<int>& filtItems, 
     std::vector<int> users, std::string& prefix) {
   
   int nBuckets = 10;
@@ -89,6 +144,7 @@ void pprUsersRMSEProb(gk_csr_t *graphMat,
   std::string probFName = prefix + "_uProbs.txt";
   std::ofstream probOpFile(probFName.c_str());
 
+
   for (auto&& user: users) {
     //skip if user is invalid
     auto search = invalUsers.find(user);
@@ -97,8 +153,8 @@ void pprUsersRMSEProb(gk_csr_t *graphMat,
       continue;
     }
  
-    itemRMSEsProb(user, graphMat, lambda, nUsers, nItems, invalItems, 
-        fullModel, origModel, itemsRMSE, itemsProb);
+    itemRMSEsProb(user, graphMat, trainMat, lambda, nUsers, nItems, 
+        invalItems, filtItems, fullModel, origModel, itemsRMSE, itemsProb);
     
     //reset user specific vec to 0
     std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
@@ -128,7 +184,7 @@ void pprUsersRMSEProb(gk_csr_t *graphMat,
 }
 
 
-void pprSampUsersRMSEProb(gk_csr_t *graphMat, 
+void pprSampUsersRMSEProb(gk_csr_t *graphMat, gk_csr_t *trainMat, 
     int nUsers, int nItems, Model& origModel, Model& fullModel,
     float lambda, int max_niter, std::unordered_set<int>& invalUsers, 
     std::unordered_set<int>& invalItems, std::unordered_set<int>& filtItems, 
@@ -146,8 +202,6 @@ void pprSampUsersRMSEProb(gk_csr_t *graphMat,
   std::vector<double> bucketNNZ(nBuckets, 0);
   std::vector<double> uBucketNNZ(nBuckets, 0);
 
-  float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
-  
   std::vector<std::pair<int, double>> itemScores;
   std::vector<double> itemsRMSE;
   std::vector<double> itemsProb;
@@ -181,12 +235,18 @@ void pprSampUsersRMSEProb(gk_csr_t *graphMat,
       //found n skip
       continue;
     }
- 
+
+    //check if user rating is b/w 50 and 100
+    int nRatings = trainMat->rowptr[user+1] - trainMat->rowptr[user];
+    if (nRatings < 300 || nRatings > 400) {
+      continue;
+    }
+
     //insert the sampled user
     sampUsers.insert(user);
 
-    itemRMSEsProb(user, graphMat, lambda, nUsers, nItems, invalItems, 
-        fullModel, origModel, itemsRMSE, itemsProb);
+    itemRMSEsProb(user, graphMat, trainMat, lambda, nUsers, nItems, invalItems,
+        filtItems, fullModel, origModel, itemsRMSE, itemsProb);
     
     //reset user specific vec to 0
     std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
@@ -217,7 +277,13 @@ void pprSampUsersRMSEProb(gk_csr_t *graphMat,
 
   }
 
-  free(pr);
+  //generate stats for sampled users
+  std::vector<int> users;
+  for (auto&& user: sampUsers) {
+    users.push_back(user);
+  }
+  std::string statsFName = prefix + "_userStats.txt";
+  getUserStats(users, trainMat, invalItems, statsFName.c_str());
 
   rmseOpFile.close();
   probOpFile.close();

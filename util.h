@@ -46,6 +46,10 @@ double normVec(std::vector<double>& vec);
 bool descComp(std::pair<int, double>& a, std::pair<int, double>& b);
 std::pair<double, double> getMeanVar(std::vector<std::vector<double>> uFac,
     std::vector<std::vector<double>> iFac, int facDim, int nUsers, int nItems);
-void getUserStats(std::vector<int>& users, gk_csr_t* mat);
+void getUserStats(std::vector<int>& users, gk_csr_t* mat, 
+    std::unordered_set<int>& filtItems, const char* opFName);
+float sparseRowDotProd(gk_csr_t* mat1, int i, gk_csr_t* mat2, int j);
+float sparseColDotProd(gk_csr_t* mat1, int i, gk_csr_t* mat2, int j);
+int sparseBinColDotProd(gk_csr_t* mat1, int i, gk_csr_t* mat2, int j);
 #endif
 
