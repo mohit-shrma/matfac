@@ -300,8 +300,30 @@ void getUserStats(std::vector<int>& users, gk_csr_t* mat,
     }
     meanFreq = meanFreq/items.size();
 
+    //analyze adjUsers
+    double meanAdjUItems = 0;
+    double meanAdjUItemsFreq = 0;
+    int nMeanAdjUItems = 0;
+    int adjTop500Count = 0;
+    for (auto&& adjUser: adjUsers) {
+      meanAdjUItems += userFreq[adjUser];
+      for (int ii = mat->rowptr[adjUser]; ii < mat->rowptr[adjUser+1]; ii++) {
+        int item = mat->rowind[ii];
+        auto search = top500Items.find(item);
+        if (search != top500Items.end()) {
+          adjTop500Count++;
+        }
+        meanAdjUItemsFreq += itemFreq[item];
+        nMeanAdjUItems++;
+      }
+    }
+    meanAdjUItems = meanAdjUItems/adjUsers.size();
+    meanAdjUItemsFreq = meanAdjUItemsFreq/nMeanAdjUItems;
+
     opFile << user << " " << nUserItems << " " << adjUsers.size() << " " 
-      << meanFreq << " " << top500Count << std::endl;
+      << meanFreq << " " << top500Count  << " " << meanAdjUItems  << " "
+      << meanAdjUItemsFreq << " " << adjTop500Count/adjUsers.size() 
+      << std::endl;
   }
 
   opFile.close();
