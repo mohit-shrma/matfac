@@ -188,7 +188,7 @@ void pprSampUsersRMSEProb(gk_csr_t *graphMat, gk_csr_t *trainMat,
     int nUsers, int nItems, Model& origModel, Model& fullModel,
     float lambda, int max_niter, std::unordered_set<int>& invalUsers, 
     std::unordered_set<int>& invalItems, std::unordered_set<int>& filtItems, 
-    int nSampUsers, int seed, std::string& prefix) {
+    int nSampUsers, int seed, std::string prefix) {
   
   int nBuckets = 10;
   int nItemsPerBuck = nItems/nBuckets;
@@ -238,9 +238,11 @@ void pprSampUsersRMSEProb(gk_csr_t *graphMat, gk_csr_t *trainMat,
 
     //check if user rating is b/w 50 and 100
     int nRatings = trainMat->rowptr[user+1] - trainMat->rowptr[user];
+    /*
     if (nRatings < 300 || nRatings > 400) {
       continue;
     }
+    */
 
     //insert the sampled user
     sampUsers.insert(user);
