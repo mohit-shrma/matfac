@@ -354,7 +354,7 @@ void writeItemSimMat(gk_csr_t *mat, const char* fName) {
   std::ofstream opFile(fName);
   for (int item1 = 0; item1 < mat->ncols; item1++) {
     for (int item2 = 0; item2 < mat->ncols; item2++) {
-      if(sparseBinColDotProd(mat, item1, mat, item2)) {
+      if(item1 != item2 && sparseBinColDotProd(mat, item1, mat, item2)) {
         opFile << item2 << " "; 
       }
     }
