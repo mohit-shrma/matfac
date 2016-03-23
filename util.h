@@ -52,5 +52,8 @@ float sparseRowDotProd(gk_csr_t* mat1, int i, gk_csr_t* mat2, int j);
 float sparseColDotProd(gk_csr_t* mat1, int i, gk_csr_t* mat2, int j);
 int sparseBinColDotProd(gk_csr_t* mat1, int i, gk_csr_t* mat2, int j);
 int sparseCoRatedUsers(gk_csr_t* mat, int i, int j);
+int checkIfUISorted(gk_csr_t* mat);
+int coRatedUsersFrmSortedMat(gk_csr_t* mat, int i, int j);
+int coRatedUsersFrmSortedMatLinMerge(gk_csr_t* mat, int i, int j);
 #endif
 

@@ -527,6 +527,7 @@ int sparseBinColDotProd(gk_csr_t* mat1, int i, gk_csr_t* mat2, int j) {
   return 0;
 }
 
+
 //return no. of co-rated users for the items
 int sparseCoRatedUsers(gk_csr_t* mat, int i, int j) {
   int coUsers = 0;
@@ -534,7 +535,7 @@ int sparseCoRatedUsers(gk_csr_t* mat, int i, int j) {
     int ind1   = mat->colind[jj1];
     for (int jj2 = mat->colptr[j]; jj2 < mat->colptr[j+1]; jj2++) {
       int ind2   = mat->colind[jj2];
-      if (ind1 == ind2 ) {
+      if (ind1 == ind2) {
         coUsers++;
         break;
       }
@@ -542,4 +543,115 @@ int sparseCoRatedUsers(gk_csr_t* mat, int i, int j) {
   } 
   return coUsers;
 }
+
+
+int binSearch(int *sortedArr, int key, int ub, int lb) {
+  
+  int ind = -1;
+  
+  while (ub >= lb) {
+    int midP = (ub + lb) / 2;
+    if (sortedArr[midP] == key) {
+      ind = midP;
+      break;
+    } else if (sortedArr[midP] < key) {
+      lb = midP + 1;
+    } else {
+      ub = midP - 1;
+    }
+  }
+
+  return ind;
+}
+
+
+//return no. of co-rated users for the items
+int coRatedUsersFrmSortedMat(gk_csr_t* mat, int i, int j) {
+  int coUsers = 0;
+  
+  //exit if either of item don't have any ratings
+  if (mat->colptr[i+1] - mat->colptr[i] == 0 || 
+      mat->colptr[j+1] - mat->colptr[j] == 0) {
+    return coUsers;
+  }
+
+  for (int jj = mat->colptr[i]; jj < mat->colptr[i+1]; jj++) {
+    int user   = mat->colind[jj];
+    int lb = mat->colptr[j];
+    int ub = mat->colptr[j+1];
+    if (binSearch(mat->colind, user, ub, lb) != -1) {
+      coUsers++;
+    }
+  } 
+  return coUsers;
+}
+
+
+int coRatedUsersFrmSortedMatLinMerge(gk_csr_t* mat, int i, int j) {
+  int coUsers = 0;
+  
+  //exit if either of item don't have any ratings
+  if (mat->colptr[i+1] - mat->colptr[i] == 0 || 
+      mat->colptr[j+1] - mat->colptr[j] == 0) {
+    return coUsers;
+  }
+
+  int jj1 = mat->colptr[i]; 
+  int jj2 = mat->colptr[j];
+  
+  while(jj1 < mat->colptr[i+1] && jj2 < mat->colptr[j+1]) {
+    int user1 = mat->colind[jj1];
+    int user2 = mat->colind[jj2];
+    if (user1 == user2) {
+      coUsers++;
+      jj1++;
+      jj2++;
+    } else if (user1 < user2) {
+      jj1++;
+    } else {
+      jj2++;
+    }
+  }
+
+  return coUsers;
+}
+
+
+
+int checkIfUISorted(gk_csr_t* mat) {
+  
+  for (int u = 0; u < mat->nrows; u++) {
+    int prevItem = mat->rowind[mat->rowptr[u]];
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      int item = mat->rowind[ii];
+      if (item < prevItem) {
+        std::cout << "\nitem < prevItem: " << u << " " << item << " " 
+          << prevItem << std::endl;
+        return 0;
+      }
+      prevItem = item;
+    }
+  }
+  
+  for (int item = 0; item < mat->ncols; item++) {
+    int prevUser = mat->colind[mat->colptr[item]];
+    for (int jj = mat->colptr[item]; jj < mat->colptr[item+1]; jj++) {
+      int u = mat->colind[jj];
+      if (u < prevUser) {
+        std::cout << "\nu < prevUser: " << item << " " << u << " " 
+          << prevUser << std::endl;
+        return 0;
+      }
+      prevUser = u;
+    }
+  }
+  
+  return 1;
+}
+
+
+
+
+
+
 

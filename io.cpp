@@ -390,13 +390,20 @@ void writeItemJaccSimMat(gk_csr_t *mat, const char *fName) {
   auto userFreq = rowColFreq.first;
   auto itemFreq = rowColFreq.second;
   int nItems = mat->ncols;
+
+  int isSorted = checkIfUISorted(mat);
+  if (!isSorted) {
+    std::cerr << "\nwriteItemJaccSimMat: matrix not sorted" << std::endl;
+    exit(0);
+  }
+
   float nCoRatedUsers = 0, sim = 0;
   std::vector<std::vector<float>> jacSim(nItems, std::vector<float>(nItems, 0.0));
-  std::cout << "\nComputing jaccard similarities...";
+  std::cout << "\nComputing jaccard similarities..." << std::endl;
   for (int item1 = 0; item1 < nItems; item1++) {
     for (int item2 = item1+1; item2 < nItems; item2++) {
       //find number of users who corated item1 and item2 
-      nCoRatedUsers = (float)sparseCoRatedUsers(mat, item1, item2);
+      nCoRatedUsers = (float)coRatedUsersFrmSortedMatLinMerge(mat, item1, item2);
       sim = nCoRatedUsers/(itemFreq[item1] + itemFreq[item2] - nCoRatedUsers);
       jacSim[item1][item2] = sim;
       jacSim[item2][item1] = jacSim[item1][item2];
@@ -420,5 +427,46 @@ void writeItemJaccSimMat(gk_csr_t *mat, const char *fName) {
 
 }
 
+
+void writeCoRatings(gk_csr_t *mat, const char *fName) {
+  auto rowColFreq = getRowColFreq(mat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+  int nItems = mat->ncols;
+  
+  int isSorted = checkIfUISorted(mat);
+  if (!isSorted) {
+    std::cerr << "\nwriteCoRatings: matrix not sorted" << std::endl;
+    exit(0);
+  }
+
+  float nCoRatedUsers = 0;
+  std::vector<std::vector<float>> jacSim(nItems, std::vector<float>(nItems, 0.0));
+  std::cout << "\nComputing coratings..." << std::endl;
+  for (int item1 = 0; item1 < nItems; item1++) {
+    for (int item2 = item1+1; item2 < nItems; item2++) {
+      //find number of users who corated item1 and item2 
+      nCoRatedUsers = (float)coRatedUsersFrmSortedMatLinMerge(mat, item1, item2);
+      jacSim[item1][item2] = nCoRatedUsers;
+      jacSim[item2][item1] = jacSim[item1][item2];
+    }
+    if (item1 % 100 == 0) {
+      std::cout << "\nDone... items " << item1 << std::endl;
+    }
+  }
+  
+  std::ofstream opFile(fName);
+  std::cout << "\nWriting co rating mat... " << fName << std::endl;
+  for (int item1 = 0; item1 < nItems; item1++) {
+    for (int item2 = 0; item2 < nItems; item2++) {
+      if (item2 != item1 && jacSim[item1][item2]) {
+        opFile << item2 << " " << jacSim[item1][item2] << " ";
+      }
+    }
+    opFile << std::endl;
+  }
+  opFile.close();
+
+}
 
 

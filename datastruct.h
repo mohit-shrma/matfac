@@ -177,9 +177,9 @@ class Params {
       graphMat = NULL;
       if (NULL != params.graphMatFile) {
         if (isFileExist(params.graphMatFile)) { 
-        std::cout << "\nReading graph mat file... 0-indexed no val " 
+        std::cout << "\nReading graph mat file... 0-indexed w val " 
           << params.graphMatFile;
-        graphMat = gk_csr_Read(params.graphMatFile, GK_CSR_FMT_CSR, 0, 0);
+        graphMat = gk_csr_Read(params.graphMatFile, GK_CSR_FMT_CSR, 1, 0);
         std::cout << "\ngraph nrows: " << graphMat->nrows << " ncols: " 
           << graphMat->ncols;
         } else {
