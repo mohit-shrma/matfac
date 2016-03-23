@@ -56,5 +56,5 @@ void writeBlkDiagJoinedCSR(const char* mat1Name, const char* mat2Name,
     const char* opFileName);
 void writeItemSimMat(gk_csr_t *mat, const char* fName);
 void writeItemSimMatNonSymm(gk_csr_t *mat, const char* fName);
-
+void writeItemJaccSimMat(gk_csr_t *mat, const char *fName);
 #endif

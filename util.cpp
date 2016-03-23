@@ -527,4 +527,19 @@ int sparseBinColDotProd(gk_csr_t* mat1, int i, gk_csr_t* mat2, int j) {
   return 0;
 }
 
+//return no. of co-rated users for the items
+int sparseCoRatedUsers(gk_csr_t* mat, int i, int j) {
+  int coUsers = 0;
+  for (int jj1 = mat->colptr[i]; jj1 < mat->colptr[i+1]; jj1++) {
+    int ind1   = mat->colind[jj1];
+    for (int jj2 = mat->colptr[j]; jj2 < mat->colptr[j+1]; jj2++) {
+      int ind2   = mat->colind[jj2];
+      if (ind1 == ind2 ) {
+        coUsers++;
+        break;
+      }
+    }
+  } 
+  return coUsers;
+}
 
