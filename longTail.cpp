@@ -62,13 +62,17 @@ void topNRec(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
     std::unordered_set<int>& headItems,
     int N, int seed) {
 
-  double rec = 0, localRec = 0;
-  double headRec = 0, headLocalRec = 0;
-  double tailRec = 0, tailLocalRec = 0;
+  double rec = 0, localRec = 0, localWtRec = 0;
+  double headRec = 0, headLocalRec = 0, headLocalWtRec = 0;
+  double tailRec = 0, tailLocalRec = 0, tailLocalWtRec = 0;
   int nItems = trainMat->ncols;
   int nUsers = trainMat->nrows;
   int nTestItems = 0, nHeadItems = 0, nTailItems = 0;
   bool isHeadItem;
+
+  auto rowColFreq = getRowColFreq(trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
 
   std::cout << "\nlambda: " << lambda << " N: " << N << " seed: " << seed 
     << std::endl;
@@ -83,6 +87,8 @@ void topNRec(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
   };
   std::vector<std::pair<int, double>> itemScorePairs; 
   std::vector<double> itemScores(nItems, 0); 
+  std::vector<double> itemFreqWtScores(nItems, 0); 
+
   for (int u = 0; u < testMat->nrows; u++) {
     //check if invalid users
     auto search = invalidUsers.find(u);
@@ -108,8 +114,10 @@ void topNRec(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
         graphMat, trainMat, lambda, nUsers, nItems, invalidItems);
     std::sort(itemScorePairs.begin(), itemScorePairs.end(), compPairsIndAsc);
     std::fill(itemScores.begin(), itemScores.end(), 0);
+    std::fill(itemFreqWtScores.begin(), itemFreqWtScores.end(), 0);
     for (auto&& itemScore: itemScorePairs) {
       itemScores[itemScore.first] = itemScore.second;
+      itemFreqWtScores[itemScore.first] = itemScore.second/itemFreq[itemScore.first];
     }
 
     std::unordered_set<int> sampItems;
@@ -167,19 +175,42 @@ void topNRec(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
         }
       }
 
+
+      if (isModelLocalScoreHit(model, sampItems, u, testItem, 
+            itemFreqWtScores, N)) {
+        localWtRec += 1;
+        if (isHeadItem) {
+          headLocalWtRec += 1;
+        } else {
+          tailLocalWtRec += 1;
+        }
+      }
+
       nTestItems++;
     }
     
     if (u % 5000 == 0) {
       std::cout << "Done.. " << u << std::endl;
-      std::cout << "Top-" << N << "  model recall: " << rec/nTestItems << std::endl;
-      std::cout << "Top-" << N << " model local recall: " << localRec/nTestItems << std::endl;
+      std::cout << "Top-" << N << "  model recall: " 
+        << rec/nTestItems << std::endl;
+      std::cout << "Top-" << N << " model local recall: " 
+        << localRec/nTestItems << std::endl;
+      std::cout << "Top-" << N << " model local wt recall: " 
+        << localWtRec/nTestItems << std::endl;
   
-      std::cout << "Top-" << N << " model head recall: " << headRec/nHeadItems << std::endl;
-      std::cout << "Top-" << N << " model head local recall: " << headLocalRec/nHeadItems << std::endl;
+      std::cout << "Top-" << N << " model head recall: " 
+        << headRec/nHeadItems << std::endl;
+      std::cout << "Top-" << N << " model head local recall: " 
+        << headLocalRec/nHeadItems << std::endl;
+      std::cout << "Top-" << N << " model head local wt recall: " 
+        << headLocalWtRec/nHeadItems << std::endl;
   
-      std::cout << "Top-" << N << " model tail recall: " << tailRec/nTailItems << std::endl;
-      std::cout << "Top-" << N << " model tail local recall: " << tailLocalRec/nTailItems << std::endl;
+      std::cout << "Top-" << N << " model tail recall: " 
+        << tailRec/nTailItems << std::endl;
+      std::cout << "Top-" << N << " model tail local recall: " 
+        << tailLocalRec/nTailItems << std::endl;
+      std::cout << "Top-" << N << " model tail local wt recall: " 
+        << tailLocalWtRec/nTailItems << std::endl;
     }
   }
   
@@ -190,15 +221,26 @@ void topNRec(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
   tailRec = tailRec/nTailItems;
   tailLocalRec = tailLocalRec/nTailItems;
 
-  std::cout << "\nTop-" << N << "  model recall: " << rec << std::endl;
-  std::cout << "\nTop-" << N << " model local recall: " << localRec << std::endl;
-  
-  std::cout << "\nTop-" << N << " model head recall: " << headRec << std::endl;
-  std::cout << "\nTop-" << N << " model head local recall: " << headLocalRec << std::endl;
-  
-  std::cout << "\nTop-" << N << " model tail recall: " << tailRec << std::endl;
-  std::cout << "\nTop-" << N << " model tail local recall: " << tailLocalRec << std::endl;
+  std::cout << "Top-" << N << "  model recall: " 
+    << rec/nTestItems << std::endl;
+  std::cout << "Top-" << N << " model local recall: " 
+    << localRec/nTestItems << std::endl;
+  std::cout << "Top-" << N << " model local wt recall: " 
+    << localWtRec/nTestItems << std::endl;
 
+  std::cout << "Top-" << N << " model head recall: " 
+    << headRec/nHeadItems << std::endl;
+  std::cout << "Top-" << N << " model head local recall: " 
+    << headLocalRec/nHeadItems << std::endl;
+  std::cout << "Top-" << N << " model head local wt recall: " 
+    << headLocalWtRec/nHeadItems << std::endl;
+
+  std::cout << "Top-" << N << " model tail recall: " 
+    << tailRec/nTailItems << std::endl;
+  std::cout << "Top-" << N << " model tail local recall: " 
+    << tailLocalRec/nTailItems << std::endl;
+  std::cout << "Top-" << N << " model tail local wt recall: " 
+    << tailLocalWtRec/nTailItems << std::endl;
 }
 
 
