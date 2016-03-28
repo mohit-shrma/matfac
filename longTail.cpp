@@ -169,7 +169,10 @@ void topNRec(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
 
       nTestItems++;
     }
-
+    
+    if (u % 10000 == 0) {
+      std::cout << "Done.. " << u << std::endl;
+    }
   }
   
   rec = rec/nTestItems;
