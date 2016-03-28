@@ -117,7 +117,9 @@ void topNRec(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
     std::fill(itemFreqWtScores.begin(), itemFreqWtScores.end(), 0);
     for (auto&& itemScore: itemScorePairs) {
       itemScores[itemScore.first] = itemScore.second;
-      itemFreqWtScores[itemScore.first] = itemScore.second/itemFreq[itemScore.first];
+      if (itemFreq[itemScore.first] > 0) {
+        itemFreqWtScores[itemScore.first] = itemScore.second/itemFreq[itemScore.first];
+      }
     }
 
     std::unordered_set<int> sampItems;
