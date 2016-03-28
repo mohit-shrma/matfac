@@ -10,6 +10,7 @@
 #include <random>
 #include "GKlib.h"
 #include "util.h"
+#include "const.h"
 
 void dispVector(std::vector<double>& vec); 
 void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
@@ -58,4 +59,10 @@ void writeItemSimMat(gk_csr_t *mat, const char* fName);
 void writeItemSimMatNonSymm(gk_csr_t *mat, const char* fName);
 void writeItemJaccSimMat(gk_csr_t *mat, const char *fName);
 void writeCoRatings(gk_csr_t *mat, const char *fName);
+void writeItemJaccSimFrmCorat(gk_csr_t *mat, gk_csr_t *coRatMat, 
+    const char *fName);
+void readItemScores(std::vector<std::pair<int, double>>& itemScores,
+    const char* fileName);
+void writeItemScores(std::vector<std::pair<int, double>>& itemScores,
+    const char* fileName);
 #endif

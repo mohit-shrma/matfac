@@ -119,6 +119,26 @@ void itemRMSEsProb(int user, gk_csr_t *graphMat, gk_csr_t *trainMat,
 }
 
 
+void itemRMSEsProb2(int user, gk_csr_t *graphMat, gk_csr_t *trainMat, 
+    float lambda, int nUsers, int nItems, std::unordered_set<int>& invalItems,
+    std::unordered_set<int>& filtItems, Model& fullModel, Model& origModel,
+    std::vector<double>& itemsRMSE, std::vector<double>& itemsProb,
+    std::vector<std::pair<int,double>>& itemScores) {
+  
+  itemsRMSE.clear();
+  itemsProb.clear();
+  for (auto&& itemScore: itemScores) {
+    int item = itemScore.first;
+    double score = itemScore.second;
+    double r_ui = origModel.estRating(user, item);
+    double r_ui_est = fullModel.estRating(user, item);
+    double se = (r_ui - r_ui_est)*(r_ui - r_ui_est);
+    itemsRMSE.push_back(se);
+    itemsProb.push_back(score);
+  }
+}
+
+
 void pprUsersRMSEProb(gk_csr_t *graphMat, gk_csr_t *trainMat, 
     int nUsers, int nItems, Model& origModel, Model& fullModel,
     float lambda, std::unordered_set<int>& invalUsers, 
@@ -202,7 +222,6 @@ void pprSampUsersRMSEProb(gk_csr_t *graphMat, gk_csr_t *trainMat,
   std::vector<double> bucketNNZ(nBuckets, 0);
   std::vector<double> uBucketNNZ(nBuckets, 0);
 
-  std::vector<std::pair<int, double>> itemScores;
   std::vector<double> itemsRMSE;
   std::vector<double> itemsProb;
 
@@ -213,11 +232,23 @@ void pprSampUsersRMSEProb(gk_csr_t *graphMat, gk_csr_t *trainMat,
 
   std::unordered_set<int> sampUsers;
 
-  std::string rmseFName = prefix + "_uRMSE.txt" ;
-  std::ofstream rmseOpFile(rmseFName.c_str()); 
+  //std::string rmseFName = prefix + "_uRMSE.txt" ;
+  //std::ofstream rmseOpFile(rmseFName.c_str()); 
 
-  std::string probFName = prefix + "_uProbs.txt";
-  std::ofstream probOpFile(probFName.c_str());
+  //std::string probFName = prefix + "_uProbs.txt";
+  //std::ofstream probOpFile(probFName.c_str());
+
+  auto rowColFreq = getRowColFreq(trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+
+  std::vector<std::pair<int, double>> itemScores;
+  for (int i = 0; i < itemFreq.size(); i++) {
+    itemScores.push_back(std::make_pair(i, itemFreq[i]));
+  }
+  //readItemScores(itemScores, "bwscores2.txt");
+  //sort items in decreasing order of score
+  std::sort(itemScores.begin(), itemScores.end(), descComp);
 
   while (sampUsers.size() < nSampUsers) {
     //sample user
@@ -237,18 +268,18 @@ void pprSampUsersRMSEProb(gk_csr_t *graphMat, gk_csr_t *trainMat,
     }
 
     //check if user rating is b/w 50 and 100
-    int nRatings = trainMat->rowptr[user+1] - trainMat->rowptr[user];
-    /*
-    if (nRatings < 300 || nRatings > 400) {
-      continue;
-    }
-    */
+    //int nRatings = trainMat->rowptr[user+1] - trainMat->rowptr[user];
+    //if (nRatings < 50 || nRatings > 100) {
+    //  continue;
+    //}
 
     //insert the sampled user
     sampUsers.insert(user);
 
-    itemRMSEsProb(user, graphMat, trainMat, lambda, nUsers, nItems, invalItems,
-        filtItems, fullModel, origModel, itemsRMSE, itemsProb);
+    //itemRMSEsProb(user, graphMat, trainMat, lambda, nUsers, nItems, invalItems,
+    //    filtItems, fullModel, origModel, itemsRMSE, itemsProb);
+    itemRMSEsProb2(user, graphMat, trainMat, lambda, nUsers, nItems, invalItems,
+        filtItems, fullModel, origModel, itemsRMSE, itemsProb, itemScores);
     
     //reset user specific vec to 0
     std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
@@ -261,39 +292,48 @@ void pprSampUsersRMSEProb(gk_csr_t *graphMat, gk_csr_t *trainMat,
     updateBucketsArr(uProbs, uBucketNNZ, itemsProb, nBuckets);
 
     //write and update aggregated buckets
-    rmseOpFile << user << " ";
-    probOpFile << user << " ";
+    //rmseOpFile << user << " ";
+    //probOpFile << user << " ";
     for (int i = 0; i < nBuckets; i++) {
       bucketNNZ[i]  += uBucketNNZ[i];
       rmseScores[i] += uRMSEScores[i];
-      rmseOpFile << sqrt(uRMSEScores[i]/uBucketNNZ[i]) << " ";
+      //rmseOpFile << sqrt(uRMSEScores[i]/uBucketNNZ[i]) << " ";
       probs[i]      += uProbs[i];
-      probOpFile << uProbs[i]/uBucketNNZ[i] << " ";
+      //probOpFile << uProbs[i]/uBucketNNZ[i] << " ";
     }
-    rmseOpFile << std::endl;
-    probOpFile << std::endl;
+    //rmseOpFile << std::endl;
+    //probOpFile << std::endl;
     
     if (sampUsers.size() % PROGU == 0) {
       std::cout << "Done... " << sampUsers.size() << " :" << lambda << std::endl;
     }
 
   }
+  
+  //rmseOpFile.close();
+  //probOpFile.close();
+
+  for (int i = 0; i < nBuckets; i++) {
+    rmseScores[i] = sqrt(rmseScores[i]/bucketNNZ[i]);
+  }
+  std::string rmseScoreFName = prefix + "_rmseBuckets.txt";
+  writeVector(rmseScores, rmseScoreFName.c_str());
 
   //generate stats for sampled users
+  
   std::vector<int> users;
   for (auto&& user: sampUsers) {
     users.push_back(user);
   }
   std::string statsFName = prefix + "_userStats.txt";
   getUserStats(users, trainMat, invalItems, statsFName.c_str());
-
-  rmseOpFile.close();
-  probOpFile.close();
+  
 }
 
 
 //return a map of item- users
 std::map<int, std::vector<int>> pprSampTopNItemsUsers(gk_csr_t *graphMat, 
+    gk_csr_t *trainMat,
     int nUsers, int nItems, Model& origModel, Model& fullModel,
     float lambda, int max_niter, std::unordered_set<int>& invalUsers, 
     std::unordered_set<int>& invalItems, std::unordered_set<int>& filtItems, 
@@ -305,8 +345,6 @@ std::map<int, std::vector<int>> pprSampTopNItemsUsers(gk_csr_t *graphMat,
   std::vector<double> bucketScores(nBuckets, 0);
   std::vector<double> bucketNNZ(nBuckets, 0);
 
-  float *pr = (float*)malloc(sizeof(float)*graphMat->nrows);
-  
   std::vector<std::pair<int, double>> itemScores;
   std::map<int, std::vector<int>> itemUsers;
 
@@ -337,37 +375,21 @@ std::map<int, std::vector<int>> pprSampTopNItemsUsers(gk_csr_t *graphMat,
     //insert the sampled user
     sampUsers.insert(user);
     
-    memset(pr, 0, sizeof(float)*graphMat->nrows);
-    pr[user] = 1.0;
-
-    //run personalized page rank on the graph w.r.t. u
-    gk_rw_PageRank(graphMat, lambda, 0.0001, max_niter, pr);
-
-    //get pr score of items
-    itemScores.clear();
-    for (int i = nUsers; i < nUsers + nItems; i++) {
-      int item = i - nUsers;
-      //skip if item is invalid
-      search = invalItems.find(item);
-      if (search != invalItems.end()) {
-        //found, invalid, skip
-        continue;
-      }
-      itemScores.push_back(std::make_pair(item, pr[i]));
-    }
-
-    //sort items in decreasing order of score
-    std::sort(itemScores.begin(), itemScores.end(), descComp);
+    itemScores = itemGraphItemScores(user, graphMat, trainMat, lambda, nUsers, 
+        nItems, invalItems);
+    
     std::vector<int> sortedItems;
     int i = 0;
     while (sortedItems.size() < N) {
       int item = itemScores[i++].first;
-
+      
+      /*
       auto search = filtItems.find(item);
       if (search != filtItems.end()) {
         //found in filtered items, skip
         continue;
       }
+      */
 
       auto search2 = itemUsers.find(item);
       if (search2 == itemUsers.end()) {
@@ -393,7 +415,6 @@ std::map<int, std::vector<int>> pprSampTopNItemsUsers(gk_csr_t *graphMat,
     bucketScores[i] = sqrt(bucketScores[i]/bucketNNZ[i]);
   }
 
-  free(pr);
 
   //write out bucket scores
   std::string scoreFName = prefix + "_" + std::to_string(lambda) + "_ppr_bucket.txt";
@@ -461,13 +482,14 @@ std::map<int, double> itemAllRMSE(Model& origModel, Model& fullModel,
 
 
 void writeTopBuckRMSEs(Model& origModel, Model& fullModel, gk_csr_t* graphMat,
+    gk_csr_t* trainMat,
     float lambda, int max_niter, std::unordered_set<int>& invalUsers, 
     std::unordered_set<int>& invalItems, std::unordered_set<int>& filtItems,
     int nSampUsers, int seed, int N, std::string prefix) {
   
   std::cout << "\nGetting itemUsers... : " << lambda << std::endl;
 
-  auto itemUsers = pprSampTopNItemsUsers(graphMat, fullModel.nUsers, 
+  auto itemUsers = pprSampTopNItemsUsers(graphMat, trainMat, fullModel.nUsers, 
       fullModel.nItems, origModel, fullModel, lambda, max_niter, invalUsers, 
       invalItems, filtItems, nSampUsers, seed, N, prefix);
 

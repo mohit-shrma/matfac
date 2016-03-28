@@ -1,6 +1,50 @@
 #include "io.h"
 
 
+void readItemScores(std::vector<std::pair<int, double>>& itemScores,
+    const char* fileName) {
+  
+  std::string line, token;
+  std::string delimiter = " ";
+  std::ifstream inFile (fileName);
+  int item;
+  double score;
+  size_t pos;
+
+  if (inFile.is_open()) {
+    while (getline(inFile, line)) {
+      //split the line
+      if ((pos = line.find(delimiter)) != std::string::npos) {
+        token = line.substr(0, pos);
+        item = std::stoi(token);
+        line.erase(0, pos + delimiter.length());
+      }
+      if (line.length() > 0) {
+        score = std::stod(line);
+        itemScores.push_back(std::make_pair(item, score));
+      }
+    }
+    inFile.close();
+  } else {
+    std::cout << "\nCan't open file: " << fileName;
+  }
+
+}
+
+
+void writeItemScores(std::vector<std::pair<int, double>>& itemScores,
+    const char* fileName) {
+  
+  std::ofstream opFile(fileName);
+  
+  for (auto&& itemScore: itemScores) {
+    opFile << itemScore.first << " " << itemScore.second << std::endl;
+  }
+
+  opFile.close();
+}
+
+
 void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
     const char *fileName) {
  
@@ -397,14 +441,18 @@ void writeItemJaccSimMat(gk_csr_t *mat, const char *fName) {
     exit(0);
   }
 
-  float nCoRatedUsers = 0, sim = 0;
+  float nCoRatedUsers = 0, nUnionUsers = 0, sim = 0;
   std::vector<std::vector<float>> jacSim(nItems, std::vector<float>(nItems, 0.0));
   std::cout << "\nComputing jaccard similarities..." << std::endl;
   for (int item1 = 0; item1 < nItems; item1++) {
     for (int item2 = item1+1; item2 < nItems; item2++) {
       //find number of users who corated item1 and item2 
       nCoRatedUsers = (float)coRatedUsersFrmSortedMatLinMerge(mat, item1, item2);
-      sim = nCoRatedUsers/(itemFreq[item1] + itemFreq[item2] - nCoRatedUsers);
+      nUnionUsers = itemFreq[item1] + itemFreq[item2] - nCoRatedUsers; 
+      sim = 0;
+      if (nUnionUsers > 0) {
+        sim = nCoRatedUsers/nUnionUsers;
+      }
       jacSim[item1][item2] = sim;
       jacSim[item2][item1] = jacSim[item1][item2];
     }
@@ -417,7 +465,49 @@ void writeItemJaccSimMat(gk_csr_t *mat, const char *fName) {
   std::cout << "\nWriting Jaccard sim mat... " << fName << std::endl;
   for (int item1 = 0; item1 < nItems; item1++) {
     for (int item2 = 0; item2 < nItems; item2++) {
-      if (item2 != item1 && jacSim[item1][item2]) {
+      if (item2 != item1 && jacSim[item1][item2] > EPS) {
+        opFile << item2 << " " << jacSim[item1][item2] << " ";
+      }
+    }
+    opFile << std::endl;
+  }
+  opFile.close();
+
+}
+
+
+void writeItemJaccSimFrmCorat(gk_csr_t *mat, gk_csr_t *coRatMat, const char *fName) {
+  auto rowColFreq = getRowColFreq(mat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+  int nItems = mat->ncols;
+
+  float nCoRatedUsers = 0, nUnionUsers = 0, sim = 0;
+  std::vector<std::vector<float>> jacSim(nItems, std::vector<float>(nItems, 0.0));
+  std::cout << "\nComputing jaccard similarities..." << std::endl;
+  for (int item1 = 0; item1 < nItems; item1++) {
+    for (int ii = coRatMat->rowptr[item1]; ii < coRatMat->rowptr[item1+1]; 
+        ii++) {
+      int item2 = coRatMat->rowind[ii];
+      nCoRatedUsers = coRatMat->rowval[ii];
+      nUnionUsers = itemFreq[item1] + itemFreq[item2] - nCoRatedUsers; 
+      sim = 0;
+      if (nUnionUsers > 0) {
+        sim = nCoRatedUsers/nUnionUsers;
+      }
+      jacSim[item1][item2] = sim;
+      jacSim[item2][item1] = jacSim[item1][item2];
+    }
+    if (item1 % 1000 == 0) {
+      std::cout << "\nDone... items " << item1 << std::endl;
+    }
+  }
+  
+  std::ofstream opFile(fName);
+  std::cout << "\nWriting Jaccard sim mat... " << fName << std::endl;
+  for (int item1 = 0; item1 < nItems; item1++) {
+    for (int item2 = 0; item2 < nItems; item2++) {
+      if (item2 != item1 && jacSim[item1][item2] > EPS) {
         opFile << item2 << " " << jacSim[item1][item2] << " ";
       }
     }
@@ -459,7 +549,7 @@ void writeCoRatings(gk_csr_t *mat, const char *fName) {
   std::cout << "\nWriting co rating mat... " << fName << std::endl;
   for (int item1 = 0; item1 < nItems; item1++) {
     for (int item2 = 0; item2 < nItems; item2++) {
-      if (item2 != item1 && jacSim[item1][item2]) {
+      if (item2 != item1 && jacSim[item1][item2] > EPS) {
         opFile << item2 << " " << jacSim[item1][item2] << " ";
       }
     }

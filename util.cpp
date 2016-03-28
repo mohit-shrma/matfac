@@ -1,6 +1,28 @@
 #include "util.h"
 
 
+std::unordered_set<int> getHeadItems(gk_csr_t *mat, float topPc) {
+  
+  //get number of ratings per user and item, i.e. frequency
+  auto rowColFreq = getRowColFreq(mat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+
+  std::vector<std::pair<int, double>> itemFreqPairs;
+  for (int i = 0; i < itemFreq.size(); i++) {
+    itemFreqPairs.push_back(std::make_pair(i, itemFreq[i]));
+  }
+  std::sort(itemFreqPairs.begin(), itemFreqPairs.end(), descComp);
+
+  std::unordered_set<int> headItems;
+  for (int i = 0; i < topPc*itemFreqPairs.size(); i++) {
+    headItems.insert(itemFreqPairs[i].first);
+  }
+  
+  return headItems;
+}
+
+
 double compRecall(std::vector<int> order1, std::vector<int> order2, int N) {
 
   //change N to smaller of the list, in case N is larger than the either one
@@ -327,6 +349,17 @@ void getUserStats(std::vector<int>& users, gk_csr_t* mat,
   }
 
   opFile.close();
+}
+
+
+std::vector<int> getInvalidUsers(gk_csr_t *mat) {
+  std::vector<int> invalUsers;
+  for (int u = 0; u < mat->nrows; u++) {
+    if (mat->rowptr[u+1] - mat->rowptr[u] == 0) {
+      invalUsers.push_back(u);
+    }
+  }
+  return invalUsers;
 }
 
 

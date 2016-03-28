@@ -13,6 +13,7 @@
 #include <fstream>
 
 void writeTopBuckRMSEs(Model& origModel, Model& fullModel, gk_csr_t* graphMat,
+    gk_csr_t* trainMat,
     float lambda, int max_niter, std::unordered_set<int>& invalUsers, 
     std::unordered_set<int>& invalItems, std::unordered_set<int>& filtItems,
     int nSampUsers, int seed, int N, std::string prefix);
@@ -26,4 +27,7 @@ void pprUsersRMSEProb(gk_csr_t *graphMat,
     float lambda, std::unordered_set<int>& invalUsers, 
     std::unordered_set<int>& invalItems, std::unordered_set<int>& filtItems, 
     std::vector<int> users, std::string& prefix);
+std::vector<std::pair<int, double>> itemGraphItemScores(int user, 
+    gk_csr_t *graphMat, gk_csr_t *mat, float lambda, int nUsers, 
+    int nItems, std::unordered_set<int>& invalItems);
 #endif
