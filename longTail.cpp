@@ -378,6 +378,7 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
       search = headItems.find(testItem);
       if (search == headItems.end()) {
         isTailTestUser = true;
+        break;
       }
     }
     
