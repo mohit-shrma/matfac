@@ -10,6 +10,7 @@
 #include "modelMFBias.h"
 #include "confCompute.h"
 #include "topBucketComp.h"
+#include "longTail.h"
 
 Params parse_cmd_line(int argc, char *argv[]) {
   
@@ -525,8 +526,12 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   }
   //comparison to sort in decreasing order
   std::sort(itemFreqPairs.begin(), itemFreqPairs.end(), descComp);
-  
-  int N = 500;
+  /*
+  std::vector<int> users = {179907, 99641, 101732, 180172, 51668, 165001, 
+                            68374, 21257, 122129};
+  */
+
+  int N = 1000;
   int nSampUsers = 5000;
   int nUsers = data.trainMat->nrows;
   int nItems = data.trainMat->ncols;
@@ -536,49 +541,98 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   for (int i = 0; i < N; i++) {
     filtItems.insert(itemFreqPairs[i].first);
   }
-  
+ 
+  //add filtItems to invalItems
+  //for (auto&& item: filtItems) {
+  //  invalItems.insert(item);
+  //}
+   
+
   std::cout << "\nnInvalidUsers: " << invalUsers.size();
   std::cout << "\nnInvalidItems: " << invalItems.size() <<std::endl;
   
-  /* 
-  std::vector<float> lambdas = {0.2, 0.4, 0.6, 0.8};
+  /*
+  std::vector<int> invGraphItems = getInvalidUsers(data.graphMat);
+  int found = 0;
+  for (auto&& item: invGraphItems) {
+    auto search = invalItems.find(item);
+    if (search != invalItems.end()) {
+      found++;
+    }
+  } 
+
+  std::cout << "\nInvGraphItems: " << invGraphItems.size() 
+    << " found in invalid items: " << found << std::endl;
+  */
+
+  //std::vector<int> users = {92, 43970};
+  //getUserStats(users, data.trainMat, invalItems, "uStats.txt");
+  
+  //std::vector<int> users = readVector("users_300_400.txt");
+  //getUserStats(users, data.trainMat, invalItems); 
+
+  /*
+  prefix = std::string(params.prefix) + "_" + std::to_string(params.alpha) 
+    + "_users";
+  pprUsersRMSEProb(data.graphMat, nUsers, nItems, origModel, fullModel, 
+      params.alpha, invalUsers, invalItems, users, prefix);
+  */
+
+  
+  
+  std::vector<float> lambdas = {0.01, 0.25, 0.5, 0.75, 0.99};
   int nThreads = lambdas.size() - 1;
   std::vector<std::thread> threads(nThreads);
   for (int thInd = 0; thInd < nThreads; thInd++) {
+    //prefix = std::string(params.prefix) + "_50_100_" 
+    //          + std::to_string(lambdas[thInd]);
     prefix = std::string(params.prefix) + "_" + std::to_string(lambdas[thInd]) 
       + "_" + std::to_string(N);
+    
+    /*
+    threads[thInd] = std::thread(pprSampUsersRMSEProb,
+        data.graphMat, data.trainMat, nUsers, nItems, std::ref(origModel), 
+        std::ref(fullModel), lambdas[thInd], MAX_PR_ITER, std::ref(invalUsers), 
+        std::ref(invalItems), std::ref(filtItems), 100, params.seed, prefix);
+    */
+    
     threads[thInd] = std::thread(writeTopBuckRMSEs,
-        std::ref(fullModel), std::ref(origModel), data.graphMat, 
-        lambdas[thInd], MAX_PR_ITER, std::ref(invalUsers), std::ref(invalItems),
-        std::ref(filtItems), nSampUsers, params.seed, N, prefix);
+        std::ref(origModel), std::ref(fullModel), data.graphMat, data.trainMat, 
+        lambdas[thInd], MAX_PR_ITER, std::ref(invalUsers), 
+        std::ref(invalItems), std::ref(filtItems), nSampUsers, params.seed, N, 
+        prefix);
   }
-
+  
   //last parameter in main thread
+  //prefix = std::string(params.prefix) + "_50_100_" 
+  //          + std::to_string(lambdas[nThreads]);
   prefix = std::string(params.prefix) + "_" + std::to_string(lambdas[nThreads])
     + "_" + std::to_string(N);
-  writeTopBuckRMSEs(fullModel, origModel, data.graphMat, lambdas[nThreads],
-      MAX_PR_ITER, invalUsers, invalItems, filtItems, nSampUsers, params.seed,
-      N, prefix);
-  */
+  //pprSampUsersRMSEProb(data.graphMat, data.trainMat, nUsers, nItems, origModel, fullModel,
+  //    lambdas[nThreads], MAX_PR_ITER, invalUsers, invalItems, filtItems, 100, 
+  //    params.seed, prefix);
+  writeTopBuckRMSEs(origModel, fullModel, data.graphMat, data.trainMat, 
+      lambdas[nThreads], MAX_PR_ITER, invalUsers, invalItems, filtItems, nSampUsers, 
+      params.seed, N, prefix);
   
   
+  /*
   //last parameter in main thread
   prefix = std::string(params.prefix) + "_" + std::to_string(params.alpha)
     + "_" + std::to_string(N);
   writeTopBuckRMSEs(fullModel, origModel, data.graphMat, params.alpha,
       MAX_PR_ITER, invalUsers, invalItems, filtItems, nSampUsers, params.seed,
       N, prefix);
-    
-  /*
+  */
+   
   //wait for the threads to finish
   std::cout << "\nWaiting for threads to finish..." << std::endl;
   std::for_each(threads.begin(), threads.end(), std::mem_fn(&std::thread::join));
-  */
-
+   
   /* 
-  prefix = std::string(params.prefix) + "_" + std::to_string(params.alpha);
-  pprSampUsersRMSEProb(data.graphMat, nUsers, nItems, origModel, fullModel,
-      params.alpha, MAX_PR_ITER, invalUsers, invalItems, filtItems, 100, 
+  prefix = std::string(params.prefix) + "_sampFreq_" + std::to_string(params.alpha);
+  pprSampUsersRMSEProb(data.graphMat, data.trainMat, nUsers, nItems, origModel, fullModel,
+      params.alpha, MAX_PR_ITER, invalUsers, invalItems, filtItems, 5000, 
       params.seed, prefix);
   */
 }
@@ -1309,26 +1363,35 @@ int main(int argc , char* argv[]) {
   //    "ratings_229060x26779_25_0.6.syn.csr2", 0.6, params.seed);
   //writeTrainTestMat(data.trainMat,  "", 
   //   "", ,  params.seed);
-  
-  /*
+  //writeItemSimMat(data.trainMat, "ratings_26779x26779_25.syn.trainItems.metis");
+  //writeItemSimMatNonSymm(data.trainMat, 
+  //    "ratings_26779x26779_25.syn.trainItems.nonsym.metis");
+  //writeItemJaccSimMat(data.trainMat, "ratings_26779x26779_25.syn.trainItems.jacSim.metis");
+  //writeItemJaccSimFrmCorat(data.trainMat, data.graphMat, 
+  //    "ratings_26779x26779_25.syn.trainItems.jacSim2.metis");
+  //writeCoRatings(data.trainMat, "ratings_26779x26779_25.syn.trainItems.coRatings");
+  //std::cout << "ifUISorted: " << checkIfUISorted(data.trainMat) << std::endl ;
+
+  /* 
   writeTrainTestValMat(data.trainMat,  
-      "y_u2_i34_100Kx50K_50.syn.train.csr",
-      "y_u2_i34_100Kx50K_50.syn.test.csr",
-      "y_u2_i34_100Kx50K_50.syn.val.csr",
+      "ratings_229060x26779.train.csr",
+      "ratings_229060x26779.test.csr",
+      "ratings_229060x26779.val.csr",
       0.1, 0.1, params.seed); 
   */
 
   //ModelMF mfModel(params, params.initUFacFile, 
   //    params.initIFacFile, params.seed);
  
-  /*
+  
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
   svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac);
   
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
-  
+  std::unordered_set<int> headItems;
+
   ModelMF bestModel(mfModel);
   std::cout << "\nStarting model train...";
   mfModel.train(data, bestModel, invalidUsers, invalidItems);
@@ -1343,9 +1406,18 @@ int main(int argc , char* argv[]) {
 
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
       invalidItems);
-  */ 
   
-  computeSampTopNFrmFullModel(data, params);  
+  //get headdItems
+  headItems = getHeadItems(data.trainMat, 0.2);
+
+  //write out head items
+  prefix = std::string(params.prefix) + "_headItems.txt";
+  writeContainer(begin(headItems), end(headItems), prefix.c_str());
+
+  topNRecTail(bestModel, data.trainMat, data.testMat, data.graphMat, params.alpha,
+      invalidItems, invalidUsers, headItems, 10, params.seed);   
+  
+  //computeSampTopNFrmFullModel(data, params);  
 
   return 0;
 }
