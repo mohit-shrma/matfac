@@ -170,8 +170,16 @@ void topNRec(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
       nTestItems++;
     }
     
-    if (u % 10000 == 0) {
+    if (u % 5000 == 0) {
       std::cout << "Done.. " << u << std::endl;
+      std::cout << "Top-" << N << "  model recall: " << rec/nTestItems << std::endl;
+      std::cout << "Top-" << N << " model local recall: " << localRec/nTestItems << std::endl;
+  
+      std::cout << "Top-" << N << " model head recall: " << headRec/nHeadItems << std::endl;
+      std::cout << "Top-" << N << " model head local recall: " << headLocalRec/nHeadItems << std::endl;
+  
+      std::cout << "Top-" << N << " model tail recall: " << tailRec/nTailItems << std::endl;
+      std::cout << "Top-" << N << " model tail local recall: " << tailLocalRec/nTailItems << std::endl;
     }
   }
   
