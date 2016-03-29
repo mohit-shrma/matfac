@@ -1384,6 +1384,7 @@ void testTailRec(Data& data, Params& params) {
   std::vector<float> lambdas = {0.01, 0.25, 0.5, 0.75, 0.99};
   int nThreads = lambdas.size() - 1;
   std::vector<std::thread> threads(nThreads);
+  std::cout << "\nStarting threads...." << std::endl;
   for (int thInd = 0; thInd < nThreads; thInd++) {
     prefix = std::string(params.prefix) + "_" + std::to_string(lambdas[thInd]) 
       + "_" + std::to_string(N);
@@ -1399,6 +1400,11 @@ void testTailRec(Data& data, Params& params) {
   topNRecTail(bestModel, data.trainMat, data.testMat, data.graphMat, 
       lambdas[nThreads], invalidItems, invalidUsers, headItems, 10, 
       params.seed, prefix);   
+  
+  //wait for threads to finish
+  std::cout << "\nWaiting for threads to finish..." << std::endl;
+  std::for_each(threads.begin(), threads.end(), 
+      std::mem_fn(&std::thread::join));
 }
 
 
