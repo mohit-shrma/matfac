@@ -1332,6 +1332,76 @@ void computeConfCurveTest(Data& data, Params& params) {
 }
 
 
+void testTailRec(Data& data, Params& params) {
+  
+  ModelMF mfModel(params, params.seed);
+  //load previously learned factors
+  mfModel.loadFacs(params.prefix);
+  
+  //replace model with svd
+  //svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac);
+  
+  std::string prefix = std::string(params.prefix) + "_invalUsers.txt";
+  std::vector<int> invalUsersVec = readVector(prefix.c_str());
+  prefix = std::string(params.prefix) + "_invalItems.txt";
+  std::vector<int> invalItemsVec = readVector(prefix.c_str());
+  
+  std::unordered_set<int> invalidUsers;
+  for (auto v: invalUsersVec) {
+    invalidUsers.insert(v);
+  }
+  
+  std::unordered_set<int> invalidItems;
+  for (auto v: invalItemsVec) {
+    invalidItems.insert(v);
+  }
+  std::unordered_set<int> headItems;
+
+  ModelMF bestModel(mfModel);
+  //std::cout << "\nStarting model train...";
+  //mfModel.train(data, bestModel, invalidUsers, invalidItems);
+  std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
+      invalidItems);
+  
+  //write out invalid users
+  //std::string prefix = std::string(params.prefix) + "_invalUsers.txt";
+  //writeContainer(begin(invalidUsers), end(invalidUsers), prefix.c_str());
+
+  //write out invalid users
+  //prefix = std::string(params.prefix) + "_invalItems.txt";
+  //writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
+  
+  //get headdItems
+  headItems = getHeadItems(data.trainMat);
+  std::cout << "\nNo. of head items: " << headItems.size() << " head items pc: " 
+    << ((float)headItems.size()/(data.trainMat->ncols)) << std::endl; 
+
+  //write out head items
+  //prefix = std::string(params.prefix) + "_headItems.txt";
+  //writeContainer(begin(headItems), end(headItems), prefix.c_str());
+  
+  int N = 10;
+  std::vector<float> lambdas = {0.01, 0.25, 0.5, 0.75, 0.99};
+  int nThreads = lambdas.size() - 1;
+  std::vector<std::thread> threads(nThreads);
+  for (int thInd = 0; thInd < nThreads; thInd++) {
+    prefix = std::string(params.prefix) + "_" + std::to_string(lambdas[thInd]) 
+      + "_" + std::to_string(N);
+    threads[thInd] = std::thread(topNRecTail, std::ref(bestModel), 
+        data.trainMat, data.testMat, data.graphMat, lambdas[thInd],
+        std::ref(invalidItems), std::ref(invalidUsers), std::ref(headItems),
+        N, params.seed, prefix);    
+  
+  }
+
+  prefix = std::string(params.prefix) + "_" + std::to_string(lambdas[nThreads])
+    + "_" + std::to_string(N);
+  topNRecTail(bestModel, data.trainMat, data.testMat, data.graphMat, 
+      lambdas[nThreads], invalidItems, invalidUsers, headItems, 10, 
+      params.seed, prefix);   
+}
+
+
 int main(int argc , char* argv[]) {
   
   //get passed parameters
@@ -1382,19 +1452,20 @@ int main(int argc , char* argv[]) {
 
   //ModelMF mfModel(params, params.initUFacFile, 
   //    params.initIFacFile, params.seed);
- 
   
+  /*
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
   svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac);
   
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
-  std::unordered_set<int> headItems;
 
   ModelMF bestModel(mfModel);
   std::cout << "\nStarting model train...";
   mfModel.train(data, bestModel, invalidUsers, invalidItems);
+  std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
+      invalidItems);
   
   //write out invalid users
   std::string prefix = std::string(params.prefix) + "_invalUsers.txt";
@@ -1403,21 +1474,10 @@ int main(int argc , char* argv[]) {
   //write out invalid users
   prefix = std::string(params.prefix) + "_invalItems.txt";
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
+  */
 
-  std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
-      invalidItems);
-  
-  //get headdItems
-  headItems = getHeadItems(data.trainMat, 0.2);
-
-  //write out head items
-  prefix = std::string(params.prefix) + "_headItems.txt";
-  writeContainer(begin(headItems), end(headItems), prefix.c_str());
-
-  topNRecTail(bestModel, data.trainMat, data.testMat, data.graphMat, params.alpha,
-      invalidItems, invalidUsers, headItems, 10, params.seed);   
-  
   //computeSampTopNFrmFullModel(data, params);  
+  testTailRec(data, params);
 
   return 0;
 }

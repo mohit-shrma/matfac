@@ -1,24 +1,35 @@
 #include "util.h"
 
 
-std::unordered_set<int> getHeadItems(gk_csr_t *mat, float topPc) {
+std::unordered_set<int> getHeadItems(gk_csr_t *mat) {
   
   //get number of ratings per user and item, i.e. frequency
   auto rowColFreq = getRowColFreq(mat);
   auto userFreq = rowColFreq.first;
   auto itemFreq = rowColFreq.second;
+  double nRatings  = 0;
 
   std::vector<std::pair<int, double>> itemFreqPairs;
   for (int i = 0; i < itemFreq.size(); i++) {
     itemFreqPairs.push_back(std::make_pair(i, itemFreq[i]));
+    nRatings += itemFreq[i];
   }
   std::sort(itemFreqPairs.begin(), itemFreqPairs.end(), descComp);
-
+  
+  //find head/popular items responsible for 20% of ratings
+  double headRatings = 0;
   std::unordered_set<int> headItems;
-  for (int i = 0; i < topPc*itemFreqPairs.size(); i++) {
+  for (int i = 0; i < itemFreqPairs.size(); i++) {
+    if (headRatings/nRatings >= 0.2) {
+      break;
+    }
+    headRatings += itemFreqPairs[i].second;
     headItems.insert(itemFreqPairs[i].first);
   }
   
+  std::cout << "\nHead ratings: " << headRatings << " nRatings: " << nRatings 
+    << std::endl;
+
   return headItems;
 }
 

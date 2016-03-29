@@ -10,7 +10,7 @@
 #include <tuple>
 #include "GKlib.h"
 
-std::unordered_set<int> getHeadItems(gk_csr_t *mat, float topPc);
+std::unordered_set<int> getHeadItems(gk_csr_t *mat);
 double compRecall(std::vector<int> order1, std::vector<int> order2, int N);
 double meanRating(gk_csr_t* mat);
 int nnzSubMat(gk_csr_t *mat, int uStart, int uEnd, int iStart, int iEnd);

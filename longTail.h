@@ -17,5 +17,5 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
     std::unordered_set<int>& invalidItems,
     std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& headItems,
-    int N, int seed);
+    int N, int seed, std::string opFileName);
 #endif

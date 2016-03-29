@@ -301,7 +301,7 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
       bestIter = iter;
     }
 
-    if (iter - bestIter >= 500) {
+    if (iter - bestIter >= 50) {
       //can't go lower than best objective after 500 iterations
       printf("\nNOT CONVERGED: bestIter:%d bestObj: %.10e"
           " currIter:%d currObj: %.10e", bestIter, bestObj, iter, currObj);
@@ -390,7 +390,7 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
       bestIter = iter;
     }
 
-    if (iter - bestIter >= 500) {
+    if (iter - bestIter >= 50) {
       //can't improve validation RMSE after 500 iterations
       printf("\nNOT CONVERGED: bestIter:%d bestObj: %.10e bestValRMSE: %.10e"
           " currIter:%d currObj: %.10e currValRMSE: %.10e", 
