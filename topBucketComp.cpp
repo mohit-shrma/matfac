@@ -65,11 +65,18 @@ std::vector<std::pair<int, double>> itemGraphItemScores(int user,
   }
 
   int nUserRat = mat->rowptr[user+1] - mat->rowptr[user];
+  float sumRat = 0;
   for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
     int item = mat->rowind[ii];
-    pr[item] = 1.0/nUserRat;
+    //pr[item] = 1.0/nUserRat;
+    sumRat += mat->rowval[ii];
   }
-
+  
+  for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
+    int item = mat->rowind[ii];
+    pr[item] = mat->rowval[ii]/sumRat; 
+  }
+  
   //run personalized page rank on the graph w.r.t. u
   int iter = gk_rw_PageRank(graphMat, lambda, 0.0001, MAX_PR_ITER, pr);
   
