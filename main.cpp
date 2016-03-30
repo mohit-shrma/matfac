@@ -1412,7 +1412,7 @@ void testTailRec(Data& data, Params& params) {
   //replace model with svd
     + "_" + std::to_string(N);
   topNRecTail(mfModel, data.trainMat, data.testMat, data.graphMat, 
-      lambdas[nThreads], invalidItems, invalidUsers, headItems, N, 
+      lambdas[0], invalidItems, invalidUsers, headItems, N, 
       params.seed, prefix);
 
 
