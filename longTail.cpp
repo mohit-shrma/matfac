@@ -54,6 +54,31 @@ bool isModelLocalScoreHit(Model& model, std::unordered_set<int>& sampItems, int 
 }
 
 
+bool isLocalScoreHit(Model& model, std::unordered_set<int>& sampItems, int user, 
+    int testItem, std::vector<double> itemScores, int N) {
+
+  std::vector<std::pair<int, double>> itemRatings;
+  for (auto && item: sampItems) {
+    itemRatings.push_back(std::make_pair(item, itemScores[item]));
+  } 
+  itemRatings.push_back(std::make_pair(testItem, itemScores[testItem]));
+
+  //sort itemRatings such that Nth rating is at its correct place in
+  //decreasing order
+  std::nth_element(itemRatings.begin(), itemRatings.begin()+N, 
+      itemRatings.end(), descComp);
+
+  for (int i = 0; i < N; i++) {
+    if (itemRatings[i].first == testItem) {
+      //hit
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+
 bool isModelLocalIterHit(Model& model, std::unordered_set<int>& sampItems, int user, 
     int testItem, std::vector<double> itemScores, int N) {
 
@@ -83,6 +108,40 @@ bool isModelLocalIterHit(Model& model, std::unordered_set<int>& sampItems, int u
 
   for (int i = 0; i < N; i++) { 
     if (itemLocalScore[i].first ==  testItem) {
+      //hit
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+
+bool isModelLocalIterHitRev(Model& model, std::unordered_set<int>& sampItems, int user, 
+    int testItem, std::vector<double> itemScores, int N) {
+
+  std::vector<std::pair<int, double>> itemLocalScore;
+  for (auto && item:  sampItems) {
+    itemLocalScore.push_back(std::make_pair(item, itemScores[item]));
+  }
+  itemLocalScore.push_back(std::make_pair(testItem, itemScores[testItem]));
+  
+  std::nth_element(itemLocalScore.begin(), itemLocalScore.begin() + (10*N), 
+      itemLocalScore.end(), descComp);
+
+  std::vector<std::pair<int, double>> itemRatings;
+  for (int i = 0; i < 10*N; i++) {
+    itemRatings.push_back(std::make_pair(itemLocalScore[i].first, 
+          model.estRating(user, itemLocalScore[i].first)));
+  }
+
+  //sort itemLocal score such that Nth rating is in its correct place as per
+  //local score
+  std::nth_element(itemRatings.begin(), itemRatings.begin()+N, 
+      itemRatings.end(), descComp);
+
+  for (int i = 0; i < N; i++) { 
+    if (itemRatings[i].first ==  testItem) {
       //hit
       return true;
     }
@@ -327,7 +386,7 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
     std::unordered_set<int>& headItems,
     int N, int seed, std::string opFileName) {
 
-  double rec = 0, localRec = 0, localWtRec = 0;
+  double rec = 0, localRec = 0, localWtRec = 0, pprRec = 0;
   int nItems = trainMat->ncols;
   int nUsers = trainMat->nrows;
 
@@ -458,6 +517,10 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
         localWtRec += 1;
       }
 
+      if (isLocalScoreHit(model, sampItems, u, testItem, itemScores, N)) {
+        pprRec += 1;
+      }
+
       nTestItems++;
     }
     
@@ -472,12 +535,15 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
         << localRec/nTestItems << std::endl;
       opFile << "Top-" << N << " model local wt recall: " 
         << localWtRec/nTestItems << std::endl;
-    }
+      opFile << "Top-" << N << " ppr recall: " 
+        << pprRec/nTestItems << std::endl;
+    } 
   }
   
   rec          = rec/nTestItems;
   localRec     = localRec/nTestItems;
   localWtRec   = localWtRec/nTestItems;
+  pprRec       = pprRec/nTestItems;
 
   opFile << "nTestItems: " << nTestItems << std::endl;
   
@@ -487,6 +553,8 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
     << localRec << std::endl;
   opFile << "Top-" << N << " model local wt recall: " 
     << localWtRec << std::endl;
+  opFile << "Top-" << N << " ppr recall: " 
+    << pprRec << std::endl;
 
   opFile.close();
 }

@@ -1343,6 +1343,7 @@ void testTailRec(Data& data, Params& params) {
 
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
+  
   /*
   std::string prefix = std::string(params.prefix) + "_invalUsers.txt";
   std::vector<int> invalUsersVec = readVector(prefix.c_str());
@@ -1356,12 +1357,13 @@ void testTailRec(Data& data, Params& params) {
   for (auto v: invalItemsVec) {
     invalidItems.insert(v);
   }
-   */
+  */
+
   std::unordered_set<int> headItems;
 
   ModelMF bestModel(mfModel);
   std::cout << "\nStarting model train...";
-  mfModel.train(data, bestModel, invalidUsers, invalidItems);
+  //mfModel.train(data, bestModel, invalidUsers, invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
       invalidItems);
   
@@ -1384,7 +1386,7 @@ void testTailRec(Data& data, Params& params) {
   
   int N = 10;
   
-  std::vector<float> lambdas = {0.01, 0.25, 0.5, 0.75, 0.99};
+  std::vector<float> lambdas = {0.01, 0.25};
   int nThreads = lambdas.size();
   std::vector<std::thread> threads(nThreads);
   std::cout << "\nStarting threads...." << std::endl;
@@ -1395,7 +1397,6 @@ void testTailRec(Data& data, Params& params) {
         data.trainMat, data.testMat, data.graphMat, lambdas[thInd],
         std::ref(invalidItems), std::ref(invalidUsers), std::ref(headItems),
         N, params.seed, prefix);    
-  
   }
 
   /*
@@ -1408,13 +1409,11 @@ void testTailRec(Data& data, Params& params) {
 
   //run puresvd in main thread
   svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac);
-  prefix = std::string(params.prefix) + "_puresvd_" + std::to_string(lambdas[nThreads])
-  //replace model with svd
+  prefix = std::string(params.prefix) + "_puresvd_" + std::to_string(lambdas[0])
     + "_" + std::to_string(N);
   topNRecTail(mfModel, data.trainMat, data.testMat, data.graphMat, 
       lambdas[0], invalidItems, invalidUsers, headItems, N, 
       params.seed, prefix);
-
 
   //prefix = std::string(params.prefix) + "_" + std::to_string(params.alpha)
   //  + "_" + std::to_string(N);
@@ -1423,7 +1422,6 @@ void testTailRec(Data& data, Params& params) {
   //    params.seed, prefix);   
   
   //wait for threads to finish
-  
   std::cout << "\nWaiting for threads to finish..." << std::endl;
   std::for_each(threads.begin(), threads.end(), 
       std::mem_fn(&std::thread::join));
@@ -1505,7 +1503,7 @@ int main(int argc , char* argv[]) {
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
   */
   //computeSampTopNFrmFullModel(data, params);  
-  //testTailRec(data, params);
+  testTailRec(data, params);
 
   return 0;
 }
