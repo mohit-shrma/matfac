@@ -430,12 +430,15 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
       }
     }
   }
-  
+
+  std::cout << "\nNo. of test users: " << testUsers.size();
+
   //shuffle the user item rating indexes
   std::shuffle(testUsers.begin(), testUsers.end(), mt);
   
   int nTestItems = 0;
-  for (int k = 0; k < 5000 && nTestItems < 5000; k++) {
+  for (int k = 0; 
+      k < 5000 && nTestItems < 5000 && k < testUsers.size(); k++) {
     int u = testUsers[k];
     std::vector<int> trainItems;
     for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
