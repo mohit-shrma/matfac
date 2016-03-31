@@ -383,7 +383,7 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
     gk_csr_t *graphMat, float lambda,
     std::unordered_set<int>& invalidItems,
     std::unordered_set<int>& invalidUsers,
-    std::unordered_set<int>& headItems,
+    float headPc,
     int N, int seed, std::string opFileName) {
 
   double rec = 0, localRec = 0, localWtRec = 0, pprRec = 0;
@@ -394,8 +394,12 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
   auto userFreq = rowColFreq.first;
   auto itemFreq = rowColFreq.second;
 
+  std::unordered_set<int> headItems = getHeadItems(trainMat, headPc);
+  
   std::ofstream opFile(opFileName);
 
+  opFile << "\nNo. of head items: " << headItems.size() << " head items pc: " 
+    << ((float)headItems.size()/(trainMat->ncols)) << std::endl; 
   opFile << "\nlambda: " << lambda << " N: " << N << " seed: " << seed 
     << std::endl;
 
