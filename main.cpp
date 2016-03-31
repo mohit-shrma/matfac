@@ -584,36 +584,36 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   int nThreads = lambdas.size() - 1;
   std::vector<std::thread> threads(nThreads);
   for (int thInd = 0; thInd < nThreads; thInd++) {
-    //prefix = std::string(params.prefix) + "_50_100_" 
-    //          + std::to_string(lambdas[thInd]);
-    prefix = std::string(params.prefix) + "_" + std::to_string(lambdas[thInd]) 
-      + "_" + std::to_string(N);
     
-    /*
+    prefix = std::string(params.prefix) + "_50_100_" 
+              + std::to_string(lambdas[thInd]);
     threads[thInd] = std::thread(pprSampUsersRMSEProb,
         data.graphMat, data.trainMat, nUsers, nItems, std::ref(origModel), 
         std::ref(fullModel), lambdas[thInd], MAX_PR_ITER, std::ref(invalUsers), 
         std::ref(invalItems), std::ref(filtItems), 100, params.seed, prefix);
-    */
-    
+
+    //prefix = std::string(params.prefix) + "_" + std::to_string(lambdas[thInd]) 
+    //  + "_" + std::to_string(N);
+    /*
     threads[thInd] = std::thread(writeTopBuckRMSEs,
         std::ref(origModel), std::ref(fullModel), data.graphMat, data.trainMat, 
         lambdas[thInd], MAX_PR_ITER, std::ref(invalUsers), 
         std::ref(invalItems), std::ref(filtItems), nSampUsers, params.seed, N, 
         prefix);
+    */
   }
   
   //last parameter in main thread
-  //prefix = std::string(params.prefix) + "_50_100_" 
-  //          + std::to_string(lambdas[nThreads]);
-  prefix = std::string(params.prefix) + "_" + std::to_string(lambdas[nThreads])
-    + "_" + std::to_string(N);
-  //pprSampUsersRMSEProb(data.graphMat, data.trainMat, nUsers, nItems, origModel, fullModel,
-  //    lambdas[nThreads], MAX_PR_ITER, invalUsers, invalItems, filtItems, 100, 
-  //    params.seed, prefix);
-  writeTopBuckRMSEs(origModel, fullModel, data.graphMat, data.trainMat, 
-      lambdas[nThreads], MAX_PR_ITER, invalUsers, invalItems, filtItems, nSampUsers, 
-      params.seed, N, prefix);
+  prefix = std::string(params.prefix) + "_50_100_" 
+            + std::to_string(lambdas[nThreads]);
+  pprSampUsersRMSEProb(data.graphMat, data.trainMat, nUsers, nItems, origModel, fullModel,
+      lambdas[nThreads], MAX_PR_ITER, invalUsers, invalItems, filtItems, 100, 
+      params.seed, prefix);
+  //prefix = std::string(params.prefix) + "_" + std::to_string(lambdas[nThreads])
+  //  + "_" + std::to_string(N);
+  //writeTopBuckRMSEs(origModel, fullModel, data.graphMat, data.trainMat, 
+  //    lambdas[nThreads], MAX_PR_ITER, invalUsers, invalItems, filtItems, nSampUsers, 
+  //    params.seed, N, prefix);
   
   
   /*
@@ -1344,7 +1344,6 @@ void testTailRec(Data& data, Params& params) {
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
   
-  /*
   std::string prefix = std::string(params.prefix) + "_invalUsers.txt";
   std::vector<int> invalUsersVec = readVector(prefix.c_str());
   prefix = std::string(params.prefix) + "_invalItems.txt";
@@ -1357,7 +1356,7 @@ void testTailRec(Data& data, Params& params) {
   for (auto v: invalItemsVec) {
     invalidItems.insert(v);
   }
-  */
+  
 
   std::unordered_set<int> headItems;
 
@@ -1368,15 +1367,15 @@ void testTailRec(Data& data, Params& params) {
       invalidItems);
   
   //write out invalid users
-  std::string prefix = std::string(params.prefix) + "_invalUsers.txt";
-  writeContainer(begin(invalidUsers), end(invalidUsers), prefix.c_str());
+  //std::string prefix = std::string(params.prefix) + "_invalUsers.txt";
+  //writeContainer(begin(invalidUsers), end(invalidUsers), prefix.c_str());
 
   //write out invalid users
-  prefix = std::string(params.prefix) + "_invalItems.txt";
-  writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
+  //prefix = std::string(params.prefix) + "_invalItems.txt";
+  //writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
   
   //get headdItems
-  headItems = getHeadItems(data.trainMat);
+  headItems = getHeadItems(data.trainMat, 0.1);
   std::cout << "\nNo. of head items: " << headItems.size() << " head items pc: " 
     << ((float)headItems.size()/(data.trainMat->ncols)) << std::endl; 
 
@@ -1386,12 +1385,12 @@ void testTailRec(Data& data, Params& params) {
   
   int N = 10;
   
-  std::vector<float> lambdas = {0.01, 0.25};
+  std::vector<float> lambdas = {0.01};
   int nThreads = lambdas.size();
   std::vector<std::thread> threads(nThreads);
   std::cout << "\nStarting threads...." << std::endl;
   for (int thInd = 0; thInd < nThreads; thInd++) {
-    prefix = std::string(params.prefix) + "_" + std::to_string(lambdas[thInd]) 
+    prefix = std::string(params.prefix) + "_0.1_" + std::to_string(lambdas[thInd]) 
       + "_" + std::to_string(N);
     threads[thInd] = std::thread(topNRecTail, std::ref(bestModel), 
         data.trainMat, data.testMat, data.graphMat, lambdas[thInd],
@@ -1405,27 +1404,27 @@ void testTailRec(Data& data, Params& params) {
   topNRecTail(bestModel, data.trainMat, data.testMat, data.graphMat, 
       lambdas[nThreads], invalidItems, invalidUsers, headItems, N, 
       params.seed, prefix);   
-  */
-
+  */ 
+  
   //run puresvd in main thread
   svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac);
-  prefix = std::string(params.prefix) + "_puresvd_" + std::to_string(lambdas[0])
+  prefix = std::string(params.prefix) + "_puresvd_0.1_" + std::to_string(lambdas[0])
     + "_" + std::to_string(N);
   topNRecTail(mfModel, data.trainMat, data.testMat, data.graphMat, 
       lambdas[0], invalidItems, invalidUsers, headItems, N, 
       params.seed, prefix);
+  /*
+  prefix = std::string(params.prefix) + "_" + std::to_string(params.alpha)
+    + "_" + std::to_string(N);
+  topNRecTail(bestModel, data.trainMat, data.testMat, data.graphMat, 
+      params.alpha, invalidItems, invalidUsers, headItems, N, 
+      params.seed, prefix);   
+  */
 
-  //prefix = std::string(params.prefix) + "_" + std::to_string(params.alpha)
-  //  + "_" + std::to_string(N);
-  //topNRecTail(bestModel, data.trainMat, data.testMat, data.graphMat, 
-  //    params.alpha, invalidItems, invalidUsers, headItems, N, 
-  //    params.seed, prefix);   
-  
   //wait for threads to finish
   std::cout << "\nWaiting for threads to finish..." << std::endl;
   std::for_each(threads.begin(), threads.end(), 
       std::mem_fn(&std::thread::join));
-  
 }
 
 
@@ -1463,7 +1462,7 @@ int main(int argc , char* argv[]) {
   //writeItemSimMat(data.trainMat, "ratings_26779x26779_25.syn.trainItems.metis");
   //writeItemSimMatNonSymm(data.trainMat, 
   //    "ratings_26779x26779_25.syn.trainItems.nonsym.metis");
-  //writeItemJaccSimMat(data.trainMat, "y_u2_i34_100Kx50K.train.jacSim.metis");
+  //writeItemJaccSimMat(data.trainMat, "nf_480189x17771.train.jacSim.metis");
   //writeItemJaccSimFrmCorat(data.trainMat, data.graphMat, 
   //    "ratings_26779x26779_25.syn.trainItems.jacSim2.metis");
   //writeCoRatings(data.trainMat, "y_u2_i34_100Kx50K.train.coRatings");
@@ -1471,11 +1470,11 @@ int main(int argc , char* argv[]) {
 
   /*  
   writeTrainTestValMat(data.trainMat,  
-      "y_u2_i34_100Kx50K.train.csr",
-      "y_u2_i34_100Kx50K.test.csr",
-      "y_u2_i34_100Kx50K.val.csr",
+      "nf_480189x17771.train.csr",
+      "nf_480189x17771.test.csr",
+      "nf_480189x17771.val.csr",
       0.1, 0.1, params.seed); 
-  */ 
+   */
 
   //ModelMF mfModel(params, params.initUFacFile, 
   //    params.initIFacFile, params.seed);
@@ -1502,6 +1501,7 @@ int main(int argc , char* argv[]) {
   prefix = std::string(params.prefix) + "_invalItems.txt";
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
   */
+
   //computeSampTopNFrmFullModel(data, params);  
   testTailRec(data, params);
 

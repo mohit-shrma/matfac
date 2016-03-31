@@ -264,6 +264,165 @@ void ModelMF::train(const Data &data, Model &bestModel,
 }
 
 
+void ModelMF::uniTrain(const Data &data, Model &bestModel, 
+    std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems) {
+
+  //copy passed known factors
+  //uFac = data.origUFac;
+  //iFac = data.origIFac;
+  
+  std::cout << "\nModelMF::uniTrain trainSeed: " << trainSeed;
+  
+  int nnz = data.trainNNZ;
+  
+  std::cout << "\nObj b4 svd: " << objective(data) 
+    << " Train RMSE: " << RMSE(data.trainMat) 
+    << " Train nnz: " << nnz << std::endl;
+  
+  std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
+  startSVD = std::chrono::system_clock::now();
+  //initialization with svd of the passed matrix
+  //svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac); 
+  //svdUsingLapack(data.trainMat, facDim, uFac, iFac);
+  //svdFrmCSR(data.trainMat, facDim, uFac, iFac);
+  //svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
+  
+  endSVD = std::chrono::system_clock::now();
+  std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
+  std::cout << "\nsvd duration: " << durationSVD.count();
+
+  int u, item, iter, bestIter; 
+  float itemRat;
+  double diff, r_ui_est;
+  double bestObj, prevObj;
+  double bestValRMSE, prevValRMSE;
+
+  gk_csr_t *trainMat = data.trainMat;
+
+  //array to hold user and item gradients
+  std::vector<double> uGrad (facDim, 0);
+  std::vector<double> iGrad (facDim, 0);
+ 
+  //vector to hold user gradient accumulation
+  std::vector<std::vector<double>> uGradsAcc (nUsers, 
+      std::vector<double>(facDim,0)); 
+
+  //vector to hold item gradient accumulation
+  std::vector<std::vector<double>> iGradsAcc (nItems, 
+      std::vector<double>(facDim,0)); 
+
+  //std::cout << "\nNNZ = " << nnz;
+  prevObj = objective(data);
+  std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " << RMSE(data.trainMat);
+
+
+  std::chrono::time_point<std::chrono::system_clock> start, end;
+  std::chrono::duration<double> duration;
+  
+  std::vector<std::unordered_set<int>> uISet(nUsers);
+  genStats(trainMat, uISet, std::to_string(trainSeed));
+  getInvalidUsersItems(trainMat, uISet, invalidUsers, invalidItems);
+  
+  std::cout << "\nModelMF::uniTrain trainSeed: " << trainSeed 
+    << " invalidUsers: " << invalidUsers.size()
+    << " invalidItems: " << invalidItems.size() << std::endl;
+  
+  //random engine
+  std::mt19937 mt(trainSeed);
+  //get user-item ratings from training data
+  auto uiBlockRatings = getRandUIRatings(trainMat, 3, trainSeed);
+  int nMatBlocks = uiBlockRatings.size();
+  std::vector<int> blocks(nMatBlocks);
+  std::iota(blocks.begin(), blocks.end(), 0);
+
+  for (auto&& bId : blocks) {
+    auto blockRatings = uiBlockRatings[bId];
+    std::cout << "blockid: " << bId << " "  << blockRatings.size() << std::endl; 
+  }
+
+  double subIterDuration = 0;
+  for (iter = 0; iter < maxIter; iter++) {  
+    
+    //shuffle the user item rating indexes
+    std::shuffle(blocks.begin(), blocks.end(), mt);
+
+    start = std::chrono::system_clock::now();
+    
+    int totalUpd = 0;
+    while (totalUpd <= nnz) {
+      for (auto&& bId : blocks) {
+        auto blockRatings = uiBlockRatings[bId];
+        if (blockRatings.size() == 0) {
+          continue;
+        }
+        //shuffle the block
+        std::shuffle(blockRatings.begin(), blockRatings.end(), mt);
+
+        //perform 1M updates on block bId
+        int upd = 0;
+        while (upd < 1000000) {
+          for (auto&& uiRating: blockRatings) {
+            //get user, item and rating
+            u       = std::get<0>(uiRating);
+            item    = std::get<1>(uiRating);
+            itemRat = std::get<2>(uiRating);
+        
+            r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+            diff = itemRat - r_ui_est;
+            for (int i = 0; i < facDim; i++) {
+              uGrad[i] = -2.0*diff*iFac[item][i] + 2.0*uReg*uFac[u][i];
+            }
+            for (int i = 0; i < facDim; i++) {
+              uFac[u][i] -= learnRate * uGrad[i];
+            }
+        
+            r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+            diff = itemRat - r_ui_est;
+            for (int i = 0; i < facDim; i++) {
+              iGrad[i] = -2.0*diff*uFac[u][i] + 2.0*iReg*iFac[item][i];
+            }
+            for (int i = 0; i < facDim; i++) {
+              iFac[item][i] -= learnRate * iGrad[i];
+            }
+
+            upd++;
+            if (upd >= 1000000) {
+              break;
+            }
+          }    
+        }
+        totalUpd += upd;
+      }
+    }
+    end = std::chrono::system_clock::now();  
+   
+    duration =  end - start;
+    subIterDuration += duration.count();
+
+    //check objective
+    if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
+      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
+            bestValRMSE, prevValRMSE,
+            invalidUsers, invalidItems)) {
+        break; 
+      }
+      std::cout << "\nModelMF::train trainSeed: " << trainSeed
+                << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
+                << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)
+                << " Val RMSE: " << prevValRMSE
+                << std::endl;
+      std::cout << "\navg sub duration: " << subIterDuration/(iter+1) << std::endl;
+      //save best model found till now
+      std::string modelFName = std::string(data.prefix);
+      bestModel.saveFacs(modelFName);
+    }
+  
+  }
+
+}
+
+
 void ModelMF::partialTrain(const Data &data, Model &bestModel, 
     std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems) {

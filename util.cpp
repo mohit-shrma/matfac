@@ -1,7 +1,7 @@
 #include "util.h"
 
 
-std::unordered_set<int> getHeadItems(gk_csr_t *mat) {
+std::unordered_set<int> getHeadItems(gk_csr_t *mat, float pc) {
   
   //get number of ratings per user and item, i.e. frequency
   auto rowColFreq = getRowColFreq(mat);
@@ -16,11 +16,11 @@ std::unordered_set<int> getHeadItems(gk_csr_t *mat) {
   }
   std::sort(itemFreqPairs.begin(), itemFreqPairs.end(), descComp);
   
-  //find head/popular items responsible for 20% of ratings
+  //find head/popular items responsible for pc% of ratings
   double headRatings = 0;
   std::unordered_set<int> headItems;
   for (int i = 0; i < itemFreqPairs.size(); i++) {
-    if (headRatings/nRatings >= 0.2) {
+    if (headRatings/nRatings >= pc) {
       break;
     }
     headRatings += itemFreqPairs[i].second;
@@ -465,6 +465,78 @@ std::vector<std::tuple<int, int, float>> getUIRatings(gk_csr_t* mat) {
     }
   }
   return uiRatings;
+}
+
+std::vector<std::vector<std::tuple<int,int,float>>> getRandUIRatings(
+    gk_csr_t* mat, int nBlocks, int seed) {
+
+  int nUsers = mat->nrows;
+  int nItems = mat->ncols;
+
+  //random engine
+  std::mt19937 mt(seed);
+  
+  std::vector<int> users(nUsers);
+  std::vector<int> user2Block(nUsers);
+  std::iota(users.begin(), users.end(), 0); 
+  std::shuffle(users.begin(), users.end(), mt);
+
+  std::vector<std::unordered_set<int>> userBlocks(nBlocks);
+  int uPerBlock = nUsers/nBlocks;
+  int sumBlocks = 0;
+  for (int i = 0; i < nBlocks; i++) {
+    int start = i*uPerBlock;
+    int end = (i+1)*uPerBlock;
+    if (i == nBlocks-1) {
+      end = nUsers;
+    }
+    for (int u = start; u < end; u++) {
+      userBlocks[i].insert(users[u]);
+      user2Block[users[u]] = i;
+    }
+    std::cout << "User block: " << i << " : " << userBlocks[i].size() << std::endl; 
+    sumBlocks += userBlocks[i].size();
+  }
+  std::cout << "\nSum user blocks: " << sumBlocks;
+
+  std::vector<int> items(nItems);
+  std::vector<int> item2Block(nItems);
+  std::iota(items.begin(), items.end(), 0);
+  std::shuffle(items.begin(), items.end(), mt);
+  
+  std::vector<std::unordered_set<int>> itemBlocks(nBlocks);
+  int iPerBlock = nItems/nBlocks;
+  sumBlocks = 0;
+  for (int i = 0; i < nBlocks; i++) {
+    int start = i*iPerBlock;
+    int end = (i+1)*iPerBlock;
+    if (i == nBlocks-1) {
+      end = nItems;
+    }
+    for (int j = start; j < end; j++) {
+      itemBlocks[i].insert(items[j]);
+      item2Block[items[j]] = i;
+    }
+    std::cout << "Item block: " << i << " : " << itemBlocks[i].size() << std::endl; 
+    sumBlocks += itemBlocks[i].size();
+  }
+  std::cout << "\nSum item block: " << sumBlocks;
+
+  std::vector<std::vector<std::tuple<int,int,float>>> uiRatingsBlocks(nBlocks*nBlocks);
+
+  for (int u = 0; u < mat->nrows; u++) { 
+    //find user block
+    int ub = user2Block[u];
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      int item = mat->rowind[ii];
+      //find item block
+      int ib = item2Block[item];
+      float rating = mat->rowval[ii];
+      uiRatingsBlocks[(ub+1)*(ib+1)-1].push_back(std::make_tuple(u, item, rating));
+    }
+  }
+
+  return uiRatingsBlocks;
 }
 
 

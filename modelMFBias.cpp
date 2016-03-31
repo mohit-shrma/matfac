@@ -146,6 +146,7 @@ void ModelMFBias::train(const Data& data, Model& bestModel,
   int u, item, iter, bestIter;
   float itemRat;
   double bestObj, prevObj, r_ui_est, diff;
+  double bestValRMSE, prevValRMSE;
 
   gk_csr_t *trainMat = data.trainMat;
 
@@ -171,7 +172,6 @@ void ModelMFBias::train(const Data& data, Model& bestModel,
   //get user-item ratings from training data
   auto uiRatings = getUIRatings(trainMat, invalidUsers, invalidItems);
   std::cout << "\nNo. of training ratings: " << uiRatings.size(); 
-  double prevTestRMSE = 100, currTestRMSE = 100;
   for (iter = 0; iter < maxIter; iter++) {  
     start = std::chrono::system_clock::now();
 
@@ -216,23 +216,19 @@ void ModelMFBias::train(const Data& data, Model& bestModel,
     //check objective
     if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
+            bestValRMSE, prevValRMSE,
             invalidUsers, invalidItems)) {
         break; 
       }
-      currTestRMSE = RMSE(data.testMat, invalidUsers, invalidItems);
       std::cout << "\nModelMFBias::train trainSeed: " << trainSeed
                 << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
                 << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems) 
-                << " Test RMSE: " <<  currTestRMSE
+                << " Val RMSE: " <<  prevValRMSE
                 << std::endl;
-      if (currTestRMSE  > prevTestRMSE) {
-        break;
-      }
-      prevTestRMSE = currTestRMSE;
       std::chrono::duration<double> duration =  (end - start) ;
       std::cout << "\nsub duration: " << duration.count() << std::endl;
       //save best model found till now
-      std::string modelFName = "ModelFull_" + std::to_string(trainSeed);
+      std::string modelFName = std::string(data.prefix);
       bestModel.save(modelFName);
     }
   }

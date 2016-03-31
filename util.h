@@ -10,7 +10,7 @@
 #include <tuple>
 #include "GKlib.h"
 
-std::unordered_set<int> getHeadItems(gk_csr_t *mat);
+std::unordered_set<int> getHeadItems(gk_csr_t *mat, float pc);
 double compRecall(std::vector<int> order1, std::vector<int> order2, int N);
 double meanRating(gk_csr_t* mat);
 int nnzSubMat(gk_csr_t *mat, int uStart, int uEnd, int iStart, int iEnd);
@@ -56,5 +56,7 @@ int checkIfUISorted(gk_csr_t* mat);
 int coRatedUsersFrmSortedMat(gk_csr_t* mat, int i, int j);
 int coRatedUsersFrmSortedMatLinMerge(gk_csr_t* mat, int i, int j);
 std::vector<int> getInvalidUsers(gk_csr_t *mat);
+std::vector<std::vector<std::tuple<int,int,float>>> getRandUIRatings(
+    gk_csr_t* mat, int nBlocks, int seed);
 #endif
 
