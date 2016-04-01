@@ -54,7 +54,7 @@ bool isModelLocalScoreHit(Model& model, std::unordered_set<int>& sampItems, int 
 }
 
 
-bool isLocalScoreHit(Model& model, std::unordered_set<int>& sampItems, int user, 
+bool isLocalScoreHit(std::unordered_set<int>& sampItems, int user, 
     int testItem, std::vector<double> itemScores, int N) {
 
   std::vector<std::pair<int, double>> itemRatings;
@@ -439,7 +439,13 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
 
   //shuffle the user item rating indexes
   std::shuffle(testUsers.begin(), testUsers.end(), mt);
-  
+ 
+  //check if train matrix items are sorted
+  if (!checkIfUISorted(trainMat)) {
+    std::cout << "\nTrain matrix is not sorted"  << std::endl;
+    exit(0);
+  }
+
   int nTestItems = 0;
   for (int k = 0; 
       k < 5000 && nTestItems < 5000 && k < testUsers.size(); k++) {
@@ -449,7 +455,7 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
       int item = trainMat->rowind[ii];
       trainItems.push_back(item);
     }
-    //sort the train items to make binary search efficient
+    //sort the train items for binary search 
     //std::sort(trainItems.begin(), trainItems.end())
    
     //run personalized RW on graph w.r.t. user
@@ -524,7 +530,7 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
         localWtRec += 1;
       }
 
-      if (isLocalScoreHit(model, sampItems, u, testItem, itemScores, N)) {
+      if (isLocalScoreHit(sampItems, u, testItem, itemScores, N)) {
         pprRec += 1;
       }
 
