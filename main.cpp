@@ -1344,12 +1344,12 @@ void testTailRec(Data& data, Params& params) {
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
   
-  
-  std::string prefix = std::string(params.prefix) + "_invalUsers.txt";
+  std::string modelSign = mfModel.modelSignature();
+  std::string prefix = std::string(params.prefix) + "_" + modelSign + "_invalUsers.txt";
   std::vector<int> invalUsersVec = readVector(prefix.c_str());
-  prefix = std::string(params.prefix) + "_invalItems.txt";
+  prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
   std::vector<int> invalItemsVec = readVector(prefix.c_str());
-  
+
   for (auto v: invalUsersVec) {
     invalidUsers.insert(v);
   }
@@ -1359,32 +1359,24 @@ void testTailRec(Data& data, Params& params) {
   }
   
 
-  std::unordered_set<int> headItems;
-
   ModelMF bestModel(mfModel);
   //std::cout << "\nStarting model train...";
   //mfModel.train(data, bestModel, invalidUsers, invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
       invalidItems);
-  
-  /*
+  /* 
   //write out invalid users
-  std::string prefix = std::string(params.prefix) + "_invalUsers.txt";
+  std::string prefix = std::string(params.prefix) + "_" + modelSign + "_invalUsers.txt";
   writeContainer(begin(invalidUsers), end(invalidUsers), prefix.c_str());
 
-  //write out invalid users
-  prefix = std::string(params.prefix) + "_invalItems.txt";
+  //write out invalid items
+  prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
   */
-
-
-  //write out head items
-  //prefix = std::string(params.prefix) + "_headItems.txt";
-  //writeContainer(begin(headItems), end(headItems), prefix.c_str());
   
   int N = 10;
   
-  std::vector<float> headPcs = {0.1, 0.2, 0.3, 0.4, 0.5};
+  std::vector<float> headPcs = {0.1, 0.2};
   std::vector<float> lambdas = {0.01};
   int nThreads = headPcs.size();
   std::vector<std::thread> threads(nThreads);
@@ -1481,7 +1473,7 @@ int main(int argc , char* argv[]) {
   //ModelMF mfModel(params, params.initUFacFile, 
   //    params.initIFacFile, params.seed);
   
-  /*
+  
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
   svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac);
@@ -1495,17 +1487,18 @@ int main(int argc , char* argv[]) {
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
       invalidItems);
   
-  //write out invalid users
-  std::string prefix = std::string(params.prefix) + "_invalUsers.txt";
-  writeContainer(begin(invalidUsers), end(invalidUsers), prefix.c_str());
+  std::string modelSign = bestModel.modelSignature();
 
   //write out invalid users
-  prefix = std::string(params.prefix) + "_invalItems.txt";
+  std::string prefix = std::string(params.prefix) + "_" + modelSign + "_invalUsers.txt";
+  writeContainer(begin(invalidUsers), end(invalidUsers), prefix.c_str());
+
+  //write out invalid items
+  prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
-  */
   
   //computeSampTopNFrmFullModel(data, params);  
-  testTailRec(data, params);
+  //testTailRec(data, params);
 
   return 0;
 }
