@@ -387,7 +387,7 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
     int N, int seed, std::string opFileName) {
 
   double rec = 0, localRec = 0, localWtRec = 0, pprRec = 0;
-  double localRMSE = 0;
+  double modelLocalRMSE = 0, modelRMSE = 0, localRMSE = 0;
   float testPredRating = 0, testRating = 0;
   int nItems = trainMat->ncols;
   int nUsers = trainMat->nrows;
@@ -481,6 +481,7 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
       
       testPredRating = model.estRating(u, testItem);
       testRating = testMat->rowval[ii];
+      double se = (testPredRating - testRating)*(testPredRating - testRating);
 
       //check if in head items
       auto search = headItems.find(testItem);
@@ -520,18 +521,21 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
         sampItems.insert(sampItem);
       }
 
+      
+
       bool isModHit = false;
       if (isModelHit(model, sampItems, u, testItem, N)) {
         isModHit = true;
         rec += 1;
+        modelRMSE += se;
       }
       
       bool isModLocalHit = false;
       //if (isModelLocalIterHit(model, sampItems, u, testItem, itemScores, N)) {
       if (isModelLocalScoreHit(model, sampItems, u, testItem, itemScores, N)) {
         localRec += 1;
-        localRMSE += (testPredRating - testRating)*(testPredRating - testRating);
         isModLocalHit = true;
+        modelLocalRMSE += se;
       }
       
       if (isModHit && isModLocalHit) {
@@ -546,6 +550,7 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
 
       if (isLocalScoreHit(sampItems, u, testItem, itemScores, N)) {
         pprRec += 1;
+        localRMSE += se;
       }
 
       nTestItems++;
@@ -556,11 +561,13 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
       
       opFile << "nTestItems: " << nTestItems << std::endl;
 
+      opFile << "Model RMSE: " << sqrt(modelRMSE/rec) << std::endl;
+      opFile << "Model local hits RMSE: " << sqrt(modelLocalRMSE/localRec) << std::endl;
+      opFile << "Local RMSE: " << sqrt(localRMSE/pprRec) << std::endl;
+      
       opFile << "Top-" << N << " model recall: " 
         << rec/nTestItems << std::endl;
       opFile << "Top-" << N << " model local recall: " << localRec/nTestItems
-        << std::endl;
-      opFile << "Model local hits RMSE: " << sqrt(localRMSE/localRec) 
         << std::endl;
       opFile << "Model local inters count: " << mfPPRInterCount 
         << " Model hit count: " << rec << " Model local hit count: "
@@ -577,6 +584,10 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
     << " Model hit count: " << rec << " Model local hit count: "
     << localRec << std::endl;
   
+  opFile << "Model RMSE: " << sqrt(modelRMSE/rec) << std::endl;
+  opFile << "Model local hits RMSE: " << sqrt(modelLocalRMSE/localRec) << std::endl;
+  opFile << "Local RMSE: " << sqrt(localRMSE/pprRec) << std::endl;
+
   rec          = rec/nTestItems;
   localRMSE    = sqrt(localRMSE/localRec);
   localRec     = localRec/nTestItems;
