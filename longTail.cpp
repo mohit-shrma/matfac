@@ -386,15 +386,11 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
     float headPc,
     int N, int seed, std::string opFileName) {
 
-  double rec = 0, localRec = 0, localWtRec = 0, pprRec = 0;
+  double rec = 0, localRec = 0, pprRec = 0;
   double modelLocalRMSE = 0, modelRMSE = 0, localRMSE = 0;
   float testPredRating = 0, testRating = 0;
   int nItems = trainMat->ncols;
   int nUsers = trainMat->nrows;
-
-  auto rowColFreq = getRowColFreq(trainMat);
-  auto userFreq = rowColFreq.first;
-  auto itemFreq = rowColFreq.second;
 
   std::unordered_set<int> headItems = getHeadItems(trainMat, headPc);
   
@@ -411,12 +407,8 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
   std::uniform_int_distribution<int> itemDist(0, nItems-1);
   std::uniform_int_distribution<int> userDist(0, nUsers-1);
 
-  auto compPairsIndAsc = [] (std::pair<int, double> a, std::pair<int, double> b) {
-    return a.first < b.second;
-  };
   std::vector<std::pair<int, double>> itemScorePairs; 
   std::vector<double> itemScores(nItems, 0); 
-  std::vector<double> itemFreqWtScores(nItems, 0); 
 
   std::vector<int> testUsers;
   for (int u = 0; u < testMat->nrows; u++) {
@@ -449,7 +441,15 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
   }
 
   int nTestItems = 0;
-  int mfPPRInterCount = 0;
+  int modelInterPPR = 0;
+  double modelInterPPRRMSE = 0;
+  
+  int modelInterModelPPR = 0;
+  double modelInterModelPPRRMSE = 0;
+  
+  int pprInterModelPPR = 0;
+  double pprInterModelPPRRMSE = 0;
+
   for (int k = 0; 
       k < 5000 && nTestItems < 5000 && k < testUsers.size(); k++) {
     int u = testUsers[k];
@@ -466,13 +466,9 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
         graphMat, trainMat, lambda, nUsers, nItems, invalidItems);
     //std::sort(itemScorePairs.begin(), itemScorePairs.end(), compPairsIndAsc);
     std::fill(itemScores.begin(), itemScores.end(), 0);
-    std::fill(itemFreqWtScores.begin(), itemFreqWtScores.end(), 0);
     
     for (auto&& itemScore: itemScorePairs) {
       itemScores[itemScore.first] = itemScore.second;
-      if (itemFreq[itemScore.first] > 0) {
-        itemFreqWtScores[itemScore.first] = itemScore.second/itemFreq[itemScore.first];
-      }
     }
 
     std::unordered_set<int> sampItems;
@@ -510,7 +506,6 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
           continue;
         }
 
-
         //check if sample item is head
         search = headItems.find(sampItem);
         if (search != headItems.end()) {
@@ -521,38 +516,43 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
         sampItems.insert(sampItem);
       }
 
-      
 
       bool isModHit = false;
       if (isModelHit(model, sampItems, u, testItem, N)) {
-        isModHit = true;
         rec += 1;
         modelRMSE += se;
+        isModHit = true;
       }
       
-      bool isModLocalHit = false;
-      //if (isModelLocalIterHit(model, sampItems, u, testItem, itemScores, N)) {
+      bool isModPPRHit = false;
       if (isModelLocalScoreHit(model, sampItems, u, testItem, itemScores, N)) {
         localRec += 1;
-        isModLocalHit = true;
         modelLocalRMSE += se;
+        isModPPRHit = true;
       }
       
-      if (isModHit && isModLocalHit) {
-        mfPPRInterCount += 1;
-      }
-
-      if (isModelLocalScoreHit(model, sampItems, u, testItem, 
-      //if (isModelLocalIterHit(model, sampItems, u, testItem, 
-            itemFreqWtScores, N)) {
-        localWtRec += 1;
-      }
-
+      bool isPPRHit = false;
       if (isLocalScoreHit(sampItems, u, testItem, itemScores, N)) {
         pprRec += 1;
         localRMSE += se;
+        isPPRHit = true;
       }
 
+      if (isModHit && isPPRHit) {
+        modelInterPPR++;
+        modelInterPPRRMSE += se;
+      }
+      
+      if (isModHit && isModPPRHit) {
+        modelInterModelPPR++;
+        modelInterModelPPRRMSE += se;
+      }
+
+      if (isPPRHit && isModPPRHit) {
+        pprInterModelPPR++;
+        pprInterModelPPRRMSE += se;
+      }
+  
       nTestItems++;
     }
     
@@ -560,47 +560,68 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
       opFile << "Done.. " << k << std::endl;
       
       opFile << "nTestItems: " << nTestItems << std::endl;
-
-      opFile << "Model RMSE: " << sqrt(modelRMSE/rec) << std::endl;
-      opFile << "Model local hits RMSE: " << sqrt(modelLocalRMSE/localRec) << std::endl;
-      opFile << "Local RMSE: " << sqrt(localRMSE/pprRec) << std::endl;
       
-      opFile << "Top-" << N << " model recall: " 
+      opFile << "Model hits: " << rec << std::endl;
+      opFile << "Model RMSE: " << sqrt(modelRMSE/rec) << std::endl;
+
+      opFile << "Model+PPR hits: " << localRec << std::endl;
+      opFile << "Model PPR RMSE: " << sqrt(modelLocalRMSE/localRec) << std::endl;
+      
+      opFile << "PPR hits: " << pprRec << std::endl;
+      opFile << "PPR RMSE: " << sqrt(localRMSE/pprRec) << std::endl;
+      
+      opFile << "Model inter PPR count: " << modelInterPPR << std::endl;
+      opFile << "Model inter PPR RMSE: " 
+        << sqrt(modelInterPPRRMSE/modelInterPPR) << std::endl;
+     
+      opFile << "Model inter Model+PPR count: " << modelInterModelPPR << std::endl;
+      opFile << "Model inter Model+PPR RMSE: " 
+        << sqrt(modelInterModelPPRRMSE/modelInterModelPPR) << std::endl;
+
+      opFile << "PPR inter Model+PPR count: " << pprInterModelPPR << std::endl;
+      opFile << "PPR inter Model+PPR RMSE: " 
+        << sqrt(pprInterModelPPRRMSE/pprInterModelPPR) << std::endl;
+
+      opFile << "Top-" << N << " Model recall: " 
         << rec/nTestItems << std::endl;
-      opFile << "Top-" << N << " model local recall: " << localRec/nTestItems
-        << std::endl;
-      opFile << "Model local inters count: " << mfPPRInterCount 
-        << " Model hit count: " << rec << " Model local hit count: "
-        << localRec << std::endl;
-      opFile << "Top-" << N << " model local wt recall: " 
-        << localWtRec/nTestItems << std::endl;
-      opFile << "Top-" << N << " ppr recall: " 
+      opFile << "Top-" << N << " Model+PPR recall: " 
+        << localRec/nTestItems << std::endl;
+      opFile << "Top-" << N << " PPR recall: " 
         << pprRec/nTestItems << std::endl;
     } 
   }
   
   opFile << "nTestItems: " << nTestItems << std::endl;
-  opFile << "Model local inters count: " << mfPPRInterCount 
-    << " Model hit count: " << rec << " Model local hit count: "
-    << localRec << std::endl;
-  
+      
+  opFile << "Model hits: " << rec << std::endl;
   opFile << "Model RMSE: " << sqrt(modelRMSE/rec) << std::endl;
-  opFile << "Model local hits RMSE: " << sqrt(modelLocalRMSE/localRec) << std::endl;
-  opFile << "Local RMSE: " << sqrt(localRMSE/pprRec) << std::endl;
+
+  opFile << "Model+PPR hits: " << localRec << std::endl;
+  opFile << "Model PPR RMSE: " << sqrt(modelLocalRMSE/localRec) << std::endl;
+  
+  opFile << "PPR hits: " << pprRec << std::endl;
+  opFile << "PPR RMSE: " << sqrt(localRMSE/pprRec) << std::endl;
+  
+  opFile << "Model inter PPR count: " << modelInterPPR << std::endl;
+  opFile << "Model inter PPR RMSE: " 
+    << sqrt(modelInterPPRRMSE/modelInterPPR) << std::endl;
+ 
+  opFile << "Model inter Model+PPR count: " << modelInterModelPPR << std::endl;
+  opFile << "Model inter Model+PPR RMSE: " 
+    << sqrt(modelInterModelPPRRMSE/modelInterModelPPR) << std::endl;
+
+  opFile << "PPR inter Model+PPR count: " << pprInterModelPPR << std::endl;
+  opFile << "PPR inter Model+PPR RMSE: " 
+    << sqrt(pprInterModelPPRRMSE/pprInterModelPPR) << std::endl;
 
   rec          = rec/nTestItems;
-  localRMSE    = sqrt(localRMSE/localRec);
   localRec     = localRec/nTestItems;
-  localWtRec   = localWtRec/nTestItems;
   pprRec       = pprRec/nTestItems;
   
   opFile << "Top-" << N << " model recall: " 
     << rec << std::endl;
   opFile << "Top-" << N << " model local recall: " 
     << localRec << std::endl;
-  opFile << "Model local hits RMSE: " << localRMSE << std::endl;
-  opFile << "Top-" << N << " model local wt recall: " 
-    << localWtRec << std::endl;
   opFile << "Top-" << N << " ppr recall: " 
     << pprRec << std::endl;
 
