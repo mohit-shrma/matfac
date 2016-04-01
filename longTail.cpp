@@ -449,6 +449,7 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
   }
 
   int nTestItems = 0;
+  int mfPPRInterCount = 0;
   for (int k = 0; 
       k < 5000 && nTestItems < 5000 && k < testUsers.size(); k++) {
     int u = testUsers[k];
@@ -518,17 +519,24 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
 
         sampItems.insert(sampItem);
       }
-      
+
+      bool isModHit = false;
       if (isModelHit(model, sampItems, u, testItem, N)) {
+        isModHit = true;
         rec += 1;
       }
-
+      
+      bool isModLocalHit = false;
       //if (isModelLocalIterHit(model, sampItems, u, testItem, itemScores, N)) {
       if (isModelLocalScoreHit(model, sampItems, u, testItem, itemScores, N)) {
         localRec += 1;
-        localRMSE += (testPredRating - testRating)*(testPredRating - testRating);  
+        localRMSE += (testPredRating - testRating)*(testPredRating - testRating);
+        isModLocalHit = true;
       }
-
+      
+      if (isModHit && isModLocalHit) {
+        mfPPRInterCount += 1;
+      }
 
       if (isModelLocalScoreHit(model, sampItems, u, testItem, 
       //if (isModelLocalIterHit(model, sampItems, u, testItem, 
@@ -554,6 +562,9 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
         << std::endl;
       opFile << "Model local hits RMSE: " << sqrt(localRMSE/localRec) 
         << std::endl;
+      opFile << "Model local inters count: " << mfPPRInterCount 
+        << " Model hit count: " << rec << " Model local hit count: "
+        << localRec << std::endl;
       opFile << "Top-" << N << " model local wt recall: " 
         << localWtRec/nTestItems << std::endl;
       opFile << "Top-" << N << " ppr recall: " 
@@ -561,13 +572,16 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
     } 
   }
   
+  opFile << "nTestItems: " << nTestItems << std::endl;
+  opFile << "Model local inters count: " << mfPPRInterCount 
+    << " Model hit count: " << rec << " Model local hit count: "
+    << localRec << std::endl;
+  
   rec          = rec/nTestItems;
   localRMSE    = sqrt(localRMSE/localRec);
   localRec     = localRec/nTestItems;
   localWtRec   = localWtRec/nTestItems;
   pprRec       = pprRec/nTestItems;
-
-  opFile << "nTestItems: " << nTestItems << std::endl;
   
   opFile << "Top-" << N << " model recall: " 
     << rec << std::endl;
