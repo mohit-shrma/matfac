@@ -387,6 +387,8 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
     int N, int seed, std::string opFileName) {
 
   double rec = 0, localRec = 0, localWtRec = 0, pprRec = 0;
+  double localRMSE = 0;
+  float testPredRating = 0, testRating = 0;
   int nItems = trainMat->ncols;
   int nUsers = trainMat->nrows;
 
@@ -475,7 +477,10 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
     std::unordered_set<int> sampItems;
     for (int ii = testMat->rowptr[u]; ii < testMat->rowptr[u+1]; ii++) {
       int testItem = testMat->rowind[ii];
-    
+      
+      testPredRating = model.estRating(u, testItem);
+      testRating = testMat->rowval[ii];
+
       //check if in head items
       auto search = headItems.find(testItem);
       if (search != headItems.end()) {
@@ -521,6 +526,7 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
       //if (isModelLocalIterHit(model, sampItems, u, testItem, itemScores, N)) {
       if (isModelLocalScoreHit(model, sampItems, u, testItem, itemScores, N)) {
         localRec += 1;
+        localRMSE += (testPredRating - testRating)*(testPredRating - testRating);  
       }
 
 
@@ -544,8 +550,10 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
 
       opFile << "Top-" << N << " model recall: " 
         << rec/nTestItems << std::endl;
-      opFile << "Top-" << N << " model local recall: " 
-        << localRec/nTestItems << std::endl;
+      opFile << "Top-" << N << " model local recall: " << localRec/nTestItems
+        << std::endl;
+      opFile << "Model local hits RMSE: " << sqrt(localRMSE/localRec) 
+        << std::endl;
       opFile << "Top-" << N << " model local wt recall: " 
         << localWtRec/nTestItems << std::endl;
       opFile << "Top-" << N << " ppr recall: " 
@@ -554,6 +562,7 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
   }
   
   rec          = rec/nTestItems;
+  localRMSE    = sqrt(localRMSE/localRec);
   localRec     = localRec/nTestItems;
   localWtRec   = localWtRec/nTestItems;
   pprRec       = pprRec/nTestItems;
@@ -564,6 +573,7 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
     << rec << std::endl;
   opFile << "Top-" << N << " model local recall: " 
     << localRec << std::endl;
+  opFile << "Model local hits RMSE: " << localRMSE << std::endl;
   opFile << "Top-" << N << " model local wt recall: " 
     << localWtRec << std::endl;
   opFile << "Top-" << N << " ppr recall: " 
