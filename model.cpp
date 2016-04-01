@@ -8,94 +8,90 @@ void Model::updateFac(std::vector<double> &fac, std::vector<double> &grad) {
 }
 
 
+std::string Model::modelSignature() {
+  
+  std::string sign = std::to_string(nUsers) + "X" + std::to_string(nItems)
+    + "_" + std::to_string(facDim) 
+    + "_" + std::to_string(uReg) + "_" + std::to_string(iReg)
+    + "_" + std::to_string(learnRate);
+  
+  return sign;
+}
+
+
 void Model::save(std::string prefix) {
+
+  std::string modelSign = modelSignature();
+
   //save user latent factors
-  std::string uFacName = prefix + "_uFac_" + std::to_string(nUsers) + "_" 
-    + std::to_string(facDim) + "_" + std::to_string(uReg) + "_"
-    + std::to_string(learnRate) + ".mat";
+  std::string uFacName = prefix + "_uFac_" + modelSign + ".mat";
   writeMat(uFac, nUsers, facDim, uFacName.c_str());
   
   //save item latent factors
-  std::string iFacName = prefix + "_iFac_" + std::to_string(nItems) + "_" 
-    + std::to_string(facDim) + "_" + std::to_string(iReg) + "_"
-    + std::to_string(learnRate) +  ".mat";
+  std::string iFacName = prefix + "_iFac_" + modelSign +  ".mat";
   writeMat(iFac, nItems, facDim, iFacName.c_str());
 
   //save user bias
-  std::string uBFName = prefix + "_uBias_" + std::to_string(nUsers) + "_" 
-    + std::to_string(uReg) + "_" + std::to_string(learnRate) + ".vec";
+  std::string uBFName = prefix + "_uBias_" + modelSign + ".vec";
   writeVector(uBias, uBFName.c_str());
 
   //save item bias
-  std::string iBFName = prefix + "_iBias_" + std::to_string(nItems) + "_" 
-    + std::to_string(iReg) + "_" + std::to_string(learnRate) + ".vec";
+  std::string iBFName = prefix + "_iBias_" + modelSign + ".vec";
   writeVector(iBias, iBFName.c_str());
 
   //save global bias 
   std::vector<double> gBias = {mu};
-  std::string gBFName = prefix + "_gBias";
+  std::string gBFName = prefix + "_" + modelSign + "_gBias";
   writeVector(gBias, gBFName.c_str());
 }
 
 
-void Model::saveFacs(std::string prefix) {
-  //save user latent factors
-  std::string uFacName = prefix + "_uFac_" + std::to_string(nUsers) + "_" 
-    + std::to_string(facDim) + "_" + std::to_string(uReg) + "_"
-    + std::to_string(learnRate) + ".mat";
-  writeMat(uFac, nUsers, facDim, uFacName.c_str());
-  
-  //save item latent factors
-  std::string iFacName = prefix + "_iFac_" + std::to_string(nItems) + "_" 
-    + std::to_string(facDim) + "_" + std::to_string(iReg) + "_"
-    + std::to_string(learnRate) +  ".mat";
-  writeMat(iFac, nItems, facDim, iFacName.c_str());
-}
-
-
 void Model::load(std::string prefix) {
+  std::string modelSign = modelSignature();
   //read user latent factors
-  std::string uFacName = prefix + "_uFac_" + std::to_string(nUsers) + "_" 
-    + std::to_string(facDim) + "_" + std::to_string(uReg) + "_"
-    + std::to_string(learnRate) + ".mat";
+  std::string uFacName = prefix + "_uFac_" + modelSign + ".mat";
   readMat(uFac, nUsers, facDim, uFacName.c_str());
   
   //read item latent factors
-  std::string iFacName = prefix + "_iFac_" + std::to_string(nItems) + "_" 
-    + std::to_string(facDim) + "_" + std::to_string(iReg) + "_"
-    + std::to_string(learnRate) +  ".mat";
+  std::string iFacName = prefix + "_iFac_" + modelSign +  ".mat";
   readMat(iFac, nItems, facDim, iFacName.c_str());
 
   //read user bias
-  std::string uBFName = prefix + "_uBias_" + std::to_string(nUsers) + "_" 
-    + std::to_string(uReg) + "_" + std::to_string(learnRate) + ".vec";
+  std::string uBFName = prefix + "_uBias_" + modelSign + ".vec";
   uBias = readDVector(uBFName.c_str());
 
   //read item bias
-  std::string iBFName = prefix + "_iBias_" + std::to_string(nItems) + "_" 
-    + std::to_string(iReg) + "_" + std::to_string(learnRate) + ".vec";
+  std::string iBFName = prefix + "_iBias_" + modelSign + ".vec";
   iBias = readDVector(iBFName.c_str());
 
   //read global bias 
   std::vector<double> gBias;
-  std::string gBFName = prefix + "_gBias_" + std::to_string(nItems) + "_" 
-    + std::to_string(iReg) + "_" + std::to_string(learnRate) + ".vec";
+  std::string gBFName = prefix + "_" + modelSign + "_gBias";
   gBias = readDVector(gBFName.c_str());
   mu = gBias[0];  
 }
 
 
+void Model::saveFacs(std::string prefix) {
+  std::string modelSign = modelSignature();
+  //save user latent factors
+  std::string uFacName = prefix + "_uFac_" + modelSign + ".mat";
+  writeMat(uFac, nUsers, facDim, uFacName.c_str());
+  
+  //save item latent factors
+  std::string iFacName = prefix + "_iFac_" + modelSign +  ".mat";
+  writeMat(iFac, nItems, facDim, iFacName.c_str());
+}
+
+
 void Model::loadFacs(std::string prefix) {
+  std::string modelSign = modelSignature();
   //read user latent factors
-  std::string uFacName = prefix + "_uFac_" + std::to_string(nUsers) + "_" 
-    + std::to_string(facDim) + "_" + std::to_string(uReg) + "_"
-    + std::to_string(learnRate) + ".mat";
+  std::string uFacName = prefix + "_uFac_" + modelSign + ".mat";
   readMat(uFac, nUsers, facDim, uFacName.c_str());
   
   //read item latent factors
-  std::string iFacName = prefix + "_iFac_" + std::to_string(nItems) + "_" 
-    + std::to_string(facDim) + "_" + std::to_string(iReg) + "_"
-    + std::to_string(learnRate) +  ".mat";
+  std::string iFacName = prefix + "_iFac_" + modelSign +  ".mat";
   readMat(iFac, nItems, facDim, iFacName.c_str());
 }
 
