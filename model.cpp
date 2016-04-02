@@ -396,14 +396,14 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
     
     if (fabs(prevObj - currObj) < EPS) {
       //convergence
-      printf("\nConverged in iteration: %d prevObj: %.10e currObj: %.10e", iter,
-              prevObj, currObj); 
+      printf("\nConverged in iteration: %d prevObj: %.10e currObj: %.10e"
+          " bestValRMSE: %.10e", iter, prevObj, currObj, bestValRMSE); 
       ret = true;
     }
 
     if (fabs(prevValRMSE - currValRMSE) < 0.0001) {
-      printf("\nvalidation RMSE in iteration: %d prev: %.10e curr: %.10e", iter,
-              prevValRMSE, currValRMSE); 
+      printf("\nvalidation RMSE in iteration: %d prev: %.10e curr: %.10e" 
+          " bestValRMSE: %.10e", iter, prevValRMSE, currValRMSE, bestValRMSE); 
       ret = true;
     }
 

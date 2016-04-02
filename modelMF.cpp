@@ -261,6 +261,9 @@ void ModelMF::train(const Data &data, Model &bestModel,
   
   }
 
+  std::cout << "\nBest model validation RMSE: " << bestModel.RMSE(data.valMat, 
+      invalidUsers, invalidItems);
+
 }
 
 
