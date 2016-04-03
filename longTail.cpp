@@ -629,6 +629,44 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
 }
 
 
+void writeTestMat(std::vector<std::tuple<int, int, float>>& testUIRatings, 
+    std::unordered_set<int>& headItems) {
+  //sort triplets by user
+  auto compareTriplets = [] (std::tuple<int, int, float> a, 
+      std::tuple<int, int, float> b) {
+    return std::get<0>(a) < std::get<0>(b);
+  };
+
+  std::sort(testUIRatings.begin(), testUIRatings.end(), compareTriplets);
+
+  std::ofstream opFile("");
+
+  int uStart = 0;
+  int lastU = 0;
+
+  for (auto&& uiRating : testUIRatings) {
+    
+    int u        = std::get<0>(uiRating);
+    int item     = std::get<1>(uiRating);
+    float rating = std::get<2>(uiRating);
+
+    while (uStart < u) {
+      opFile << std::endl;
+      uStart++;
+    }
+
+    opFile << item << " "  << rating << " ";
+    
+    lastU = u;
+  }
+  
+  opFile << std::endl;
+
+  std::cout << "\nlast User: " << lastU << std::endl;
+
+  opFile.close();
+}
+
 
 void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat, 
     gk_csr_t *testMat, gk_csr_t *graphMat, float lambda,
@@ -694,6 +732,8 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
   }
 
   int nTestItems = 0;
+  
+  std::vector<std::tuple<int, int, float>> testUIRatings;
 
   for (int k = 0; 
       k < 5000 && nTestItems < 5000 && k < testUsers.size(); k++) {
@@ -730,7 +770,9 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
       if (search != headItems.end()) {
         continue;
       } 
-     
+      
+      testUIRatings.push_back(std::make_tuple(u, testItem, testRating));
+
       //sample 1000 unrated tail items at random
       sampItems.clear();
       while (sampItems.size() < 1000) {
@@ -836,7 +878,9 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
     }
 
   }
-    
+     
+  //writeTestMat(testUIRatings, headItems);
+
   opFile << "nTestItems: " << nTestItems << std::endl;
     
   //write counts
