@@ -1362,6 +1362,9 @@ void testTailRec(Data& data, Params& params) {
     invalidItems.insert(v);
   }
 
+  std::cout << "No. of invalid users: " << invalidUsers.size() << std::endl;
+  std::cout << "No. of invalid items: " << invalidItems.size() << std::endl;
+
   ModelMF bestModel(mfModel);
   //std::cout << "\nStarting model train...";
   //mfModel.train(data, bestModel, invalidUsers, invalidItems);
