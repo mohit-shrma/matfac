@@ -1341,7 +1341,7 @@ void testTailRec(Data& data, Params& params) {
   //svd model
   Params svdParams(params);
   svdParams.facDim = svdParams.origFacDim;
-  ModelMF svdModel(params, params.seed);
+  ModelMF svdModel(svdParams, svdParams.seed);
   //NOTE: make sure this is full svd for PureSVD
   svdFrmSvdlibCSR(data.trainMat, svdModel.facDim, svdModel.uFac, svdModel.iFac);
 
