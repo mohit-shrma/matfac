@@ -241,6 +241,28 @@ void writeTrainTestMat(gk_csr_t *mat,  const char* trainFileName,
 }
 
 
+void writeTailTestMat(gk_csr_t *mat, const char* testFileName, 
+    std::unordered_set<int>& headItems) {
+  
+  std::ofstream opFile(testFileName); 
+  int nTestRatings = 0; 
+  for (int u = 0; u < mat->nrows; u++) {
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1] && nTestRatings < 5000; ii++) {
+      int item = mat->rowind[ii];
+      float rating = mat->rowval[ii];
+      if (headItems.find(item) == headItems.end()) {
+        //not found in head, tail item
+        opFile << item << " " << rating << " ";
+        nTestRatings++;
+      }
+    }
+    opFile << std::endl;
+  }
+
+  opFile.close();
+}
+
+
 void writeSubSampledMat(gk_csr_t *mat,  const char* sampFileName, 
     float sampPc, int seed) {
 

@@ -1338,8 +1338,12 @@ void testTailRec(Data& data, Params& params) {
   //load previously learned factors
   mfModel.loadFacs(params.prefix);
   
-  //replace model with svd
-  //svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac);
+  //svd model
+  Params svdParams(params);
+  svdParams.facDim = svdParams.origFacDim;
+  ModelMF svdModel(params, params.seed);
+  //NOTE: make sure this is full svd for PureSVD
+  svdFrmSvdlibCSR(data.trainMat, svdModel.facDim, svdModel.uFac, svdModel.iFac);
 
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
@@ -1357,7 +1361,6 @@ void testTailRec(Data& data, Params& params) {
   for (auto v: invalItemsVec) {
     invalidItems.insert(v);
   }
-  
 
   ModelMF bestModel(mfModel);
   //std::cout << "\nStarting model train...";
@@ -1376,45 +1379,21 @@ void testTailRec(Data& data, Params& params) {
   
   int N = 10;
   
-  std::vector<float> headPcs = {0.1, 0.2};
+  std::vector<float> headPcs = {0.1, 0.2, 0.3, 0.4, 0.5};
   std::vector<float> lambdas = {0.01};
   int nThreads = headPcs.size();
   std::vector<std::thread> threads(nThreads);
   std::cout << "\nStarting threads...." << std::endl;
   for (int thInd = 0; thInd < nThreads; thInd++) {
-    prefix = std::string(params.prefix) + "_" + std::to_string(headPcs[thInd])
+    prefix = std::string(params.prefix) + "_SVD_" + std::to_string(svdModel.facDim) 
+      + "_MF_" + std::to_string(bestModel.facDim) + "_" + std::to_string(headPcs[thInd])
       + "_" + std::to_string(lambdas[0])  + "_" + std::to_string(N);
-    threads[thInd] = std::thread(topNRecTail, std::ref(bestModel), 
-        data.trainMat, data.testMat, data.graphMat, lambdas[0],
+    threads[thInd] = std::thread(topNRecTailWSVD, std::ref(bestModel), 
+        std::ref(svdModel), data.trainMat, data.testMat, data.graphMat, lambdas[0],
         std::ref(invalidItems), std::ref(invalidUsers), headPcs[thInd],
         N, params.seed, prefix);
   }
-
-  /*
-  prefix = std::string(params.prefix) + "_" + std::to_string(lambdas[nThreads])
-    + "_" + std::to_string(N);
-  topNRecTail(bestModel, data.trainMat, data.testMat, data.graphMat, 
-      lambdas[nThreads], invalidItems, invalidUsers, headItems, N, 
-      params.seed, prefix);   
-  */ 
   
-  //run puresvd in main thread
-  /*
-  svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac);
-  prefix = std::string(params.prefix) + "_puresvd_0.4_" + std::to_string(lambdas[0])
-    + "_" + std::to_string(N);
-  topNRecTail(mfModel, data.trainMat, data.testMat, data.graphMat, 
-      lambdas[0], invalidItems, invalidUsers, headItems, N, 
-      params.seed, prefix);
-  */
-  /*
-  prefix = std::string(params.prefix) + "_" + std::to_string(params.alpha)
-    + "_" + std::to_string(N);
-  topNRecTail(bestModel, data.trainMat, data.testMat, data.graphMat, 
-      params.alpha, invalidItems, invalidUsers, headItems, N, 
-      params.seed, prefix);   
-  */
-
   //wait for threads to finish
   std::cout << "\nWaiting for threads to finish..." << std::endl;
   std::for_each(threads.begin(), threads.end(), 
@@ -1439,6 +1418,9 @@ int main(int argc , char* argv[]) {
   std::cout << "\nmean = " << meanVar.first << " variance = " 
     << meanVar.second << std::endl;
   */
+
+  //auto headItems = getHeadItems(data.trainMat, 0.1);
+  //writeTailTestMat(data.testMat, "nf_480189x17772.tail.test.5.csr", headItems);
 
   //writeCSRWSparsityStructure(data.trainMat, "y_u2_i34_100Kx50K_50.syn.csr",
   //    data.origUFac, data.origIFac, params.facDim);
@@ -1473,7 +1455,7 @@ int main(int argc , char* argv[]) {
   //ModelMF mfModel(params, params.initUFacFile, 
   //    params.initIFacFile, params.seed);
   
-  
+  /*
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
   svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac);
@@ -1486,6 +1468,8 @@ int main(int argc , char* argv[]) {
   mfModel.train(data, bestModel, invalidUsers, invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
       invalidItems);
+  std::cout << "\nValidation RMSE: " << bestModel.RMSE(data.valMat, invalidUsers, 
+      invalidItems);
   
   std::string modelSign = bestModel.modelSignature();
 
@@ -1496,9 +1480,10 @@ int main(int argc , char* argv[]) {
   //write out invalid items
   prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
+  */   
   
   //computeSampTopNFrmFullModel(data, params);  
-  //testTailRec(data, params);
+  testTailRec(data, params);
 
   return 0;
 }

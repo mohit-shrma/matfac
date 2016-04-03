@@ -65,4 +65,6 @@ void readItemScores(std::vector<std::pair<int, double>>& itemScores,
     const char* fileName);
 void writeItemScores(std::vector<std::pair<int, double>>& itemScores,
     const char* fileName);
+void writeTailTestMat(gk_csr_t *mat, const char* testFileName, 
+    std::unordered_set<int>& headItems);
 #endif
