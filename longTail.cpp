@@ -785,12 +785,14 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
       }
       
       for (int i = 0; i < 5; i++) {
-        for (int j = i; j < 5; j++) {
+        counts[i][i] += 1;
+        rmses[i][i] += se;
+        for (int j = i+1; j < 5; j++) {
           if (hitFlags[i] && hitFlags[j]) {
             counts[i][j] += 1;
-            counts[j][i] += 1;
+            counts[j][i] = counts[i][j];
             rmses[i][j] += se;
-            rmses[j][i] += se;
+            rmses[j][i] = rmses[i][j];
           }
         }
       }
