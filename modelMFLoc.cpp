@@ -88,9 +88,20 @@ void ModelMFLoc::train(const Data &data, Model &bestModel,
   std::vector<size_t> uiRatingInds(uiRatings.size());
   std::iota(uiRatingInds.begin(), uiRatingInds.end(), 0);
 
+  std::vector<bool> bTailUsers(nUsers, true);
+  for (auto&& user: headUsers) {
+    bTailUsers[user] = false;
+  }
+  std::vector<bool> bTailItems(nItems, true);
+  for (auto&& item: headItems) {
+    bTailItems[item] = false;
+  }
+
   std::cout << "\nTrain NNZ after removing invalid users and items: " 
     << uiRatings.size() << std::endl;
   double subIterDuration = 0;
+  int effFacDim = facDim;
+
   for (iter = 0; iter < maxIter; iter++) {  
     
     //shuffle the user item rating indexes
@@ -114,11 +125,12 @@ void ModelMFLoc::train(const Data &data, Model &bestModel,
       }
 
       //update user
-      int effFacDim = facDim;
-      if (headUsers.find(u) == headUsers.end()) {
+      effFacDim = facDim;
+      if (bTailUsers[u]) {
         //tail user
         effFacDim = facDim/2;
       }
+
       for (int i = 0; i < effFacDim; i++) {
         uFac[u][i] -= learnRate * uGrad[i];
       }
@@ -132,12 +144,13 @@ void ModelMFLoc::train(const Data &data, Model &bestModel,
       }
 
       //update item
-      int effFacdim = facDim;
-      if (headItems.find(item) == headItems.end()) {
+      effFacDim = facDim;
+      if (bTailItems[item]) {
         //tail item
-        effFacdim = facDim/2;
+        effFacDim = facDim/2;
       }
-      for (int i = 0; i < effFacdim; i++) {
+
+      for (int i = 0; i < effFacDim; i++) {
         iFac[item][i] -= learnRate * iGrad[i];
       }
 
