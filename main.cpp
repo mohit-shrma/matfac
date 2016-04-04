@@ -1388,6 +1388,7 @@ void testTailRec(Data& data, Params& params) {
   //std::vector<float> headPcs = {0.1, 0.2, 0.3, 0.4, 0.5};
   std::vector<float> headPcs = {0.2};
   std::vector<float> lambdas = {0.01};
+  /*
   int nThreads = headPcs.size();
   std::vector<std::thread> threads(nThreads);
   std::cout << "\nStarting threads...." << std::endl;
@@ -1405,13 +1406,20 @@ void testTailRec(Data& data, Params& params) {
   std::cout << "\nWaiting for threads to finish..." << std::endl;
   std::for_each(threads.begin(), threads.end(), 
       std::mem_fn(&std::thread::join));
+  */ 
+  prefix = std::string(params.prefix) + "_SVD_" + std::to_string(svdModel.facDim) 
+      + "_MF_" + std::to_string(bestModel.facDim) + "_" + std::to_string(headPcs[0])
+      + "_" + std::to_string(lambdas[0])  + "_" + std::to_string(N);
+  topNRecTailWSVD(bestModel, svdModel, data.trainMat, data.testMat, 
+      data.graphMat, lambdas[0], invalidItems, invalidUsers, headPcs[0], N,
+      params.seed, prefix);
 }
 
 
 void testTailLocRec(Data& data, Params& params) {
   
-  std::unordered_set<int> headItems = getHeadItems(data.trainMat, 0.2);
-  std::unordered_set<int> headUsers = getHeadUsers(data.trainMat, 0.2);
+  std::unordered_set<int> headItems = getHeadItems(data.trainMat, 0.5);
+  std::unordered_set<int> headUsers = getHeadUsers(data.trainMat, 0.5);
 
   ModelMFLoc mfModel(params, params.seed, headItems, headUsers);
   svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
@@ -1433,12 +1441,9 @@ void testTailLocRec(Data& data, Params& params) {
   std::vector<int> invalUsersVec = readVector(prefix.c_str());
   prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
   std::vector<int> invalItemsVec = readVector(prefix.c_str());
-  
-
   for (auto v: invalUsersVec) {
     invalidUsers.insert(v);
   }
-  
   for (auto v: invalItemsVec) {
     invalidItems.insert(v);
   }
@@ -1449,6 +1454,7 @@ void testTailLocRec(Data& data, Params& params) {
   mfModel.train(data, bestModel, invalidUsers, invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
       invalidItems) << std::endl;
+  
   
   //write out invalid users
   std::string prefix = std::string(params.prefix) + "_" + modelSign + "_invalUsers.txt";
@@ -1464,7 +1470,7 @@ void testTailLocRec(Data& data, Params& params) {
   int N = 10;
   
   //std::vector<float> headPcs = {0.1, 0.2, 0.3, 0.4, 0.5};
-  std::vector<float> headPcs = {0.2};
+  std::vector<float> headPcs = {0.5};
   std::vector<float> lambdas = {0.01};
   /*
   int nThreads = headPcs.size();
@@ -1486,11 +1492,15 @@ void testTailLocRec(Data& data, Params& params) {
       std::mem_fn(&std::thread::join));
   */
 
+  prefix = std::string(params.prefix) + "_SVD_" + std::to_string(svdModel.facDim) 
+    + "_MF_" + std::to_string(bestModel.facDim) + "_" + std::to_string(headPcs[0])
+    + "_" + std::to_string(lambdas[0])  + "_" + std::to_string(N);
   topNRecTailWSVD(bestModel, svdModel, data.trainMat, data.testMat, 
       data.graphMat, lambdas[0], invalidItems, invalidUsers, headPcs[0], N, 
       params.seed, prefix);
 
 }
+
 
 int main(int argc , char* argv[]) {
   
@@ -1575,6 +1585,7 @@ int main(int argc , char* argv[]) {
   
   //computeSampTopNFrmFullModel(data, params);  
   testTailLocRec(data, params);
+  //testTailRec(data, params);
 
   return 0;
 }
