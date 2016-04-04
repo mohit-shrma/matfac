@@ -701,14 +701,17 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
     float headPc, int N, int seed, std::string opFileName) {
 
   enum {MF, PPR, SVD, MFPPR, SVDPPR, MFSVD};
+  const int NMETH = 6;
+  const int MAXTESTITEMS = 5000;
+  const int MAXTESTUSERS = 5000;
 
   float testPredRating = 0, testRating = 0;
   int nItems = trainMat->ncols;
   int nUsers = trainMat->nrows;
-  
-  std::vector<bool> hitFlags(6, false);
-  std::vector<std::vector<double>> counts(6, std::vector<double>(5, 0));
-  std::vector<std::vector<double>> rmses(6, std::vector<double>(5, 0.0));
+
+  std::vector<bool> hitFlags(NMETH, false);
+  std::vector<std::vector<double>> counts(NMETH, std::vector<double>(NMETH, 0));
+  std::vector<std::vector<double>> rmses(NMETH, std::vector<double>(NMETH, 0.0));
 
   std::unordered_set<int> headItems = getHeadItems(trainMat, headPc);
   
@@ -763,7 +766,7 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
   std::vector<std::tuple<int, int, float>> testUIRatings;
 
   for (int k = 0; 
-      k < 5000 && nTestItems < 5000 && k < testUsers.size(); k++) {
+      k < MAXTESTUSERS && nTestItems < MAXTESTITEMS && k < testUsers.size(); k++) {
     int u = testUsers[k];
     std::vector<int> trainItems;
     for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
@@ -784,8 +787,8 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
     }
 
     std::unordered_set<int> sampItems;
-    for (int ii = testMat->rowptr[u]; \
-        ii < testMat->rowptr[u+1] && nTestItems < 5000; ii++) {
+    for (int ii = testMat->rowptr[u]; 
+        ii < testMat->rowptr[u+1] && nTestItems < MAXTESTITEMS; ii++) {
       int testItem = testMat->rowind[ii];
       
       testPredRating = model.estRating(u, testItem);
@@ -859,14 +862,14 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
         hitFlags[SVDPPR] = true;
       }
       
-      for (int i = 0; i < 6; i++) {
+      for (int i = 0; i < NMETH; i++) {
         
         if (hitFlags[i]) {
           counts[i][i] += 1;
           rmses[i][i] += se;
         }
 
-        for (int j = i+1; j < 6; j++) {
+        for (int j = i+1; j < NMETH; j++) {
           if (hitFlags[i] && hitFlags[j]) {
             counts[i][j] += 1;
             counts[j][i] = counts[i][j];
@@ -887,8 +890,8 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
 
       //write counts
       opFile << "counts: " << std::endl;
-      for (int i = 0; i < 6; i++) {
-        for (int j = 0; j < 6; j++) {
+      for (int i = 0; i < NMETH; i++) {
+        for (int j = 0; j < NMETH; j++) {
           opFile << counts[i][j] << " ";
         }
         opFile << std::endl;
@@ -896,8 +899,8 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
 
       //write RMSE
       opFile << "RMSEs: " << std::endl;
-      for (int i = 0; i < 6; i++) {
-        for (int j = 0; j < 6; j++) {
+      for (int i = 0; i < NMETH; i++) {
+        for (int j = 0; j < NMETH; j++) {
           opFile << sqrt(rmses[i][j]/counts[i][j]) << " ";
         }
         opFile << std::endl;
@@ -921,8 +924,8 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
     
   //write counts
   opFile << "counts: " << std::endl;
-  for (int i = 0; i < 6; i++) {
-    for (int j = 0; j < 6; j++) {
+  for (int i = 0; i < NMETH; i++) {
+    for (int j = 0; j < NMETH; j++) {
       opFile << counts[i][j] << " ";
     }
     opFile << std::endl;
@@ -930,8 +933,8 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
 
   //write RMSE
   opFile << "RMSEs: " << std::endl;
-  for (int i = 0; i < 6; i++) {
-    for (int j = 0; j < 6; j++) {
+  for (int i = 0; i < NMETH; i++) {
+    for (int j = 0; j < NMETH; j++) {
       opFile << sqrt(rmses[i][j]/counts[i][j]) << " ";
     }
     opFile << std::endl;
