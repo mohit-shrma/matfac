@@ -2,7 +2,7 @@
 
 
 void svdFrmSvdlibCSR(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& uFac,
-                std::vector<std::vector<double>>& iFac) {
+                std::vector<std::vector<double>>& iFac, bool pureSVD) {
   int nnz = 0;
   int u, i, j, item, jj;
   for (u = 0; u < mat->nrows; u++) {
@@ -51,8 +51,11 @@ void svdFrmSvdlibCSR(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& 
   //copy singular vectors to iFac
   for (item = 0; item < mat->ncols; item++) {
     for (j = 0; j < rank; j++) {
-      //iFac[item][j] = svd->Vt->value[j][item]*svd->S[j];
-      iFac[item][j] = svd->Vt->value[j][item];
+      if (pureSVD) {
+        iFac[item][j] = svd->Vt->value[j][item]*svd->S[j];
+      } else {
+        iFac[item][j] = svd->Vt->value[j][item];
+      }
     }
   }
   

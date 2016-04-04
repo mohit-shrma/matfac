@@ -11,7 +11,7 @@ extern "C" {
 #include "GKlib.h"
 
 void svdFrmSvdlibCSR(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& uFac,
-                std::vector<std::vector<double>>& iFac);
+                std::vector<std::vector<double>>& iFac, bool pureSVD);
 
 #endif
 

@@ -131,10 +131,7 @@ void ModelMF::train(const Data &data, Model &bestModel,
   std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
   startSVD = std::chrono::system_clock::now();
   //initialization with svd of the passed matrix
-  //svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac); 
-  //svdUsingLapack(data.trainMat, facDim, uFac, iFac);
-  //svdFrmCSR(data.trainMat, facDim, uFac, iFac);
-  //svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
+  //svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac, false); 
   
   endSVD = std::chrono::system_clock::now();
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
@@ -286,10 +283,7 @@ void ModelMF::uniTrain(const Data &data, Model &bestModel,
   std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
   startSVD = std::chrono::system_clock::now();
   //initialization with svd of the passed matrix
-  //svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac); 
-  //svdUsingLapack(data.trainMat, facDim, uFac, iFac);
-  //svdFrmCSR(data.trainMat, facDim, uFac, iFac);
-  //svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
+  //svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac, false); 
   
   endSVD = std::chrono::system_clock::now();
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
@@ -445,10 +439,7 @@ void ModelMF::partialTrain(const Data &data, Model &bestModel,
   std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
   startSVD = std::chrono::system_clock::now();
   //initialization with svd of the passed matrix
-  //svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac); 
-  //svdUsingLapack(data.trainMat, facDim, uFac, iFac);
-  //svdFrmCSR(data.trainMat, facDim, uFac, iFac);
-  //svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
+  //svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac, false); 
   
   endSVD = std::chrono::system_clock::now();
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
@@ -610,7 +601,7 @@ void ModelMF::subTrain(const Data &data, Model &bestModel,
   
   //svdFrmCSR(data.trainMat, facDim, uFac, iFac);
   //svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
-  svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac);
+  svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac, false);
 
   endSVD = std::chrono::system_clock::now();
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
@@ -768,10 +759,7 @@ void ModelMF::fixTrain(const Data &data, Model &bestModel, int uStart,
   std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
   startSVD = std::chrono::system_clock::now();
   //initialization with svd of the passed matrix
-  svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac); 
-  //svdUsingLapack(data.trainMat, facDim, uFac, iFac);
-  //svdFrmCSR(data.trainMat, facDim, uFac, iFac);
-  //svdFrmCSRColAvg(data.trainMat, facDim, uFac, iFac);
+  svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac, false); 
   
   endSVD = std::chrono::system_clock::now();
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;

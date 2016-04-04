@@ -187,7 +187,7 @@ void computeConf(Data& data, Params& params) {
 
   ModelMF fullModel(params, params.seed);
   svdFrmSvdlibCSR(data.trainMat, fullModel.facDim, fullModel.uFac, 
-      fullModel.iFac); 
+      fullModel.iFac, false); 
   
   int nThreads = 5;
   
@@ -858,7 +858,7 @@ void computeConfCurve(Data& data, Params& params) {
 
   ModelMF fullModel(params, params.seed);
   svdFrmSvdlibCSR(data.trainMat, fullModel.facDim, fullModel.uFac, 
-      fullModel.iFac); 
+      fullModel.iFac, false); 
   
   int nThreads = 5;
   
@@ -1191,7 +1191,7 @@ void computeConfCurveTest(Data& data, Params& params) {
 
   ModelMF fullModel(params, params.seed);
   svdFrmSvdlibCSR(data.trainMat, fullModel.facDim, fullModel.uFac, 
-      fullModel.iFac); 
+      fullModel.iFac, false); 
   
   int nThreads = 5;
   
@@ -1335,6 +1335,7 @@ void computeConfCurveTest(Data& data, Params& params) {
 void testTailRec(Data& data, Params& params) {
   
   ModelMF mfModel(params, params.seed);
+  //svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
   //load previously learned factors
   mfModel.loadFacs(params.prefix);
   
@@ -1343,12 +1344,13 @@ void testTailRec(Data& data, Params& params) {
   svdParams.facDim = svdParams.origFacDim;
   ModelMF svdModel(svdParams, svdParams.seed);
   //NOTE: make sure this is full svd for PureSVD
-  svdFrmSvdlibCSR(data.trainMat, svdModel.facDim, svdModel.uFac, svdModel.iFac);
+  svdFrmSvdlibCSR(data.trainMat, svdModel.facDim, svdModel.uFac, svdModel.iFac, true);
 
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
   
   std::string modelSign = mfModel.modelSignature();
+   
   std::string prefix = std::string(params.prefix) + "_" + modelSign + "_invalUsers.txt";
   std::vector<int> invalUsersVec = readVector(prefix.c_str());
   prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
@@ -1361,16 +1363,15 @@ void testTailRec(Data& data, Params& params) {
   for (auto v: invalItemsVec) {
     invalidItems.insert(v);
   }
-
-  std::cout << "No. of invalid users: " << invalidUsers.size() << std::endl;
-  std::cout << "No. of invalid items: " << invalidItems.size() << std::endl;
+  
 
   ModelMF bestModel(mfModel);
   //std::cout << "\nStarting model train...";
   //mfModel.train(data, bestModel, invalidUsers, invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
       invalidItems);
-  /* 
+  
+  /*
   //write out invalid users
   std::string prefix = std::string(params.prefix) + "_" + modelSign + "_invalUsers.txt";
   writeContainer(begin(invalidUsers), end(invalidUsers), prefix.c_str());
@@ -1379,10 +1380,14 @@ void testTailRec(Data& data, Params& params) {
   prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
   */
-  
+
+  std::cout << "No. of invalid users: " << invalidUsers.size() << std::endl;
+  std::cout << "No. of invalid items: " << invalidItems.size() << std::endl;
+
   int N = 10;
   
   std::vector<float> headPcs = {0.1, 0.2, 0.3, 0.4, 0.5};
+  //std::vector<float> headPcs = {0.2};
   std::vector<float> lambdas = {0.01};
   int nThreads = headPcs.size();
   std::vector<std::thread> threads(nThreads);
@@ -1461,7 +1466,7 @@ int main(int argc , char* argv[]) {
   /*
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
-  svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac);
+  svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
   
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;

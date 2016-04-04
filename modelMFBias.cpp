@@ -137,7 +137,7 @@ void ModelMFBias::train(const Data& data, Model& bestModel,
   std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
   startSVD = std::chrono::system_clock::now();
   //initialization with svd of the passed matrix
-  svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac); 
+  svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac, false); 
   
   endSVD = std::chrono::system_clock::now();
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
