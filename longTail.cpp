@@ -27,6 +27,33 @@ bool isModelHit(Model& model, std::unordered_set<int>& sampItems, int user,
 }
 
 
+bool isModelModelHit(Model& model1, Model& model2, 
+    std::unordered_set<int>& sampItems, int user, int testItem, int N) {
+
+  std::vector<std::pair<int, double>> itemRatings;
+  for (auto && item: sampItems) { 
+    itemRatings.push_back(std::make_pair(item, 
+          model1.estRating(user, item)*model2.estRating(user, item)));
+  }
+  itemRatings.push_back(std::make_pair(testItem, 
+        model1.estRating(user, testItem)*model2.estRating(user, testItem)));
+
+  //sort itemRatings such that Nth rating is at its correct place in
+  //decreasing order
+  std::nth_element(itemRatings.begin(), itemRatings.begin()+N, 
+      itemRatings.end(), descComp);
+
+  for (int i = 0; i < N; i++) { 
+    if (itemRatings[i].first ==  testItem) {
+      //hit
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+
 bool isModelLocalScoreHit(Model& model, std::unordered_set<int>& sampItems, int user, 
     int testItem, std::vector<double> itemScores, int N) {
 
@@ -639,7 +666,7 @@ void writeTestMat(std::vector<std::tuple<int, int, float>>& testUIRatings,
 
   std::sort(testUIRatings.begin(), testUIRatings.end(), compareTriplets);
 
-  std::ofstream opFile("");
+  std::ofstream opFile("test.slim.0.2.csr");
 
   int uStart = 0;
   int lastU = 0;
@@ -673,15 +700,15 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
     std::unordered_set<int>& invalidItems, std::unordered_set<int>& invalidUsers,
     float headPc, int N, int seed, std::string opFileName) {
 
-  enum {MF, PPR, SVD, MFPPR, SVDPPR};
+  enum {MF, PPR, SVD, MFPPR, SVDPPR, MFSVD};
 
   float testPredRating = 0, testRating = 0;
   int nItems = trainMat->ncols;
   int nUsers = trainMat->nrows;
   
-  std::vector<bool> hitFlags(5, false);
-  std::vector<std::vector<double>> counts(5, std::vector<double>(5, 0));
-  std::vector<std::vector<double>> rmses(5, std::vector<double>(5, 0.0));
+  std::vector<bool> hitFlags(6, false);
+  std::vector<std::vector<double>> counts(6, std::vector<double>(5, 0));
+  std::vector<std::vector<double>> rmses(6, std::vector<double>(5, 0.0));
 
   std::unordered_set<int> headItems = getHeadItems(trainMat, headPc);
   
@@ -732,7 +759,7 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
   }
 
   int nTestItems = 0;
-  
+  double testRMSE = 0.0;  
   std::vector<std::tuple<int, int, float>> testUIRatings;
 
   for (int k = 0; 
@@ -745,7 +772,7 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
     }
     //sort the train items for binary search 
     //std::sort(trainItems.begin(), trainItems.end())
-   
+    
     //run personalized RW on graph w.r.t. user
     itemScorePairs = itemGraphItemScores(u, 
         graphMat, trainMat, lambda, nUsers, nItems, invalidItems);
@@ -764,6 +791,8 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
       testPredRating = model.estRating(u, testItem);
       testRating = testMat->rowval[ii];
       double se = (testPredRating - testRating)*(testPredRating - testRating);
+      
+      testRMSE += se;
 
       //check if in head items
       auto search = headItems.find(testItem);
@@ -772,7 +801,7 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
       } 
       
       testUIRatings.push_back(std::make_tuple(u, testItem, testRating));
-
+      
       //sample 1000 unrated tail items at random
       sampItems.clear();
       while (sampItems.size() < 1000) {
@@ -814,6 +843,10 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
         hitFlags[SVD] = true;
       }
 
+      if (isModelModelHit(model, svdModel, sampItems, u, testItem, N)) {
+        hitFlags[MFSVD] = true;
+      }
+
       if (isLocalScoreHit(sampItems, u, testItem, itemScores, N)) {
         hitFlags[PPR] = true;
       }
@@ -826,14 +859,14 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
         hitFlags[SVDPPR] = true;
       }
       
-      for (int i = 0; i < 5; i++) {
+      for (int i = 0; i < 6; i++) {
         
         if (hitFlags[i]) {
           counts[i][i] += 1;
           rmses[i][i] += se;
         }
 
-        for (int j = i+1; j < 5; j++) {
+        for (int j = i+1; j < 6; j++) {
           if (hitFlags[i] && hitFlags[j]) {
             counts[i][j] += 1;
             counts[j][i] = counts[i][j];
@@ -842,7 +875,7 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
           }
         }
       }
-  
+       
       nTestItems++;
     }
     
@@ -850,11 +883,12 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
       opFile << "Done.. " << k << std::endl;
       
       opFile << "nTestItems: " << nTestItems << std::endl;
-      
+      opFile << "testRMSE: " << sqrt(testRMSE/nTestItems) << std::endl;
+
       //write counts
       opFile << "counts: " << std::endl;
-      for (int i = 0; i < 5; i++) {
-        for (int j = 0; j < 5; j++) {
+      for (int i = 0; i < 6; i++) {
+        for (int j = 0; j < 6; j++) {
           opFile << counts[i][j] << " ";
         }
         opFile << std::endl;
@@ -862,8 +896,8 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
 
       //write RMSE
       opFile << "RMSEs: " << std::endl;
-      for (int i = 0; i < 5; i++) {
-        for (int j = 0; j < 5; j++) {
+      for (int i = 0; i < 6; i++) {
+        for (int j = 0; j < 6; j++) {
           opFile << sqrt(rmses[i][j]/counts[i][j]) << " ";
         }
         opFile << std::endl;
@@ -875,18 +909,20 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
       opFile << "SVD Recall: " << counts[SVD][SVD]/nTestItems << std::endl;
       opFile << "MF+PPR Recall: " << counts[MFPPR][MFPPR]/nTestItems << std::endl;
       opFile << "SVD+PPR Recall: " << counts[SVDPPR][SVDPPR]/nTestItems << std::endl;
+      opFile << "MF+SVD Recall: " << counts[MFSVD][MFSVD]/nTestItems << std::endl;
     }
-
+    
   }
      
   //writeTestMat(testUIRatings, headItems);
 
   opFile << "nTestItems: " << nTestItems << std::endl;
+  opFile << "testRMSE: " << sqrt(testRMSE/nTestItems) << std::endl;
     
   //write counts
   opFile << "counts: " << std::endl;
-  for (int i = 0; i < 5; i++) {
-    for (int j = 0; j < 5; j++) {
+  for (int i = 0; i < 6; i++) {
+    for (int j = 0; j < 6; j++) {
       opFile << counts[i][j] << " ";
     }
     opFile << std::endl;
@@ -894,8 +930,8 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
 
   //write RMSE
   opFile << "RMSEs: " << std::endl;
-  for (int i = 0; i < 5; i++) {
-    for (int j = 0; j < 5; j++) {
+  for (int i = 0; i < 6; i++) {
+    for (int j = 0; j < 6; j++) {
       opFile << sqrt(rmses[i][j]/counts[i][j]) << " ";
     }
     opFile << std::endl;
@@ -907,11 +943,10 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
   opFile << "SVD Recall: " << counts[SVD][SVD]/nTestItems << std::endl;
   opFile << "MF+PPR Recall: " << counts[MFPPR][MFPPR]/nTestItems << std::endl;
   opFile << "SVD+PPR Recall: " << counts[SVDPPR][SVDPPR]/nTestItems << std::endl;
+  opFile << "MF+SVD Recall: " << counts[MFSVD][MFSVD]/nTestItems << std::endl;
   
   opFile.close();
 } 
-
-
 
 
 
