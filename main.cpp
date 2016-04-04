@@ -8,6 +8,7 @@
 #include "datastruct.h"
 #include "modelMF.h"
 #include "modelMFBias.h"
+#include "modelMFLoc.h"
 #include "confCompute.h"
 #include "topBucketComp.h"
 #include "longTail.h"
@@ -1343,7 +1344,6 @@ void testTailRec(Data& data, Params& params) {
   Params svdParams(params);
   svdParams.facDim = svdParams.origFacDim;
   ModelMF svdModel(svdParams, svdParams.seed);
-  //NOTE: make sure this is full svd for PureSVD
   svdFrmSvdlibCSR(data.trainMat, svdModel.facDim, svdModel.uFac, svdModel.iFac, true);
 
   std::unordered_set<int> invalidUsers;
@@ -1363,13 +1363,12 @@ void testTailRec(Data& data, Params& params) {
   for (auto v: invalItemsVec) {
     invalidItems.insert(v);
   }
-  
 
   ModelMF bestModel(mfModel);
   //std::cout << "\nStarting model train...";
   //mfModel.train(data, bestModel, invalidUsers, invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
-      invalidItems);
+      invalidItems) << std::endl;
   
   /*
   //write out invalid users
@@ -1386,8 +1385,8 @@ void testTailRec(Data& data, Params& params) {
 
   int N = 10;
   
-  std::vector<float> headPcs = {0.1, 0.2, 0.3, 0.4, 0.5};
-  //std::vector<float> headPcs = {0.2};
+  //std::vector<float> headPcs = {0.1, 0.2, 0.3, 0.4, 0.5};
+  std::vector<float> headPcs = {0.2};
   std::vector<float> lambdas = {0.01};
   int nThreads = headPcs.size();
   std::vector<std::thread> threads(nThreads);
@@ -1408,6 +1407,90 @@ void testTailRec(Data& data, Params& params) {
       std::mem_fn(&std::thread::join));
 }
 
+
+void testTailLocRec(Data& data, Params& params) {
+  
+  std::unordered_set<int> headItems = getHeadItems(data.trainMat, 0.2);
+  std::unordered_set<int> headUsers = getHeadUsers(data.trainMat, 0.2);
+
+  ModelMFLoc mfModel(params, params.seed, headItems, headUsers);
+  svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
+  //load previously learned factors
+  //mfModel.loadFacs(params.prefix);
+  
+  //svd model
+  Params svdParams(params);
+  svdParams.facDim = svdParams.origFacDim;
+  ModelMF svdModel(svdParams, svdParams.seed);
+  svdFrmSvdlibCSR(data.trainMat, svdModel.facDim, svdModel.uFac, svdModel.iFac, true);
+
+  std::unordered_set<int> invalidUsers;
+  std::unordered_set<int> invalidItems;
+  
+  std::string modelSign = mfModel.modelSignature();
+  /* 
+  std::string prefix = std::string(params.prefix) + "_" + modelSign + "_invalUsers.txt";
+  std::vector<int> invalUsersVec = readVector(prefix.c_str());
+  prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
+  std::vector<int> invalItemsVec = readVector(prefix.c_str());
+  
+
+  for (auto v: invalUsersVec) {
+    invalidUsers.insert(v);
+  }
+  
+  for (auto v: invalItemsVec) {
+    invalidItems.insert(v);
+  }
+  */
+
+  ModelMFLoc bestModel(mfModel);
+  std::cout << "\nStarting model train...";
+  mfModel.train(data, bestModel, invalidUsers, invalidItems);
+  std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
+      invalidItems) << std::endl;
+  
+  //write out invalid users
+  std::string prefix = std::string(params.prefix) + "_" + modelSign + "_invalUsers.txt";
+  writeContainer(begin(invalidUsers), end(invalidUsers), prefix.c_str());
+
+  //write out invalid items
+  prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
+  writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
+
+  std::cout << "No. of invalid users: " << invalidUsers.size() << std::endl;
+  std::cout << "No. of invalid items: " << invalidItems.size() << std::endl;
+
+  int N = 10;
+  
+  //std::vector<float> headPcs = {0.1, 0.2, 0.3, 0.4, 0.5};
+  std::vector<float> headPcs = {0.2};
+  std::vector<float> lambdas = {0.01};
+  /*
+  int nThreads = headPcs.size();
+  std::vector<std::thread> threads(nThreads);
+  std::cout << "\nStarting threads...." << std::endl;
+  for (int thInd = 0; thInd < nThreads; thInd++) {
+    prefix = std::string(params.prefix) + "_SVD_" + std::to_string(svdModel.facDim) 
+      + "_MF_" + std::to_string(bestModel.facDim) + "_" + std::to_string(headPcs[thInd])
+      + "_" + std::to_string(lambdas[0])  + "_" + std::to_string(N);
+    threads[thInd] = std::thread(topNRecTailWSVD, std::ref(bestModel), 
+        std::ref(svdModel), data.trainMat, data.testMat, data.graphMat, lambdas[0],
+        std::ref(invalidItems), std::ref(invalidUsers), headPcs[thInd],
+        N, params.seed, prefix);
+  }
+  
+  //wait for threads to finish
+  std::cout << "\nWaiting for threads to finish..." << std::endl;
+  std::for_each(threads.begin(), threads.end(), 
+      std::mem_fn(&std::thread::join));
+  */
+
+  topNRecTailWSVD(bestModel, svdModel, data.trainMat, data.testMat, 
+      data.graphMat, lambdas[0], invalidItems, invalidUsers, headPcs[0], N, 
+      params.seed, prefix);
+
+}
 
 int main(int argc , char* argv[]) {
   
@@ -1491,7 +1574,7 @@ int main(int argc , char* argv[]) {
   */   
   
   //computeSampTopNFrmFullModel(data, params);  
-  testTailRec(data, params);
+  testTailLocRec(data, params);
 
   return 0;
 }

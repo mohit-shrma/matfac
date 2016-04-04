@@ -34,6 +34,38 @@ std::unordered_set<int> getHeadItems(gk_csr_t *mat, float pc) {
 }
 
 
+std::unordered_set<int> getHeadUsers(gk_csr_t *mat, float pc) {
+  
+  //get number of ratings per user and item, i.e. frequency
+  auto rowColFreq = getRowColFreq(mat);
+  auto userFreq = rowColFreq.first;
+  double nRatings  = 0;
+
+  std::vector<std::pair<int, double>> userFreqPairs;
+  for (int i = 0; i < userFreq.size() ; i++) {
+    userFreqPairs.push_back(std::make_pair(i, userFreq[i]));
+    nRatings += userFreq[i];
+  }
+  std::sort(userFreqPairs.begin(), userFreqPairs.end(), descComp);
+  
+  //find head/popular users responsible for pc% of ratings
+  double headRatings = 0;
+  std::unordered_set<int> headUsers;
+  for (int i = 0; i < userFreqPairs.size(); i++) {
+    if (headRatings/nRatings >= pc) {
+      break;
+    }
+    headRatings += userFreqPairs[i].second;
+    headUsers.insert(userFreqPairs[i].first);
+  }
+  
+  std::cout << "\nHead ratings: " << headRatings << " nRatings: " << nRatings 
+    << std::endl;
+
+  return headUsers;
+}
+
+
 double compRecall(std::vector<int> order1, std::vector<int> order2, int N) {
 
   //change N to smaller of the list, in case N is larger than the either one

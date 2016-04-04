@@ -11,6 +11,7 @@
 #include "GKlib.h"
 
 std::unordered_set<int> getHeadItems(gk_csr_t *mat, float pc);
+std::unordered_set<int> getHeadUsers(gk_csr_t *mat, float pc);
 double compRecall(std::vector<int> order1, std::vector<int> order2, int N);
 double meanRating(gk_csr_t* mat);
 int nnzSubMat(gk_csr_t *mat, int uStart, int uEnd, int iStart, int iEnd);
