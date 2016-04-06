@@ -704,10 +704,14 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
   const int NMETH = 6;
   const int MAXTESTITEMS = 5000;
   const int MAXTESTUSERS = 5000;
+  const int SAMPITEMSZ = 1000;
 
-  float testPredRating = 0, testRating = 0;
+  float testPredModelRating = 0, testRating = 0, testPredSVDRating = 0;
+  float testPredModelMean = 0, testPredSVDMean = 0;
   int nItems = trainMat->ncols;
   int nUsers = trainMat->nrows;
+  int nSampItems = SAMPITEMSZ;
+  int nTailItems;
 
   std::vector<bool> hitFlags(NMETH, false);
   std::vector<std::vector<double>> counts(NMETH, std::vector<double>(NMETH, 0));
@@ -716,10 +720,18 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
   std::unordered_set<int> headItems = getHeadItems(trainMat, headPc);
   
   std::ofstream opFile(opFileName);
+  
+  nTailItems = nItems - invalidItems.size() - headItems.size();
+  if (SAMPITEMSZ > nTailItems) {
+    nSampItems = nTailItems;
+  }
 
   opFile << "\nNo. of head items: " << headItems.size() << " head items pc: " 
-    << ((float)headItems.size()/(trainMat->ncols)) << std::endl; 
-  opFile << "\nlambda: " << lambda << " N: " << N << " seed: " << seed 
+    << ((float)headItems.size()/(trainMat->ncols)) << std::endl;
+  opFile << "No. of tail items: " << nTailItems << std::endl;
+  opFile << "nSampItems: " << nSampItems << std::endl; 
+
+  opFile << "lambda: " << lambda << " N: " << N << " seed: " << seed 
     << std::endl;
 
   //initialize random engine
@@ -750,7 +762,7 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
     }
   }
 
-  opFile << "\nNo. of test users: " << testUsers.size();
+  opFile << "No. of test users: " << testUsers.size() << std::endl;
   
   //shuffle the user item rating indexes
   std::shuffle(testUsers.begin(), testUsers.end(), mt);
@@ -776,6 +788,7 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
     //sort the train items for binary search 
     //std::sort(trainItems.begin(), trainItems.end())
     
+    
     //run personalized RW on graph w.r.t. user
     itemScorePairs = itemGraphItemScores(u, 
         graphMat, trainMat, lambda, nUsers, nItems, invalidItems);
@@ -785,15 +798,19 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
     for (auto&& itemScore: itemScorePairs) {
       itemScores[itemScore.first] = itemScore.second;
     }
+    
 
     std::unordered_set<int> sampItems;
     for (int ii = testMat->rowptr[u]; 
         ii < testMat->rowptr[u+1] && nTestItems < MAXTESTITEMS; ii++) {
       int testItem = testMat->rowind[ii];
       
-      testPredRating = model.estRating(u, testItem);
+      testPredModelRating = model.estRating(u, testItem);
+      testPredModelMean += testPredModelRating;
+      testPredSVDRating = svdModel.estRating(u, testItem);
+      testPredSVDMean += testPredSVDRating;
       testRating = testMat->rowval[ii];
-      double se = (testPredRating - testRating)*(testPredRating - testRating);
+      double se = (testPredModelRating - testRating)*(testPredModelRating - testRating);
       
       testRMSE += se;
 
@@ -805,10 +822,16 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
       
       testUIRatings.push_back(std::make_tuple(u, testItem, testRating));
       
-      //sample 1000 unrated tail items at random
+      //sample unrated tail items at random
       sampItems.clear();
-      while (sampItems.size() < 1000) {
-        int sampItem = itemDist(mt);
+      int insItem = 0;
+      while (sampItems.size() < nSampItems && insItem < nItems) {
+        int sampItem;
+        if (nSampItems < SAMPITEMSZ) {
+          sampItem = insItem++;
+        } else {
+          sampItem = itemDist(mt); 
+        }
         
         if (sampItem == testItem) {
           continue;
@@ -825,14 +848,14 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
           //found n skip
           continue;
         }
-
+        
         //check if sample item is head
         search = headItems.find(sampItem);
         if (search != headItems.end()) {
           //found n skip
           continue;
         }
-
+        
         sampItems.insert(sampItem);
       }
 
@@ -849,7 +872,8 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
       if (isModelModelHit(model, svdModel, sampItems, u, testItem, N)) {
         hitFlags[MFSVD] = true;
       }
-
+       
+      
       if (isLocalScoreHit(sampItems, u, testItem, itemScores, N)) {
         hitFlags[PPR] = true;
       }
@@ -861,6 +885,7 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
       if (isModelLocalScoreHit(svdModel, sampItems, u, testItem, itemScores, N)) {
         hitFlags[SVDPPR] = true;
       }
+       
       
       for (int i = 0; i < NMETH; i++) {
         
@@ -948,6 +973,10 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
   opFile << "SVD+PPR Recall: " << counts[SVDPPR][SVDPPR]/nTestItems << std::endl;
   opFile << "MF+SVD Recall: " << counts[MFSVD][MFSVD]/nTestItems << std::endl;
   
+  //write RMSEs of predictions
+  opFile << "MF Test Mean: " << testPredModelMean/nTestItems << std::endl;
+  opFile << "SVD Test Mean: " << testPredSVDMean/nTestItems << std::endl;
+    
   opFile.close();
 } 
 
