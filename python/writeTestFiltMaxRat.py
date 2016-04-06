@@ -1,6 +1,6 @@
 import sys
 
-def writeMat(ipFileName, opFileName, filtRat = 5, headItems):
+def writeMat(ipFileName, opFileName, filtRat = 5, headItems=set([])):
   with open(ipFileName, 'r') as f, open(opFileName, 'w') as g:
     count = 0
     for line in f:
@@ -31,7 +31,7 @@ def main():
   filtRat = float(sys.argv[3])
   
   headItems = []
-  if len(sys.argv == 5 ):
+  if len(sys.argv) == 5:
     headItemFName = sys.argv[4]
     headItems = getHeadItems(headItemFName)
   headItems = set(headItems)
