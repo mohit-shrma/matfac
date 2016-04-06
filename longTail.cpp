@@ -750,8 +750,8 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
     }
   }
 
-  std::cout << "\nNo. of test users: " << testUsers.size();
-
+  opFile << "\nNo. of test users: " << testUsers.size();
+  
   //shuffle the user item rating indexes
   std::shuffle(testUsers.begin(), testUsers.end(), mt);
  
