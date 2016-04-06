@@ -826,7 +826,7 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
       sampItems.clear();
       int insItem = 0;
       int tryCount = 0;
-      while (sampItems.size() < nSampItems && insItem < nItems && tryCount < 3000) {
+      while (sampItems.size() < nSampItems && insItem < nItems && tryCount < 5000) {
         
         int sampItem;
         tryCount++;
