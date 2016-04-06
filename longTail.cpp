@@ -825,8 +825,12 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
       //sample unrated tail items at random
       sampItems.clear();
       int insItem = 0;
-      while (sampItems.size() < nSampItems && insItem < nItems) {
+      int tryCount = 0;
+      while (sampItems.size() < nSampItems && insItem < nItems && tryCount < 3000) {
+        
         int sampItem;
+        tryCount++;
+
         if (nSampItems < SAMPITEMSZ) {
           sampItem = insItem++;
         } else {
