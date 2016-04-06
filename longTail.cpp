@@ -987,5 +987,293 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
 } 
 
 
+void topNRecTailWSVDFastSamp(Model& model, Model& svdModel, gk_csr_t *trainMat, 
+    gk_csr_t *testMat, gk_csr_t *graphMat, float lambda,
+    std::unordered_set<int>& invalidItems, std::unordered_set<int>& invalidUsers,
+    float headPc, int N, int seed, std::string opFileName) {
 
+  enum {MF, PPR, SVD, MFPPR, SVDPPR, MFSVD};
+  const int NMETH = 6;
+  const int MAXTESTITEMS = 5000;
+  const int MAXTESTUSERS = 5000;
+  const int SAMPITEMSZ = 1000;
+
+  float testPredModelRating = 0, testRating = 0, testPredSVDRating = 0;
+  float testPredModelMean = 0, testPredSVDMean = 0;
+  int nItems = trainMat->ncols;
+  int nUsers = trainMat->nrows;
+  int nSampItems = SAMPITEMSZ;
+  int nTailItems;
+
+  std::vector<bool> hitFlags(NMETH, false);
+  std::vector<std::vector<double>> counts(NMETH, std::vector<double>(NMETH, 0));
+  std::vector<std::vector<double>> rmses(NMETH, std::vector<double>(NMETH, 0.0));
+
+  std::unordered_set<int> headItems = getHeadItems(trainMat, headPc);
+  
+  std::ofstream opFile(opFileName);
+  
+  nTailItems = nItems - invalidItems.size() - headItems.size();
+  if (SAMPITEMSZ > nTailItems) {
+    nSampItems = nTailItems;
+  }
+
+  opFile << "\nNo. of head items: " << headItems.size() << " head items pc: " 
+    << ((float)headItems.size()/(trainMat->ncols)) << std::endl;
+  opFile << "nSampItems: " << nSampItems << std::endl; 
+
+  opFile << "lambda: " << lambda << " N: " << N << " seed: " << seed 
+    << std::endl;
+
+  //get tail items
+  std::vector<int> tailItems;
+  for (int item = 0; item < nItems; item++) {
+    //skip if invalid
+    if (invalidItems.find(item) != invalidItems.end()) {
+      continue;
+    }
+    //skip if head
+    if (headItems.find(item) != headItems.end()) {
+      continue;
+    }
+    tailItems.push_back(item);
+  }
+
+  opFile << "No. of tail items: " << tailItems.size() << std::endl;
+
+  //initialize random engine
+  std::mt19937 mt(seed);
+  //item distribution to sample items
+  std::uniform_int_distribution<int> itemDist(0, nItems-1);
+  std::uniform_int_distribution<int> userDist(0, nUsers-1);
+
+  std::vector<std::pair<int, double>> itemScorePairs; 
+  std::vector<double> itemScores(nItems, 0); 
+
+  std::vector<int> testUsers;
+  for (int u = 0; u < testMat->nrows; u++) {
+    //check if invalid users
+    auto search = invalidUsers.find(u);
+    if (search != invalidUsers.end()) {
+      //found n skip
+      continue;
+    }
+    for (int ii = testMat->rowptr[u]; ii < testMat->rowptr[u+1]; ii++) {
+      int item = testMat->rowind[ii];
+      auto search = headItems.find(item);
+      if (search == headItems.end()) {
+        //tail item
+        testUsers.push_back(u);
+        break;
+      }
+    }
+  }
+
+  opFile << "No. of test users: " << testUsers.size() << std::endl;
+  
+  //shuffle the user item rating indexes
+  std::shuffle(testUsers.begin(), testUsers.end(), mt);
+ 
+  //check if train matrix items are sorted
+  if (!checkIfUISorted(trainMat)) {
+    std::cout << "\nTrain matrix is not sorted"  << std::endl;
+    exit(0);
+  }
+
+  int nTestItems = 0;
+  double testRMSE = 0.0;  
+  std::vector<std::tuple<int, int, float>> testUIRatings;
+
+  for (int k = 0; 
+      k < MAXTESTUSERS && nTestItems < MAXTESTITEMS && k < testUsers.size(); k++) {
+    int u = testUsers[k];
+    std::vector<int> trainItems;
+    for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+      int item = trainMat->rowind[ii];
+      trainItems.push_back(item);
+    }
+    //sort the train items for binary search 
+    //std::sort(trainItems.begin(), trainItems.end())
+    
+    
+    //run personalized RW on graph w.r.t. user
+    itemScorePairs = itemGraphItemScores(u, 
+        graphMat, trainMat, lambda, nUsers, nItems, invalidItems);
+    //std::sort(itemScorePairs.begin(), itemScorePairs.end(), compPairsIndAsc);
+    std::fill(itemScores.begin(), itemScores.end(), 0);
+    
+    for (auto&& itemScore: itemScorePairs) {
+      itemScores[itemScore.first] = itemScore.second;
+    }
+
+    std::unordered_set<int> sampItems;
+    
+    for (int ii = testMat->rowptr[u]; 
+        ii < testMat->rowptr[u+1] && nTestItems < MAXTESTITEMS; ii++) {
+      int testItem = testMat->rowind[ii];
+      
+      testPredModelRating = model.estRating(u, testItem);
+      testPredModelMean += testPredModelRating;
+      testPredSVDRating = svdModel.estRating(u, testItem);
+      testPredSVDMean += testPredSVDRating;
+      testRating = testMat->rowval[ii];
+      double se = (testPredModelRating - testRating)*(testPredModelRating - testRating);
+      
+      testRMSE += se;
+
+      //check if in head items
+      auto search = headItems.find(testItem);
+      if (search != headItems.end()) {
+        continue;
+      } 
+      
+      testUIRatings.push_back(std::make_tuple(u, testItem, testRating));
+      
+      //get unrated tail items at random
+      sampItems.clear();
+      std::shuffle(tailItems.begin(), tailItems.end(), mt);
+      for (auto&& tailItem : tailItems) {
+        //check if sample item is present in train
+        if (std::binary_search(trainItems.begin(), trainItems.end(), tailItem)) {
+          continue;
+        }
+
+        if (tailItem == testItem) {
+          continue;
+        }
+
+        sampItems.insert(tailItem);
+        
+        if (sampItems.size() >= nSampItems) {
+          break;
+        }
+      }
+
+
+      std::fill(hitFlags.begin(), hitFlags.end(), false);
+
+      if (isModelHit(model, sampItems, u, testItem, N)) { 
+        hitFlags[MF] = true;
+      }
+      
+      if (isModelHit(svdModel, sampItems, u, testItem, N)) {
+        hitFlags[SVD] = true;
+      }
+
+      if (isModelModelHit(model, svdModel, sampItems, u, testItem, N)) {
+        hitFlags[MFSVD] = true;
+      }
+       
+      
+      if (isLocalScoreHit(sampItems, u, testItem, itemScores, N)) {
+        hitFlags[PPR] = true;
+      }
+
+      if (isModelLocalScoreHit(model, sampItems, u, testItem, itemScores, N)) {
+        hitFlags[MFPPR] = true;
+      }
+      
+      if (isModelLocalScoreHit(svdModel, sampItems, u, testItem, itemScores, N)) {
+        hitFlags[SVDPPR] = true;
+      }
+       
+      
+      for (int i = 0; i < NMETH; i++) {
+        
+        if (hitFlags[i]) {
+          counts[i][i] += 1;
+          rmses[i][i] += se;
+        }
+
+        for (int j = i+1; j < NMETH; j++) {
+          if (hitFlags[i] && hitFlags[j]) {
+            counts[i][j] += 1;
+            counts[j][i] = counts[i][j];
+            rmses[i][j] += se;
+            rmses[j][i] = rmses[i][j];
+          }
+        }
+      }
+       
+      nTestItems++;
+    }
+    
+    if (k % 500 == 0 || nTestItems % 500 == 0) {
+      opFile << "Done.. " << k << std::endl;
+      
+      opFile << "nTestItems: " << nTestItems << std::endl;
+      opFile << "testRMSE: " << sqrt(testRMSE/nTestItems) << std::endl;
+
+      //write counts
+      opFile << "counts: " << std::endl;
+      for (int i = 0; i < NMETH; i++) {
+        for (int j = 0; j < NMETH; j++) {
+          opFile << counts[i][j] << " ";
+        }
+        opFile << std::endl;
+      }
+
+      //write RMSE
+      opFile << "RMSEs: " << std::endl;
+      for (int i = 0; i < NMETH; i++) {
+        for (int j = 0; j < NMETH; j++) {
+          opFile << sqrt(rmses[i][j]/counts[i][j]) << " ";
+        }
+        opFile << std::endl;
+      }
+      
+      //write recall
+      opFile << "MF Recall: " << counts[MF][MF]/nTestItems << std::endl;
+      opFile << "PPR Recall: " << counts[PPR][PPR]/nTestItems << std::endl;
+      opFile << "SVD Recall: " << counts[SVD][SVD]/nTestItems << std::endl;
+      opFile << "MF+PPR Recall: " << counts[MFPPR][MFPPR]/nTestItems << std::endl;
+      opFile << "SVD+PPR Recall: " << counts[SVDPPR][SVDPPR]/nTestItems << std::endl;
+      opFile << "MF+SVD Recall: " << counts[MFSVD][MFSVD]/nTestItems << std::endl;
+    }
+    
+  }
+     
+  //writeTestMat(testUIRatings, headItems);
+
+  opFile << "nTestItems: " << nTestItems << std::endl;
+  opFile << "testRMSE: " << sqrt(testRMSE/nTestItems) << std::endl;
+    
+  //write counts
+  opFile << "counts: " << std::endl;
+  for (int i = 0; i < NMETH; i++) {
+    for (int j = 0; j < NMETH; j++) {
+      opFile << counts[i][j] << " ";
+    }
+    opFile << std::endl;
+  }
+
+  //write RMSE
+  opFile << "RMSEs: " << std::endl;
+  for (int i = 0; i < NMETH; i++) {
+    for (int j = 0; j < NMETH; j++) {
+      opFile << sqrt(rmses[i][j]/counts[i][j]) << " ";
+    }
+    opFile << std::endl;
+  }
+  
+  //write recall
+  opFile << "MF Recall: " << counts[MF][MF]/nTestItems << std::endl;
+  opFile << "PPR Recall: " << counts[PPR][PPR]/nTestItems << std::endl;
+  opFile << "SVD Recall: " << counts[SVD][SVD]/nTestItems << std::endl;
+  opFile << "MF+PPR Recall: " << counts[MFPPR][MFPPR]/nTestItems << std::endl;
+  opFile << "SVD+PPR Recall: " << counts[SVDPPR][SVDPPR]/nTestItems << std::endl;
+  opFile << "MF+SVD Recall: " << counts[MFSVD][MFSVD]/nTestItems << std::endl;
+  
+  //write RMSEs of predictions
+  opFile << "MF Test Mean: " << testPredModelMean/nTestItems << std::endl;
+  opFile << "SVD Test Mean: " << testPredSVDMean/nTestItems << std::endl;
+    
+  opFile.close();
+} 
+
+
+void topNRecTailWSVDFastSamp(Model& model, Model& svdModel, gk_csr_t *trainMat, 
+    gk_csr_t *testMat, gk_csr_t *graphMat, float lambda,
+    std::unordered_set<int>& invalidItems, std::unordered_set<int>& invalidUsers,
+    float headPc, int N, int seed, std::string opFileName);
 
