@@ -35,6 +35,8 @@ def main():
     headItemFName = sys.argv[4]
     headItems = getHeadItems(headItemFName)
   headItems = set(headItems)
+  
+  print 'No. of headItems: ', len(headItems)
 
   writeMat(ipFileName, opFileName, filtRat, headItems)
   
