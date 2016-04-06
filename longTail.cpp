@@ -859,6 +859,8 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
         sampItems.insert(sampItem);
       }
 
+      opFile << "Sampled items: " << sampItems.size() << std::endl;
+
       std::fill(hitFlags.begin(), hitFlags.end(), false);
 
       if (isModelHit(model, sampItems, u, testItem, N)) { 
