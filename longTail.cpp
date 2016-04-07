@@ -1543,48 +1543,48 @@ void topNsRecTailWSVDFastSamp(Model& model, Model& svdModel, gk_csr_t *trainMat,
   //write MF Recall
   opFile << "MF ";
   for (auto&& hitCount: hitCounts[MF]) {
-    opFile << hitCount << " ";
+    opFile << hitCount << ",";
   }
   opFile << std::endl;
   opFile << "MF ";
   for (auto&& hitCount: hitCounts[MF]) {
-    opFile << hitCount/nTestItems << " ";
+    opFile << hitCount/nTestItems << ",";
   }
   opFile << std::endl;
   
   //write SVD Recall
   opFile << "SVD ";
   for (auto&& hitCount: hitCounts[SVD]) {
-    opFile << hitCount << " ";
+    opFile << hitCount << ",";
   }
   opFile << std::endl;
   opFile << "SVD ";
   for (auto&& hitCount: hitCounts[SVD]) {
-    opFile << hitCount/nTestItems << " ";
+    opFile << hitCount/nTestItems << ",";
   }
   opFile << std::endl;
 
   //write PPR Recall
   opFile << "PPR ";
   for (auto&& hitCount: hitCounts[PPR]) {
-    opFile << hitCount  << " ";
+    opFile << hitCount  << ",";
   }
   opFile << std::endl;
   opFile << "PPR ";
   for (auto&& hitCount: hitCounts[PPR]) {
-    opFile <<  hitCount/nTestItems << " ";
+    opFile <<  hitCount/nTestItems << ",";
   }
   opFile << std::endl;
 
   //write MFPPR Recall
   opFile << "MFPPR ";
   for (auto&& hitCount: hitCounts[MFPPR]) {
-    opFile << hitCount << " ";
+    opFile << hitCount << ",";
   }
   opFile << std::endl;
   opFile << "MFPPR ";
   for (auto&& hitCount: hitCounts[MFPPR]) {
-    opFile << hitCount/nTestItems << " ";
+    opFile << hitCount/nTestItems << ",";
   }
   opFile << std::endl;
 
@@ -1596,19 +1596,19 @@ void topNsRecTailWSVDFastSamp(Model& model, Model& svdModel, gk_csr_t *trainMat,
   opFile << std::endl;
   opFile << "SVDPPR ";
   for (auto&& hitCount: hitCounts[SVDPPR]) {
-    opFile <<  hitCount/nTestItems << " ";
+    opFile <<  hitCount/nTestItems << ",";
   }
   opFile << std::endl;
 
   //write MFSVD Recall
   opFile << "MFSVD ";
   for (auto&& hitCount: hitCounts[MFSVD]) {
-    opFile << hitCount << " ";
+    opFile << hitCount << ",";
   }
   opFile << std::endl;
   opFile << "MFSVD ";
   for (auto&& hitCount: hitCounts[MFSVD]) {
-    opFile << hitCount/nTestItems << " ";
+    opFile << hitCount/nTestItems << ",";
   }
   opFile << std::endl;
  
