@@ -1334,7 +1334,7 @@ void computeConfCurveTest(Data& data, Params& params) {
 
 
 void testTailRec(Data& data, Params& params) {
-  
+ 
   ModelMF mfModel(params, params.seed);
   //svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
   //load previously learned factors
@@ -1350,7 +1350,8 @@ void testTailRec(Data& data, Params& params) {
   std::unordered_set<int> invalidItems;
   
   std::string modelSign = mfModel.modelSignature();
-   
+  std::cout << "\nModel sign: " << modelSign << std::endl;    
+
   std::string prefix = std::string(params.prefix) + "_" + modelSign + "_invalUsers.txt";
   std::vector<int> invalUsersVec = readVector(prefix.c_str());
   prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
@@ -1378,41 +1379,45 @@ void testTailRec(Data& data, Params& params) {
   //write out invalid items
   prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
-  */
+  */ 
 
   std::cout << "No. of invalid users: " << invalidUsers.size() << std::endl;
   std::cout << "No. of invalid items: " << invalidItems.size() << std::endl;
 
-  int N = 10;
-  
-  //std::vector<float> headPcs = {0.1, 0.2, 0.3, 0.4, 0.5};
-  std::vector<float> headPcs = {0.2};
+  std::vector<int> Ns = {1, 5, 10, 20, 30, 40, 50};
+  int N = 1;
+  std::vector<float> headPcs = {0.1, 0.2, 0.3, 0.4, 0.5};
+  //std::vector<float> headPcs = {0.2};
   std::vector<float> lambdas = {0.01};
-  /*
+  
+  
   int nThreads = headPcs.size();
   std::vector<std::thread> threads(nThreads);
   std::cout << "\nStarting threads...." << std::endl;
   for (int thInd = 0; thInd < nThreads; thInd++) {
     prefix = std::string(params.prefix) + "_SVD_" + std::to_string(svdModel.facDim) 
       + "_MF_" + std::to_string(bestModel.facDim) + "_" + std::to_string(headPcs[thInd])
-      + "_" + std::to_string(lambdas[0])  + "_" + std::to_string(N);
-    threads[thInd] = std::thread(topNRecTailWSVD, std::ref(bestModel), 
+      + "_" + std::to_string(lambdas[0]);// + "_" + std::to_string(N);
+    threads[thInd] = std::thread(topNsRecTailWSVDFastSamp, std::ref(bestModel), 
         std::ref(svdModel), data.trainMat, data.testMat, data.graphMat, lambdas[0],
         std::ref(invalidItems), std::ref(invalidUsers), headPcs[thInd],
-        N, params.seed, prefix);
+        std::ref(Ns), params.seed, prefix);
   }
   
+
   //wait for threads to finish
   std::cout << "\nWaiting for threads to finish..." << std::endl;
   std::for_each(threads.begin(), threads.end(), 
       std::mem_fn(&std::thread::join));
-  */ 
+  
+  /* 
   prefix = std::string(params.prefix) + "_SVD_" + std::to_string(svdModel.facDim) 
       + "_MF_" + std::to_string(bestModel.facDim) + "_" + std::to_string(headPcs[0])
-      + "_" + std::to_string(lambdas[0])  + "_" + std::to_string(N);
-  topNRecTailWSVD(bestModel, svdModel, data.trainMat, data.testMat, 
-      data.graphMat, lambdas[0], invalidItems, invalidUsers, headPcs[0], N,
+      + "_" + std::to_string(lambdas[0]);
+  topNsRecTailWSVDFastSamp(bestModel, svdModel, data.trainMat, data.testMat, 
+      data.graphMat, lambdas[0], invalidItems, invalidUsers, headPcs[0], Ns,
       params.seed, prefix);
+  */
 }
 
 
@@ -1427,11 +1432,12 @@ void testTailLocRec(Data& data, Params& params) {
   //mfModel.loadFacs(params.prefix);
   
   //svd model
+  /*
   Params svdParams(params);
   svdParams.facDim = svdParams.origFacDim;
   ModelMF svdModel(svdParams, svdParams.seed);
   svdFrmSvdlibCSR(data.trainMat, svdModel.facDim, svdModel.uFac, svdModel.iFac, true);
-
+  */
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
   
@@ -1454,7 +1460,6 @@ void testTailLocRec(Data& data, Params& params) {
   mfModel.train(data, bestModel, invalidUsers, invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
       invalidItems) << std::endl;
-  
   
   //write out invalid users
   std::string prefix = std::string(params.prefix) + "_" + modelSign + "_invalUsers.txt";
@@ -1491,13 +1496,101 @@ void testTailLocRec(Data& data, Params& params) {
   std::for_each(threads.begin(), threads.end(), 
       std::mem_fn(&std::thread::join));
   */
-
+  
+  /*
   prefix = std::string(params.prefix) + "_SVD_" + std::to_string(svdModel.facDim) 
     + "_MF_" + std::to_string(bestModel.facDim) + "_" + std::to_string(headPcs[0])
     + "_" + std::to_string(lambdas[0])  + "_" + std::to_string(N);
   topNRecTailWSVD(bestModel, svdModel, data.trainMat, data.testMat, 
       data.graphMat, lambdas[0], invalidItems, invalidUsers, headPcs[0], N, 
       params.seed, prefix);
+  */
+
+}
+
+
+void computeHeadTailRMSE(Data& data, Params& params) {
+  
+  float headPc = 0.5;
+  gk_csr_t *testMat = data.testMat;
+  std::unordered_set<int> headItems = getHeadItems(data.trainMat, headPc);
+  std::unordered_set<int> headUsers = getHeadUsers(data.trainMat, headPc);
+
+  ModelMFLoc mfModel(params, params.seed, headItems, headUsers);
+  //load previously learned factors
+  mfModel.loadFacs(params.prefix);
+
+  std::unordered_set<int> invalidUsers;
+  std::unordered_set<int> invalidItems;
+
+  std::string modelSign = mfModel.modelSignature();
+  std::string prefix = std::string(params.prefix) + "_" + modelSign + "_invalUsers.txt";
+  std::vector<int> invalUsersVec = readVector(prefix.c_str());
+  prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
+  std::vector<int> invalItemsVec = readVector(prefix.c_str());
+  for (auto v: invalUsersVec) {
+    invalidUsers.insert(v);
+  }
+  for (auto v: invalItemsVec) {
+    invalidItems.insert(v);
+  }
+
+  std::cout << "\nNo. of invalid users: " << invalidUsers.size() << std::endl;
+  std::cout << "\nNo. of invalid items: " << invalidItems.size() << std::endl;
+
+  ModelMFLoc bestModel(mfModel);
+  //std::cout << "\nStarting model train...";
+  //mfModel.train(data, bestModel, invalidUsers, invalidItems);
+  std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
+      invalidItems) << std::endl;
+
+  std::vector<std::vector<double>> headTailRMSE = {{0,0},{0,0}};
+  std::vector<std::vector<double>> headTailCount = {{0,0},{0,0}};
+  int tailUserRatings = 0, tailItemRatings = 0;
+  int isTailUser = 0, isTailItem = 0;
+  for (int u = 0; u < testMat->nrows; u++) {
+    isTailUser = 0;
+    if (headUsers.find(u) == headUsers.end()) {
+      //not in head
+      isTailUser = 1;
+    }
+    for (int ii = testMat->rowptr[u]; ii < testMat->rowptr[u+1]; ii++) {
+      int item = testMat->rowind[ii];
+      float rating = testMat->rowval[ii];
+      float predRat = bestModel.estRating(u, item);
+      isTailItem = 0;
+      if (headItems.find(item) == headItems.end()) {
+        //not in head
+        isTailItem = 1;
+        tailItemRatings++;
+      }
+      if (isTailUser) {
+        tailUserRatings++;
+      } 
+      headTailCount[isTailUser][isTailItem] += 1;
+      headTailRMSE[isTailUser][isTailItem] += (rating - predRat)*(rating - predRat);
+    }
+  }
+
+  std::cout << "\nTail item ratings: " << tailItemRatings << std::endl;
+  std::cout << "\nTail user ratings: " << tailUserRatings << std::endl;
+
+  std::cout << "\nCounts:" << std::endl;
+  for (int i = 0; i < 2; i++){
+    for (int j = 0; j < 2; j++) {
+      std::cout << headTailCount[i][j] << " ";
+    }
+    std::cout << std::endl;
+  }
+
+  std::cout << "\nRMSE:" << std::endl; 
+  for (int i = 0; i < 2; i++){
+    for (int j = 0; j < 2; j++) {
+      headTailRMSE[i][j] = sqrt(headTailRMSE[i][j]/headTailCount[i][j]);
+      std::cout << headTailRMSE[i][j] << " ";
+    }
+    std::cout << std::endl;
+  }
 
 }
 
@@ -1539,24 +1632,24 @@ int main(int argc , char* argv[]) {
   //writeItemSimMat(data.trainMat, "ratings_26779x26779_25.syn.trainItems.metis");
   //writeItemSimMatNonSymm(data.trainMat, 
   //    "ratings_26779x26779_25.syn.trainItems.nonsym.metis");
-  //writeItemJaccSimMat(data.trainMat, "ratings_147612x48793.train.jacSim.metis");
+  //writeItemJaccSimMat(data.trainMat, "ratings_6040x3706.train.jacSim.metis");
   //writeItemJaccSimFrmCorat(data.trainMat, data.graphMat, 
   //    "ratings_26779x26779_25.syn.trainItems.jacSim2.metis");
   //writeCoRatings(data.trainMat, "y_u2_i34_100Kx50K.train.coRatings");
   //std::cout << "ifUISorted: " << checkIfUISorted(data.trainMat) << std::endl ;
 
-  /*  
+  /* 
   writeTrainTestValMat(data.trainMat,  
-      "ratings_147612x48794.train.csr",
-      "ratings_147612x48794.test.csr",
-      "ratings_147612x48794.val.csr",
+      "ratings_6040x3706.train.csr",
+      "ratings_6040x3706.test.csr",
+      "ratings_6040x3706.val.csr",
       0.1, 0.1, params.seed); 
   */ 
 
   //ModelMF mfModel(params, params.initUFacFile, 
   //    params.initIFacFile, params.seed);
   
-  /*
+  /*    
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
   svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
@@ -1581,11 +1674,12 @@ int main(int argc , char* argv[]) {
   //write out invalid items
   prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
-  */   
-  
+  */ 
+
   //computeSampTopNFrmFullModel(data, params);  
-  testTailLocRec(data, params);
-  //testTailRec(data, params);
+  //testTailLocRec(data, params);
+  testTailRec(data, params);
+  //computeHeadTailRMSE(data, params);
 
   return 0;
 }
