@@ -30,4 +30,8 @@ void topNsRecTailWSVDFastSamp(Model& model, Model& svdModel, gk_csr_t *trainMat,
     gk_csr_t *testMat, gk_csr_t *graphMat, float lambda,
     std::unordered_set<int>& invalidItems, std::unordered_set<int>& invalidUsers,
     float headPc, std::vector<int>& Ns, int seed, std::string opFileName);
+void topNsRecWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat, 
+    gk_csr_t *testMat, gk_csr_t *graphMat, float lambda,
+    std::unordered_set<int>& invalidItems, std::unordered_set<int>& invalidUsers,
+    std::vector<int>& Ns, int seed, std::string opFileName);
 #endif
