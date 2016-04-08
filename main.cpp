@@ -1421,6 +1421,69 @@ void testTailRec(Data& data, Params& params) {
 }
 
 
+void testRec(Data& data, Params& params) {
+ 
+  ModelMF mfModel(params, params.seed);
+  //svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
+  //load previously learned factors
+  mfModel.loadFacs(params.prefix);
+  
+  //svd model
+  Params svdParams(params);
+  svdParams.facDim = svdParams.origFacDim;
+  ModelMF svdModel(svdParams, svdParams.seed);
+  svdFrmSvdlibCSR(data.trainMat, svdModel.facDim, svdModel.uFac, svdModel.iFac, true);
+
+  std::unordered_set<int> invalidUsers;
+  std::unordered_set<int> invalidItems;
+  
+  std::string modelSign = mfModel.modelSignature();
+  std::cout << "\nModel sign: " << modelSign << std::endl;    
+
+  std::string prefix = std::string(params.prefix) + "_" + modelSign + "_invalUsers.txt";
+  std::vector<int> invalUsersVec = readVector(prefix.c_str());
+  prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
+  std::vector<int> invalItemsVec = readVector(prefix.c_str());
+
+  for (auto v: invalUsersVec) {
+    invalidUsers.insert(v);
+  }
+  
+  for (auto v: invalItemsVec) {
+    invalidItems.insert(v);
+  }
+
+  ModelMF bestModel(mfModel);
+  //std::cout << "\nStarting model train...";
+  //mfModel.train(data, bestModel, invalidUsers, invalidItems);
+  std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
+      invalidItems) << std::endl;
+  
+  /*
+  //write out invalid users
+  std::string prefix = std::string(params.prefix) + "_" + modelSign + "_invalUsers.txt";
+  writeContainer(begin(invalidUsers), end(invalidUsers), prefix.c_str());
+
+  //write out invalid items
+  prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
+  writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
+  */ 
+
+  std::cout << "No. of invalid users: " << invalidUsers.size() << std::endl;
+  std::cout << "No. of invalid items: " << invalidItems.size() << std::endl;
+
+  std::vector<int> Ns = {1, 5, 10, 20, 30, 40, 50};
+  int N = 1;
+  std::vector<float> lambdas = {0.01};
+  
+  prefix = std::string(params.prefix) + "_SVD_" + std::to_string(svdModel.facDim) 
+      + "_MF_" + std::to_string(bestModel.facDim) + "_" + std::to_string(lambdas[0]);
+  topNsRecWSVD(bestModel, svdModel, data.trainMat, data.testMat, 
+      data.graphMat, lambdas[0], invalidItems, invalidUsers, Ns,
+      params.seed, prefix);
+}
+
+
 void testTailLocRec(Data& data, Params& params) {
   
   std::unordered_set<int> headItems = getHeadItems(data.trainMat, 0.5);
@@ -1678,7 +1741,8 @@ int main(int argc , char* argv[]) {
 
   //computeSampTopNFrmFullModel(data, params);  
   //testTailLocRec(data, params);
-  testTailRec(data, params);
+  //testTailRec(data, params);
+  testRec(data, params);
   //computeHeadTailRMSE(data, params);
 
   return 0;

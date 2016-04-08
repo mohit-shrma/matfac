@@ -809,7 +809,12 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
       if (search != headItems.end()) {
         continue;
       } 
-      
+   
+      //check if test item is among invalid item
+      if (invalidItems.find(testItem) != invalidItems.end()) {
+        continue;
+      }
+
       //testUIRatings.push_back(std::make_tuple(u, testItem, testRating));
       
       //sample unrated tail items at random
@@ -1102,6 +1107,17 @@ void topNRecTailWSVDFastSamp(Model& model, Model& svdModel, gk_csr_t *trainMat,
         ii < testMat->rowptr[u+1] && nTestItems < MAXTESTITEMS; ii++) {
       int testItem = testMat->rowind[ii];
       
+      //check if in head items
+      auto search = headItems.find(testItem);
+      if (search != headItems.end()) {
+        continue;
+      }
+
+      //skip if invalid item
+      if (invalidItems.find(testItem) != invalidItems.end()) {
+        continue;
+      }
+
       testPredModelRating = model.estRating(u, testItem);
       testPredModelMean += testPredModelRating;
       testPredSVDRating = svdModel.estRating(u, testItem);
@@ -1111,13 +1127,8 @@ void topNRecTailWSVDFastSamp(Model& model, Model& svdModel, gk_csr_t *trainMat,
       
       testRMSE += se;
 
-      //check if in head items
-      auto search = headItems.find(testItem);
-      if (search != headItems.end()) {
-        continue;
-      } 
       
-      testUIRatings.push_back(std::make_tuple(u, testItem, testRating));
+      //testUIRatings.push_back(std::make_tuple(u, testItem, testRating));
       
       //get unrated tail items at random
       sampItems.clear();
@@ -1385,6 +1396,18 @@ void topNsRecTailWSVDFastSamp(Model& model, Model& svdModel, gk_csr_t *trainMat,
         ii < testMat->rowptr[u+1] && nTestItems < MAXTESTITEMS; ii++) {
 
       int testItem = testMat->rowind[ii];
+      //skip if testitem is invalid
+      if (invalidItems.find(testItem) != invalidItems.end()) {
+        //invalid found
+        continue;
+      }
+      
+      //check if in head items
+      auto search = headItems.find(testItem);
+      if (search != headItems.end()) {
+        continue;
+      } 
+      
       testPredModelRating = model.estRating(u, testItem);
       testPredModelMean += testPredModelRating;
       testPredSVDRating = svdModel.estRating(u, testItem);
@@ -1394,11 +1417,6 @@ void topNsRecTailWSVDFastSamp(Model& model, Model& svdModel, gk_csr_t *trainMat,
       double se = (testPredModelRating - testRating)*(testPredModelRating - testRating);
       testRMSE += se;
 
-      //check if in head items
-      auto search = headItems.find(testItem);
-      if (search != headItems.end()) {
-        continue;
-      } 
       
       testUIRatings.push_back(std::make_tuple(u, testItem, testRating));
       
@@ -1714,6 +1732,12 @@ void topNsRecWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
         ii < testMat->rowptr[u+1] && nTestItems < MAXTESTITEMS; ii++) {
 
       int testItem = testMat->rowind[ii];
+     
+      //skip if testItem is invalid
+      if (invalidItems.find(testItem) != invalidItems.end()) {
+        continue; 
+      }
+      
       testPredModelRating = model.estRating(u, testItem);
       testPredModelMean += testPredModelRating;
       testPredSVDRating = svdModel.estRating(u, testItem);
@@ -1723,7 +1747,7 @@ void topNsRecWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
       double se = (testPredModelRating - testRating)*(testPredModelRating - testRating);
       testRMSE += se;
 
-      //get unrated tail items at random
+      //get unrated items at random
       sampItems.clear();
       int insItem = 0;
       int tryCount = 0;
