@@ -1663,7 +1663,12 @@ void topNsRecTailWSVDFastSamp(Model& model, Model& svdModel, gk_csr_t *trainMat,
   //write MFSVDPPR Recall
   opFile << "MFSVDPPR ";
   for (auto&& hitCount: hitCounts[MFSVDPPR]) {
-    opFile << hitCount/nTestItems << " ";
+    opFile << hitCount << ",";
+  }
+  opFile << std::endl;
+  opFile << "MFSVDPPR ";
+  for (auto&& hitCount: hitCounts[MFSVDPPR]) {
+    opFile << hitCount/nTestItems << ",";
   }
   opFile << std::endl;
   
@@ -1932,7 +1937,7 @@ void topNsRecWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
       //write MFSVDPPR Recall
       opFile << "MFSVDPPR ";
       for (auto&& hitCount: hitCounts[MFSVDPPR]) {
-        opFile << hitCount/nTestItems << " ";
+        opFile << hitCount/nTestItems << ",";
       }
       opFile << std::endl;
     }
@@ -2024,7 +2029,12 @@ void topNsRecWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
   //write MFSVDPPR Recall
   opFile << "MFSVDPPR ";
   for (auto&& hitCount: hitCounts[MFSVDPPR]) {
-    opFile << hitCount/nTestItems << " ";
+    opFile << hitCount << ",";
+  }
+  opFile << std::endl;
+  opFile << "MFSVDPPR ";
+  for (auto&& hitCount: hitCounts[MFSVDPPR]) {
+    opFile << hitCount/nTestItems << ",";
   }
   opFile << std::endl;
   
