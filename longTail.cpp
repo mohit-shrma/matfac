@@ -104,6 +104,22 @@ void isModelLocalScoreHits(Model& model, std::unordered_set<int>& sampItems,
 }
 
 
+void isModelModelLocalHits(Model& model1, Model& model2, 
+    std::unordered_set<int>& sampItems, int user, int testItem, 
+    std::vector<double> itemScores, std::vector<int>& Ns, 
+    std::vector<bool>& Nhits) {
+
+  std::vector<std::pair<int, double>> itemRatings;
+  for (auto && item: sampItems) {
+    itemRatings.push_back(std::make_pair(item, 
+     model1.estRating(user, item)*model2.estRating(user, item)*itemScores[item]));
+  } 
+  itemRatings.push_back(std::make_pair(testItem, 
+   model1.estRating(user, testItem)*model2.estRating(user, testItem)*itemScores[testItem]));
+  isHit(itemRatings, testItem, Ns, Nhits);
+}
+
+
 void isLocalScoreHits(std::unordered_set<int>& sampItems, int user, 
     int testItem, std::vector<double> itemScores, std::vector<int>& Ns,
     std::vector<bool>& Nhits) {
@@ -1278,8 +1294,8 @@ void topNsRecTailWSVDFastSamp(Model& model, Model& svdModel, gk_csr_t *trainMat,
     std::unordered_set<int>& invalidItems, std::unordered_set<int>& invalidUsers,
     float headPc, std::vector<int>& Ns, int seed, std::string opFileName) {
 
-  enum {MF, PPR, SVD, MFPPR, SVDPPR, MFSVD};
-  const int NMETH = 6;
+  enum {MF, PPR, SVD, MFPPR, SVDPPR, MFSVD, MFSVDPPR};
+  const int NMETH = 7;
   const int MAXTESTITEMS = 5000;
   const int MAXTESTUSERS = 5000;
   const int SAMPITEMSZ = 1000;
@@ -1484,6 +1500,14 @@ void topNsRecTailWSVDFastSamp(Model& model, Model& svdModel, gk_csr_t *trainMat,
         }
       }
        
+      isModelModelLocalHits(model, svdModel, sampItems, u, testItem, itemScores,
+          Ns, Nhits);
+      for (int i = 0; i< Ns.size(); i++) {
+        if (Nhits[i]) {
+          hitCounts[MFSVDPPR][i] += 1;
+        }
+      }
+      
       nTestItems++;
     }
     
@@ -1542,6 +1566,12 @@ void topNsRecTailWSVDFastSamp(Model& model, Model& svdModel, gk_csr_t *trainMat,
       }
       opFile << std::endl;
       
+      //write MFSVDPPR Recall
+      opFile << "MFSVDPPR ";
+      for (auto&& hitCount: hitCounts[MFSVDPPR]) {
+        opFile << hitCount/nTestItems << " ";
+      }
+      opFile << std::endl;
     }
     
   }
@@ -1630,6 +1660,13 @@ void topNsRecTailWSVDFastSamp(Model& model, Model& svdModel, gk_csr_t *trainMat,
   }
   opFile << std::endl;
  
+  //write MFSVDPPR Recall
+  opFile << "MFSVDPPR ";
+  for (auto&& hitCount: hitCounts[MFSVDPPR]) {
+    opFile << hitCount/nTestItems << " ";
+  }
+  opFile << std::endl;
+  
   //write RMSEs of predictions
   opFile << "MF Test Mean: " << testPredModelMean/nTestItems << std::endl;
   opFile << "SVD Test Mean: " << testPredSVDMean/nTestItems << std::endl;
@@ -1643,8 +1680,8 @@ void topNsRecWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
     std::unordered_set<int>& invalidItems, std::unordered_set<int>& invalidUsers,
     std::vector<int>& Ns, int seed, std::string opFileName) {
 
-  enum {MF, PPR, SVD, MFPPR, SVDPPR, MFSVD};
-  const int NMETH = 6;
+  enum {MF, PPR, SVD, MFPPR, SVDPPR, MFSVD, MFSVDPPR};
+  const int NMETH = 7;
   const int MAXTESTITEMS = 5000;
   const int MAXTESTUSERS = 5000;
   const int SAMPITEMSZ = 1000;
@@ -1825,7 +1862,15 @@ void topNsRecWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
           hitCounts[SVDPPR][i] += 1;
         }
       }
-       
+      
+      isModelModelLocalHits(model, svdModel, sampItems, u, testItem, itemScores,
+          Ns, Nhits);
+      for (int i = 0; i< Ns.size(); i++) {
+        if (Nhits[i]) {
+          hitCounts[MFSVDPPR][i] += 1;
+        }
+      }
+
       nTestItems++;
     }
     
@@ -1884,6 +1929,12 @@ void topNsRecWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
       }
       opFile << std::endl;
       
+      //write MFSVDPPR Recall
+      opFile << "MFSVDPPR ";
+      for (auto&& hitCount: hitCounts[MFSVDPPR]) {
+        opFile << hitCount/nTestItems << " ";
+      }
+      opFile << std::endl;
     }
     
   }
@@ -1970,6 +2021,13 @@ void topNsRecWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
   }
   opFile << std::endl;
  
+  //write MFSVDPPR Recall
+  opFile << "MFSVDPPR ";
+  for (auto&& hitCount: hitCounts[MFSVDPPR]) {
+    opFile << hitCount/nTestItems << " ";
+  }
+  opFile << std::endl;
+  
   //write RMSEs of predictions
   opFile << "MF Test Mean: " << testPredModelMean/nTestItems << std::endl;
   opFile << "SVD Test Mean: " << testPredSVDMean/nTestItems << std::endl;
