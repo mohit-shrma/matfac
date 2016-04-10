@@ -490,36 +490,66 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   
   std::cout << "\nCreating full model...";
   ModelMF fullModel(params, params.seed);
+  //svdFrmSvdlibCSR(data.trainMat, fullModel.facDim, fullModel.uFac, 
+  //    fullModel.iFac, false);
+  //load previously learned factors
   fullModel.loadFacs(params.prefix);
 
   std::cout << "\nCreating original model...";
   ModelMF origModel(params, params.origUFacFile, params.origIFacFile, 
       params.seed);
 
+  std::cout << "\nCreating SVD model...";
+  Params svdParams(params);
+  svdParams.facDim = svdParams.origFacDim;
+  ModelMF svdModel(svdParams, svdParams.seed);
+  svdFrmSvdlibCSR(data.trainMat, svdModel.facDim, svdModel.uFac, 
+      svdModel.iFac, true);
+
   //get number of ratings per user and item, i.e. frequency
   auto rowColFreq = getRowColFreq(data.trainMat);
   auto userFreq = rowColFreq.first;
   auto itemFreq = rowColFreq.second;
-
-  std::string prefix = std::string(params.prefix) + "_invalUsers.txt";
+  
+  std::unordered_set<int> invalidUsers;
+  std::unordered_set<int> invalidItems;
+  std::string modelSign = fullModel.modelSignature();
+  std::cout << "\nModel sign: " << modelSign << std::endl;    
+  
+  
+  std::string prefix = std::string(params.prefix) + "_" + modelSign + "_invalUsers.txt";
   std::vector<int> invalUsersVec = readVector(prefix.c_str());
-  prefix = std::string(params.prefix) + "_invalItems.txt";
+  prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
   std::vector<int> invalItemsVec = readVector(prefix.c_str());
   
-  std::unordered_set<int> invalUsers;
   for (auto v: invalUsersVec) {
-    invalUsers.insert(v);
+    invalidUsers.insert(v);
   }
   
-  std::unordered_set<int> invalItems;
   for (auto v: invalItemsVec) {
-    invalItems.insert(v);
+    invalidItems.insert(v);
   }
 
-  std::cout << "\nTrain RMSE: " << fullModel.RMSE(data.trainMat, invalUsers, invalItems);
-  std::cout << "\nTest RMSE: " << fullModel.RMSE(data.testMat, invalUsers, invalItems);
-  std::cout << "\nVal RMSE: " << fullModel.RMSE(data.valMat, invalUsers, invalItems);
-  
+  ModelMF bestModel(fullModel);
+  //std::cout << "\nStarting model train...";
+  //fullModel.train(data, bestModel, invalidUsers, invalidItems);
+  std::cout << "\nTrain RMSE: " << bestModel.RMSE(data.trainMat, invalidUsers, invalidItems);
+  std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, invalidItems);
+  std::cout << "\nVal RMSE: " << bestModel.RMSE(data.valMat, invalidUsers, invalidItems);
+ 
+  /*
+  //write out invalid users
+  std::string prefix = std::string(params.prefix) + "_" + modelSign + "_invalUsers.txt";
+  writeContainer(begin(invalidUsers), end(invalidUsers), prefix.c_str());
+
+  //write out invalid items
+  prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
+  writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
+  */
+
+  std::cout << "No. of invalid users: " << invalidUsers.size() << std::endl;
+  std::cout << "No. of invalid items: " << invalidItems.size() << std::endl;
+
   //order item in decreasing order of frequency 
   std::vector<std::pair<int, double>> itemFreqPairs;
   for (int i = 0; i < itemFreq.size(); i++) {
@@ -532,25 +562,24 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
                             68374, 21257, 122129};
   */
 
-  int N = 1000;
   int nSampUsers = 5000;
   int nUsers = data.trainMat->nrows;
   int nItems = data.trainMat->ncols;
-
-  //add top-N frequent items to filtered items
+    
+  //get filtered items corresponding to head items
   std::unordered_set<int> filtItems;
-  for (int i = 0; i < N; i++) {
-    filtItems.insert(itemFreqPairs[i].first);
-  }
- 
-  //add filtItems to invalItems
-  //for (auto&& item: filtItems) {
-  //  invalItems.insert(item);
-  //}
-   
+  //auto headItems = getHeadItems(data.trainMat, 0.2); 
+  //filtItems = headItems;
 
-  std::cout << "\nnInvalidUsers: " << invalUsers.size();
-  std::cout << "\nnInvalidItems: " << invalItems.size() <<std::endl;
+  /*
+  //add filtItems to invalItems
+  for (auto&& item: filtItems) {
+    invalItems.insert(item);
+  }
+  */ 
+
+  std::cout << "\nnInvalidUsers: " << invalidUsers.size();
+  std::cout << "\nnInvalidItems: " << invalidItems.size() <<std::endl;
   
   /*
   std::vector<int> invGraphItems = getInvalidUsers(data.graphMat);
@@ -580,7 +609,7 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   */
 
   
-  
+  /*  
   std::vector<float> lambdas = {0.01, 0.25, 0.5, 0.75, 0.99};
   int nThreads = lambdas.size() - 1;
   std::vector<std::thread> threads(nThreads);
@@ -592,7 +621,7 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
         data.graphMat, data.trainMat, nUsers, nItems, std::ref(origModel), 
         std::ref(fullModel), lambdas[thInd], MAX_PR_ITER, std::ref(invalUsers), 
         std::ref(invalItems), std::ref(filtItems), 100, params.seed, prefix);
-
+   */ 
     //prefix = std::string(params.prefix) + "_" + std::to_string(lambdas[thInd]) 
     //  + "_" + std::to_string(N);
     /*
@@ -602,6 +631,7 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
         std::ref(invalItems), std::ref(filtItems), nSampUsers, params.seed, N, 
         prefix);
     */
+  /*
   }
   
   //last parameter in main thread
@@ -610,12 +640,12 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   pprSampUsersRMSEProb(data.graphMat, data.trainMat, nUsers, nItems, origModel, fullModel,
       lambdas[nThreads], MAX_PR_ITER, invalUsers, invalItems, filtItems, 100, 
       params.seed, prefix);
+  */
   //prefix = std::string(params.prefix) + "_" + std::to_string(lambdas[nThreads])
   //  + "_" + std::to_string(N);
   //writeTopBuckRMSEs(origModel, fullModel, data.graphMat, data.trainMat, 
   //    lambdas[nThreads], MAX_PR_ITER, invalUsers, invalItems, filtItems, nSampUsers, 
   //    params.seed, N, prefix);
-  
   
   /*
   //last parameter in main thread
@@ -625,17 +655,23 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
       MAX_PR_ITER, invalUsers, invalItems, filtItems, nSampUsers, params.seed,
       N, prefix);
   */
-   
+  
+  /*
   //wait for the threads to finish
   std::cout << "\nWaiting for threads to finish..." << std::endl;
   std::for_each(threads.begin(), threads.end(), std::mem_fn(&std::thread::join));
-   
+  */
+
   /* 
   prefix = std::string(params.prefix) + "_sampFreq_" + std::to_string(params.alpha);
   pprSampUsersRMSEProb(data.graphMat, data.trainMat, nUsers, nItems, origModel, fullModel,
       params.alpha, MAX_PR_ITER, invalUsers, invalItems, filtItems, 5000, 
       params.seed, prefix);
   */
+  
+  prefix = std::string(params.prefix) + "_samp_notTrain_SVD";
+  svdSampUsersRMSEProb(data.trainMat, nUsers, nItems, origModel, fullModel,
+      svdModel, invalidUsers, invalidItems, filtItems, 5000, params.seed, prefix);
 }
 
 
@@ -1432,7 +1468,8 @@ void testRec(Data& data, Params& params) {
   Params svdParams(params);
   svdParams.facDim = svdParams.origFacDim;
   ModelMF svdModel(svdParams, svdParams.seed);
-  svdFrmSvdlibCSR(data.trainMat, svdModel.facDim, svdModel.uFac, svdModel.iFac, true);
+  svdFrmSvdlibCSR(data.trainMat, svdModel.facDim, svdModel.uFac, svdModel.iFac,
+      true);
 
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
@@ -1473,14 +1510,21 @@ void testRec(Data& data, Params& params) {
   std::cout << "No. of invalid items: " << invalidItems.size() << std::endl;
 
   std::vector<int> Ns = {1, 5, 10, 20, 30, 40, 50};
-  int N = 1;
+  int N = 10;
   std::vector<float> lambdas = {0.01};
-  
+ 
+  /*
   prefix = std::string(params.prefix) + "_SVD_" + std::to_string(svdModel.facDim) 
       + "_MF_" + std::to_string(bestModel.facDim) + "_" + std::to_string(lambdas[0]);
   topNsRecWSVD(bestModel, svdModel, data.trainMat, data.testMat, 
       data.graphMat, lambdas[0], invalidItems, invalidUsers, Ns,
       params.seed, prefix);
+  */
+  
+  prefix = std::string(params.prefix) + "_SVD_" + std::to_string(svdModel.facDim) 
+      + "_MF_" + std::to_string(bestModel.facDim) + "_10_3_" + std::to_string(lambdas[0]);
+  spotRec(bestModel, svdModel, data.trainMat, data.testMat, data.graphMat,
+      lambdas[0], invalidItems, invalidUsers, 10, 3, 0.2, params.seed, prefix);
 }
 
 

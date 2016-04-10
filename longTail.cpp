@@ -1,6 +1,149 @@
 #include "longTail.h"
 
 
+std::unordered_set<int> topNItemsMerge(std::vector<int>& items1, int p, 
+    std::vector<int>& items2, int N) {
+  std::unordered_set<int> items;
+  int i, j;
+  for (i = 0; i < p; i++) {
+    items.insert(items1[i]);
+  }
+  j = 0;
+  while (items.size() < N) {
+    items.insert(items2[j++]);
+  }
+  return items;
+}
+
+
+std::vector<std::pair<int, double>> itemsNTestRatings(Model& model, 
+    std::unordered_set<int>& sampItems, int user, int testItem) {
+ 
+  std::vector<std::pair<int, double>> itemRatings;
+  for (auto && item: sampItems) {
+    itemRatings.push_back(std::make_pair(item, model.estRating(user, item)));
+  }
+  itemRatings.push_back(std::make_pair(testItem, 
+        model.estRating(user, testItem)));
+  return itemRatings; 
+}
+
+
+std::vector<std::pair<int, double>> itemsNTestRatings(Model& model1, 
+    Model& model2, std::unordered_set<int>& sampItems, int user, int testItem) {
+ 
+  std::vector<std::pair<int, double>> itemRatings;
+  for (auto && item: sampItems) {
+    itemRatings.push_back(std::make_pair(item, 
+          model1.estRating(user, item)*model2.estRating(user, item)));
+  }
+  itemRatings.push_back(std::make_pair(testItem, 
+        model1.estRating(user, testItem)*model2.estRating(user, testItem)));
+  return itemRatings; 
+}
+
+
+std::vector<std::pair<int, double>> itemsNTestRatings(Model& model, 
+    std::unordered_set<int>& sampItems, std::vector<double>& itemScores,
+    int user, int testItem) {
+ 
+  std::vector<std::pair<int, double>> itemRatings;
+  for (auto && item: sampItems) {
+    itemRatings.push_back(std::make_pair(item, 
+          model.estRating(user, item)*itemScores[item]));
+  }
+  itemRatings.push_back(std::make_pair(testItem, 
+        model.estRating(user, testItem)*itemScores[testItem]));
+  return itemRatings; 
+}
+
+
+std::vector<std::pair<int, double>> itemsNTestRatings( 
+    std::unordered_set<int>& sampItems, std::vector<double>& itemScores,
+    int user, int testItem) {
+ 
+  std::vector<std::pair<int, double>> itemRatings;
+  for (auto && item: sampItems) {
+    itemRatings.push_back(std::make_pair(item, itemScores[item]));
+  }
+  itemRatings.push_back(std::make_pair(testItem, itemScores[testItem]));
+  return itemRatings; 
+}
+
+
+std::vector<std::pair<int, double>> itemsNTestRatings(Model& model1, 
+    Model& model2, std::unordered_set<int>& sampItems, 
+    std::vector<double>& itemScores, int user, int testItem) {
+ 
+  std::vector<std::pair<int, double>> itemRatings;
+  for (auto && item: sampItems) {
+    itemRatings.push_back(std::make_pair(item, 
+      model1.estRating(user, item)*model2.estRating(user, item)*itemScores[item]));
+  }
+  itemRatings.push_back(std::make_pair(testItem, 
+   model1.estRating(user, testItem)*model2.estRating(user, testItem)*itemScores[testItem]));
+  return itemRatings; 
+}
+
+
+std::vector<int> getModelTopNItems(Model& model, std::unordered_set<int>& sampItems,
+    int user, int testItem, int N) {
+  auto itemRatings = itemsNTestRatings(model, sampItems, user, testItem);
+  
+  //arrange itemRatings such that N is in its place
+  std::nth_element(itemRatings.begin(), itemRatings.begin()+(N-1), itemRatings.end(),
+      descComp);
+  //sort in descending Top-N ratings
+  std::sort(itemRatings.begin(), itemRatings.begin()+N, descComp);
+  
+  std::vector<int> topNItems;
+  for (int i = 0; i < N; i++) {
+    topNItems.push_back(itemRatings[i].first);
+  }
+
+  return topNItems;
+}
+
+
+std::vector<int> getModelModelTopNItems(Model& model1, Model& model2, 
+    std::unordered_set<int>& sampItems, int user, int testItem, int N) {
+  auto itemRatings = itemsNTestRatings(model1, model2, sampItems, user, testItem);
+  
+  //arrange itemRatings such that N is in its place
+  std::nth_element(itemRatings.begin(), itemRatings.begin()+(N-1), itemRatings.end(),
+      descComp);
+  //sort in descending Top-N ratings
+  std::sort(itemRatings.begin(), itemRatings.begin()+N, descComp);
+  
+  std::vector<int> topNItems;
+  for (int i = 0; i < N; i++) {
+    topNItems.push_back(itemRatings[i].first);
+  }
+
+  return topNItems;
+}
+
+
+std::vector<int> getModelLocalTopNItems(Model& model,
+    std::vector<double>& itemScores, std::unordered_set<int>& sampItems,  
+    int user, int testItem, int N) {
+  auto itemRatings = itemsNTestRatings(model, sampItems, itemScores, user, testItem);
+  
+  //arrange itemRatings such that N is in its place
+  std::nth_element(itemRatings.begin(), itemRatings.begin()+(N-1), itemRatings.end(),
+      descComp);
+  //sort in descending Top-N ratings
+  std::sort(itemRatings.begin(), itemRatings.begin()+N, descComp);
+  
+  std::vector<int> topNItems;
+  for (int i = 0; i < N; i++) {
+    topNItems.push_back(itemRatings[i].first);
+  }
+
+  return topNItems;
+}
+
+
 bool isHit(std::vector<std::pair<int, double>>& itemRatings, int testItem,
     int N) {
 
@@ -21,7 +164,7 @@ bool isHit(std::vector<std::pair<int, double>>& itemRatings, int testItem,
     }
   }
   return false;
-}
+} 
 
 
 //NOTE: assuming Ns is sorted
@@ -60,16 +203,9 @@ void isHit(std::vector<std::pair<int, double>>& itemRatings, int testItem,
   }
 }
 
-
 void isModelHits(Model& model, std::unordered_set<int>& sampItems, int user, 
     int testItem, std::vector<int>& Ns, std::vector<bool>& Nhits) {
-
-  std::vector<std::pair<int, double>> itemRatings;
-  for (auto && item: sampItems) {
-    itemRatings.push_back(std::make_pair(item, model.estRating(user, item)));
-  }
-  itemRatings.push_back(std::make_pair(testItem, 
-        model.estRating(user, testItem)));
+  auto itemRatings = itemsNTestRatings(model, sampItems, user, testItem);
   isHit(itemRatings, testItem, Ns, Nhits);
 }
 
@@ -77,111 +213,65 @@ void isModelHits(Model& model, std::unordered_set<int>& sampItems, int user,
 void isModelModelHits(Model& model1, Model& model2, 
     std::unordered_set<int>& sampItems, int user, int testItem,
     std::vector<int>& Ns, std::vector<bool>& Nhits) {
-
-  std::vector<std::pair<int, double>> itemRatings;
-  for (auto && item: sampItems) { 
-    itemRatings.push_back(std::make_pair(item, 
-          model1.estRating(user, item)*model2.estRating(user, item)));
-  }
-  itemRatings.push_back(std::make_pair(testItem, 
-        model1.estRating(user, testItem)*model2.estRating(user, testItem)));
+  auto itemRatings = itemsNTestRatings(model1, model2, sampItems, user, 
+      testItem); 
   isHit(itemRatings, testItem, Ns, Nhits);
 }
 
 
 void isModelLocalScoreHits(Model& model, std::unordered_set<int>& sampItems, 
-    int user, int testItem, std::vector<double> itemScores, std::vector<int>& Ns,
+    int user, int testItem, std::vector<double>& itemScores, std::vector<int>& Ns,
     std::vector<bool>& Nhits) {
-
-  std::vector<std::pair<int, double>> itemRatings;
-  for (auto && item: sampItems) {
-    itemRatings.push_back(std::make_pair(item, 
-          model.estRating(user, item)*itemScores[item]));
-  } 
-  itemRatings.push_back(std::make_pair(testItem, 
-        model.estRating(user, testItem)*itemScores[testItem]));
+  auto itemRatings = itemsNTestRatings(model, sampItems, itemScores, user,
+      testItem);
   isHit(itemRatings, testItem, Ns, Nhits);
 }
 
 
 void isModelModelLocalHits(Model& model1, Model& model2, 
     std::unordered_set<int>& sampItems, int user, int testItem, 
-    std::vector<double> itemScores, std::vector<int>& Ns, 
+    std::vector<double>& itemScores, std::vector<int>& Ns, 
     std::vector<bool>& Nhits) {
-
-  std::vector<std::pair<int, double>> itemRatings;
-  for (auto && item: sampItems) {
-    itemRatings.push_back(std::make_pair(item, 
-     model1.estRating(user, item)*model2.estRating(user, item)*itemScores[item]));
-  } 
-  itemRatings.push_back(std::make_pair(testItem, 
-   model1.estRating(user, testItem)*model2.estRating(user, testItem)*itemScores[testItem]));
+  auto itemRatings = itemsNTestRatings(model1, model2, sampItems, itemScores, user,
+      testItem);
   isHit(itemRatings, testItem, Ns, Nhits);
 }
 
 
 void isLocalScoreHits(std::unordered_set<int>& sampItems, int user, 
-    int testItem, std::vector<double> itemScores, std::vector<int>& Ns,
+    int testItem, std::vector<double>& itemScores, std::vector<int>& Ns,
     std::vector<bool>& Nhits) {
-
-  std::vector<std::pair<int, double>> itemRatings;
-  for (auto && item: sampItems) {
-    itemRatings.push_back(std::make_pair(item, itemScores[item]));
-  } 
-  itemRatings.push_back(std::make_pair(testItem, itemScores[testItem]));
+  auto itemRatings = itemsNTestRatings(sampItems, itemScores, user, testItem);
   isHit(itemRatings, testItem, Ns, Nhits);
 }
 
 
 bool isModelHit(Model& model, std::unordered_set<int>& sampItems, int user, 
     int testItem, int N) {
-
-  std::vector<std::pair<int, double>> itemRatings;
-  for (auto && item: sampItems) {
-    itemRatings.push_back(std::make_pair(item, model.estRating(user, item)));
-  }
-  itemRatings.push_back(std::make_pair(testItem, 
-        model.estRating(user, testItem)));
+  auto itemRatings = itemsNTestRatings(model, sampItems, user, testItem);
   return isHit(itemRatings, testItem, N);
 }
 
 
 bool isModelModelHit(Model& model1, Model& model2, 
     std::unordered_set<int>& sampItems, int user, int testItem, int N) {
-
-  std::vector<std::pair<int, double>> itemRatings;
-  for (auto && item: sampItems) { 
-    itemRatings.push_back(std::make_pair(item, 
-          model1.estRating(user, item)*model2.estRating(user, item)));
-  }
-  itemRatings.push_back(std::make_pair(testItem, 
-        model1.estRating(user, testItem)*model2.estRating(user, testItem)));
+  auto itemRatings = itemsNTestRatings(model1, model2, sampItems, user, 
+      testItem); 
   return isHit(itemRatings, testItem,N);
 }
 
 
 bool isModelLocalScoreHit(Model& model, std::unordered_set<int>& sampItems, int user, 
     int testItem, std::vector<double> itemScores, int N) {
-
-  std::vector<std::pair<int, double>> itemRatings;
-  for (auto && item: sampItems) {
-    itemRatings.push_back(std::make_pair(item, 
-          model.estRating(user, item)*itemScores[item]));
-  } 
-  itemRatings.push_back(std::make_pair(testItem, 
-        model.estRating(user, testItem)*itemScores[testItem]));
+  auto itemRatings = itemsNTestRatings(model, sampItems, itemScores, user,
+      testItem);
   return isHit(itemRatings, testItem,N);
 }
 
 
 bool isLocalScoreHit(std::unordered_set<int>& sampItems, int user, 
     int testItem, std::vector<double> itemScores, int N) {
-
-  std::vector<std::pair<int, double>> itemRatings;
-  for (auto && item: sampItems) {
-    itemRatings.push_back(std::make_pair(item, itemScores[item]));
-  } 
-  itemRatings.push_back(std::make_pair(testItem, itemScores[testItem]));
+  auto itemRatings = itemsNTestRatings(sampItems, itemScores, user, testItem);
   return isHit(itemRatings, testItem,N);
 }
 
@@ -2044,5 +2134,258 @@ void topNsRecWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
     
   opFile.close();
 }
+
+
+void spotRec(Model& model, Model& svdModel, gk_csr_t *trainMat, 
+    gk_csr_t *testMat, gk_csr_t *graphMat, float lambda,
+    std::unordered_set<int>& invalidItems, std::unordered_set<int>& invalidUsers,
+    int N, int tailM, float headPc, int seed, std::string opFileName) {
+
+  const int MAXTESTITEMS = 5000;
+  const int MAXTESTUSERS = 5000;
+  const int SAMPITEMSZ = 1000;
+
+  float testPredModelRating = 0, testRating = 0, testPredSVDRating = 0;
+  float testPredModelMean = 0, testPredSVDMean = 0;
+  int headHitCount = 0, tailHitCount = 0;
+  int headItemsCount = 0, tailItemsCount = 0;
+
+  int nItems = trainMat->ncols;
+  int nUsers = trainMat->nrows;
+  int nSampItems = SAMPITEMSZ;
+  
+  std::unordered_set<int> headItems = getHeadItems(trainMat, headPc);
+
+  std::ofstream opFile(opFileName);
+  
+  if (SAMPITEMSZ > nItems - invalidItems.size()) {
+    nSampItems = nItems - invalidItems.size();
+  }
+
+  opFile << "nSampItems: " << nSampItems << std::endl; 
+
+  opFile << "lambda: " << lambda <<  " seed: " << seed << std::endl;
+
+  //initialize random engine
+  std::mt19937 mt(seed);
+  //item distribution to sample items
+  std::uniform_int_distribution<int> itemDist(0, nItems-1);
+  std::uniform_int_distribution<int> userDist(0, nUsers-1);
+
+  std::vector<std::pair<int, double>> itemScorePairs; 
+  std::vector<double> itemScores(nItems, 0); 
+
+  std::vector<int> testUsers;
+  for (int u = 0; u < testMat->nrows; u++) {
+    //check if invalid users
+    auto search = invalidUsers.find(u);
+    if (search != invalidUsers.end()) {
+      //found n skip
+      continue;
+    }
+    if (testMat->rowptr[u+1] - testMat->rowptr[u] > 0) {
+      testUsers.push_back(u);
+    }
+  }
+
+  opFile << "No. of test users: " << testUsers.size() << std::endl;
+  
+  //shuffle the user item rating indexes
+  std::shuffle(testUsers.begin(), testUsers.end(), mt);
+ 
+  //check if train matrix items are sorted
+  if (!checkIfUISorted(trainMat)) {
+    std::cout << "\nTrain matrix is not sorted"  << std::endl;
+    exit(0);
+  }
+
+  int nTestItems = 0;
+  double testRMSE = 0.0;  
+  bool isHead;
+  for (int k = 0; 
+      k < MAXTESTUSERS && nTestItems < MAXTESTITEMS && k < testUsers.size(); k++) {
+    int u = testUsers[k];
+    std::vector<int> trainItems;
+    for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+      int item = trainMat->rowind[ii];
+      trainItems.push_back(item);
+    }
+    //sort the train items for binary search 
+    //std::sort(trainItems.begin(), trainItems.end())
+    
+    /*
+    //run personalized RW on graph w.r.t. user
+    itemScorePairs = itemGraphItemScores(u, 
+        graphMat, trainMat, lambda, nUsers, nItems, invalidItems);
+    //std::sort(itemScorePairs.begin(), itemScorePairs.end(), compPairsIndAsc);
+    std::fill(itemScores.begin(), itemScores.end(), 0);
+    
+    for (auto&& itemScore: itemScorePairs) {
+      itemScores[itemScore.first] = itemScore.second;
+    }
+  
+    */
+
+    std::unordered_set<int> sampItems;
+    
+    for (int ii = testMat->rowptr[u]; 
+        ii < testMat->rowptr[u+1] && nTestItems < MAXTESTITEMS; ii++) {
+
+      int testItem = testMat->rowind[ii];
+     
+      //skip if testItem is invalid
+      if (invalidItems.find(testItem) != invalidItems.end()) {
+        continue; 
+      }
+      
+      testPredModelRating = model.estRating(u, testItem);
+      testPredModelMean += testPredModelRating;
+      testPredSVDRating = svdModel.estRating(u, testItem);
+      testPredSVDMean += testPredSVDRating;
+      testRating = testMat->rowval[ii];
+      
+      //check if head or tail item
+      if (headItems.find(testItem) != headItems.end()) {
+        //found in head
+        headItemsCount++;
+        isHead = true;
+      } else {
+        tailItemsCount++;
+        isHead = false;
+      }
+
+      double se = (testPredModelRating - testRating)*(testPredModelRating - testRating);
+      testRMSE += se;
+
+      //get unrated items at random
+      sampItems.clear();
+      int insItem = 0;
+      int tryCount = 0;
+      while (sampItems.size() < nSampItems && insItem < nItems 
+          && tryCount < 5000) {
+        
+        int sampItem;
+        tryCount++;
+
+        if (nSampItems < SAMPITEMSZ) {
+          sampItem = insItem++;
+        } else {
+          sampItem = itemDist(mt); 
+        }
+        
+        if (sampItem == testItem) {
+          continue;
+        }
+
+        //check if sample item is present in train
+        if (std::binary_search(trainItems.begin(), trainItems.end(), sampItem)) {
+          continue;
+        }
+        
+        //check if sample item is invalid
+        if (invalidItems.find(sampItem) != invalidItems.end()) {
+          //found n skip
+          continue;
+        }
+        
+        sampItems.insert(sampItem);
+      }
+
+      //blend MFSVD 
+      
+      //get ratings on samp items as per MF * SVD
+      auto itemRatings = itemsNTestRatings(model, svdModel, sampItems, u, testItem);
+
+      //get top (N- tailM) items in their loc
+      std::nth_element(itemRatings.begin(), itemRatings.begin()+(N-tailM-1), 
+          itemRatings.end());
+      //check if present in general rec
+      bool recHit = false;
+      for (int i = 0; i < N-tailM; i++) {
+        if (itemRatings[i].first == testItem) {
+          //hit
+          if (isHead) {
+            headHitCount++;
+          } else {
+            tailHitCount++;
+          }
+          recHit = true;
+          break;
+        }
+      }
+
+      if (!recHit && !isHead && tailM > 0) {
+        //get top top-tailM tailItems after N-tailM to check for hit
+        std::vector<std::pair<int, double>> tailItemRatings;
+        for (auto it = itemRatings.begin()+(N-tailM); it != itemRatings.end(); 
+            it++) {
+          auto itemRating = *it;
+          if (headItems.find(itemRating.first) == headItems.end()) {
+            //tail item
+            tailItemRatings.push_back(itemRating);
+          }
+        }
+        //get top tailM items in their loc
+        std::nth_element(tailItemRatings.begin(), 
+            tailItemRatings.begin()+(tailM-1),
+            tailItemRatings.end());
+        //check in top-tailM
+        for (int i = 0; i < tailM; i++) {
+          if (tailItemRatings[i].first == testItem) {
+            //hit
+            tailHitCount++;
+            break;
+          }
+        }
+      }
+
+      nTestItems++;
+    }
+    
+    if (k % 500 == 0 || nTestItems % 500 == 0) {
+      opFile << "Done.. " << k << std::endl;
+      
+      opFile << "nTestItems: " << nTestItems << std::endl;
+      opFile << "testRMSE: " << sqrt(testRMSE/nTestItems) << std::endl;
+
+      //write recalls
+      opFile << "headCount: " << headItemsCount << std::endl;
+      opFile << "headHitCount: " << headHitCount << std::endl;
+      opFile << "headRecall: " << (float)headHitCount/(float)headItemsCount << std::endl;
+
+      opFile << "tailCount: " << tailItemsCount << std::endl;
+      opFile << "tailHitCount: " << tailHitCount << std::endl;
+      opFile << "tailRecall: " << (float)tailHitCount/(float)tailItemsCount << std::endl;
+      
+      opFile << "hitCount: " << headHitCount+tailHitCount << std::endl;
+      opFile << "Recall: " 
+        << (float)(headHitCount+tailHitCount)/(float)(headItemsCount+tailItemsCount) 
+        << std::endl;
+    }
+    
+  }
+  
+  opFile << "nTestItems: " << nTestItems << std::endl;
+  opFile << "testRMSE: " << sqrt(testRMSE/nTestItems) << std::endl;
+
+  //write recalls
+  opFile << "headCount: " << headItemsCount << std::endl;
+  opFile << "headHitCount: " << headHitCount << std::endl;
+  opFile << "headRecall: " << (float)headHitCount/(float)headItemsCount << std::endl;
+
+  opFile << "tailCount: " << tailItemsCount << std::endl;
+  opFile << "tailHitCount: " << tailHitCount << std::endl;
+  opFile << "tailRecall: " << (float)tailHitCount/(float)tailItemsCount << std::endl;
+  
+  opFile << "hitCount: " << headHitCount+tailHitCount << std::endl;
+  opFile << "Recall: " 
+    << (float)(headHitCount+tailHitCount)/(float)(headItemsCount+tailItemsCount) 
+    << std::endl; 
+ 
+  opFile.close();
+}
+
+
+
 
 
