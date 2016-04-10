@@ -30,4 +30,9 @@ void pprUsersRMSEProb(gk_csr_t *graphMat,
 std::vector<std::pair<int, double>> itemGraphItemScores(int user, 
     gk_csr_t *graphMat, gk_csr_t *mat, float lambda, int nUsers, 
     int nItems, std::unordered_set<int>& invalItems);
+void svdSampUsersRMSEProb(gk_csr_t *trainMat, int nUsers, int nItems, 
+    Model& origModel, Model& fullModel, Model& svdModel,
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
+    std::unordered_set<int>& filtItems, 
+    int nSampUsers, int seed, std::string prefix);
 #endif
