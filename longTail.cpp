@@ -2298,7 +2298,7 @@ void spotRec(Model& model, Model& svdModel, gk_csr_t *trainMat,
 
       //get top (N- tailM) items in their loc
       std::nth_element(itemRatings.begin(), itemRatings.begin()+(N-tailM-1), 
-          itemRatings.end());
+          itemRatings.end(), descComp);
       //check if present in general rec
       bool recHit = false;
       for (int i = 0; i < N-tailM; i++) {
@@ -2328,7 +2328,7 @@ void spotRec(Model& model, Model& svdModel, gk_csr_t *trainMat,
         //get top tailM items in their loc
         std::nth_element(tailItemRatings.begin(), 
             tailItemRatings.begin()+(tailM-1),
-            tailItemRatings.end());
+            tailItemRatings.end(), descComp);
         //check in top-tailM
         for (int i = 0; i < tailM; i++) {
           if (tailItemRatings[i].first == testItem) {
