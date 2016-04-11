@@ -2216,7 +2216,7 @@ void spotRec(Model& model, Model& svdModel, gk_csr_t *trainMat,
     //sort the train items for binary search 
     //std::sort(trainItems.begin(), trainItems.end())
     
-    /*
+    
     //run personalized RW on graph w.r.t. user
     itemScorePairs = itemGraphItemScores(u, 
         graphMat, trainMat, lambda, nUsers, nItems, invalidItems);
@@ -2227,8 +2227,6 @@ void spotRec(Model& model, Model& svdModel, gk_csr_t *trainMat,
       itemScores[itemScore.first] = itemScore.second;
     }
   
-    */
-
     std::unordered_set<int> sampItems;
     
     for (int ii = testMat->rowptr[u]; 
@@ -2294,11 +2292,14 @@ void spotRec(Model& model, Model& svdModel, gk_csr_t *trainMat,
         sampItems.insert(sampItem);
       }
 
-      //blend MFSVD 
+      //blend model 
       
       //get ratings on samp items as per MF * SVD
-      auto itemRatings = itemsNTestRatings(model, svdModel, sampItems, u, testItem);
+      //auto itemRatings = itemsNTestRatings(model, svdModel, sampItems, u, testItem);
 
+      //get ratings on samp items as per MF * PPR
+      auto itemRatings = itemsNTestRatings(model, sampItems, itemScores, u, testItem);
+      
       for (int tailM = 0; tailM <= maxTailM; tailM++) {
         
         //get top ( N - tailM) items in their loc
@@ -2386,7 +2387,10 @@ void spotRec(Model& model, Model& svdModel, gk_csr_t *trainMat,
   
   opFile << "nTestItems: " << nTestItems << std::endl;
   opFile << "testRMSE: " << sqrt(testRMSE/nTestItems) << std::endl;
-      
+
+  opFile << "headItems: " << headItemsCount << std::endl;
+  opFile << "tailItems: " << tailItemsCount << std::endl;
+
   opFile << "Tail size: ";
   for (int tailM = 0; tailM <= maxTailM; tailM++) {
     opFile << tailM << " ";
