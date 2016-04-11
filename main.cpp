@@ -1522,9 +1522,9 @@ void testRec(Data& data, Params& params) {
   */
   
   prefix = std::string(params.prefix) + "_SVD_" + std::to_string(svdModel.facDim) 
-      + "_MF_" + std::to_string(bestModel.facDim) + "_10_3_" + std::to_string(lambdas[0]);
+      + "_MF_" + std::to_string(bestModel.facDim) + "_10_" + std::to_string(lambdas[0]);
   spotRec(bestModel, svdModel, data.trainMat, data.testMat, data.graphMat,
-      lambdas[0], invalidItems, invalidUsers, 10, 3, 0.2, params.seed, prefix);
+      lambdas[0], invalidItems, invalidUsers, 10, 5, 0.2, params.seed, prefix);
 }
 
 

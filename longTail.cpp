@@ -2139,7 +2139,7 @@ void topNsRecWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
 void spotRec(Model& model, Model& svdModel, gk_csr_t *trainMat, 
     gk_csr_t *testMat, gk_csr_t *graphMat, float lambda,
     std::unordered_set<int>& invalidItems, std::unordered_set<int>& invalidUsers,
-    int N, int tailM, float headPc, int seed, std::string opFileName) {
+    int N, int maxTailM, float headPc, int seed, std::string opFileName) {
 
   const int MAXTESTITEMS = 5000;
   const int MAXTESTUSERS = 5000;
@@ -2147,7 +2147,10 @@ void spotRec(Model& model, Model& svdModel, gk_csr_t *trainMat,
 
   float testPredModelRating = 0, testRating = 0, testPredSVDRating = 0;
   float testPredModelMean = 0, testPredSVDMean = 0;
-  int headHitCount = 0, tailHitCount = 0;
+
+  std::vector<int> headHitCount(maxTailM+1, 0);
+  std::vector<int> tailHitCount(maxTailM+1, 0);
+
   int headItemsCount = 0, tailItemsCount = 0;
 
   int nItems = trainMat->ncols;
@@ -2296,49 +2299,54 @@ void spotRec(Model& model, Model& svdModel, gk_csr_t *trainMat,
       //get ratings on samp items as per MF * SVD
       auto itemRatings = itemsNTestRatings(model, svdModel, sampItems, u, testItem);
 
-      //get top (N- tailM) items in their loc
-      std::nth_element(itemRatings.begin(), itemRatings.begin()+(N-tailM-1), 
-          itemRatings.end(), descComp);
-      //check if present in general rec
-      bool recHit = false;
-      for (int i = 0; i < N-tailM; i++) {
-        if (itemRatings[i].first == testItem) {
-          //hit
-          if (isHead) {
-            headHitCount++;
-          } else {
-            tailHitCount++;
-          }
-          recHit = true;
-          break;
-        }
-      }
-
-      if (!recHit && !isHead && tailM > 0) {
-        //get top top-tailM tailItems after N-tailM to check for hit
-        std::vector<std::pair<int, double>> tailItemRatings;
-        for (auto it = itemRatings.begin()+(N-tailM); it != itemRatings.end(); 
-            it++) {
-          auto itemRating = *it;
-          if (headItems.find(itemRating.first) == headItems.end()) {
-            //tail item
-            tailItemRatings.push_back(itemRating);
-          }
-        }
-        //get top tailM items in their loc
-        std::nth_element(tailItemRatings.begin(), 
-            tailItemRatings.begin()+(tailM-1),
-            tailItemRatings.end(), descComp);
-        //check in top-tailM
-        for (int i = 0; i < tailM; i++) {
-          if (tailItemRatings[i].first == testItem) {
+      for (int tailM = 0; tailM <= maxTailM; tailM++) {
+        
+        //get top ( N - tailM) items in their loc
+        std::nth_element(itemRatings.begin(), itemRatings.begin()+(N-tailM-1), 
+            itemRatings.end(), descComp);
+        //check if present in general rec
+        bool recHit = false;
+        for (int i = 0; i < N-tailM; i++) {
+          if (itemRatings[i].first == testItem) {
             //hit
-            tailHitCount++;
+            if (isHead) {
+              headHitCount[tailM]++;
+            } else {
+              tailHitCount[tailM]++;
+            }
+            recHit = true;
             break;
           }
         }
+
+        if (!recHit && !isHead && tailM > 0) {
+          //get top top-tailM tailItems after N-tailM to check for hit
+          std::vector<std::pair<int, double>> tailItemRatings;
+          for (auto it = itemRatings.begin()+(N-tailM); it != itemRatings.end(); 
+              it++) {
+            auto itemRating = *it;
+            if (headItems.find(itemRating.first) == headItems.end()) {
+              //tail item
+              tailItemRatings.push_back(itemRating);
+            }
+          }
+          //get top tailM items in their loc
+          std::nth_element(tailItemRatings.begin(), 
+              tailItemRatings.begin()+(tailM-1),
+              tailItemRatings.end(), descComp);
+          //check in top-tailM
+          for (int i = 0; i < tailM; i++) {
+            if (tailItemRatings[i].first == testItem) {
+              //hit
+              tailHitCount[tailM]++;
+              break;
+            }
+          }
+        }
+
       }
 
+      
       nTestItems++;
     }
     
@@ -2348,40 +2356,61 @@ void spotRec(Model& model, Model& svdModel, gk_csr_t *trainMat,
       opFile << "nTestItems: " << nTestItems << std::endl;
       opFile << "testRMSE: " << sqrt(testRMSE/nTestItems) << std::endl;
 
-      //write recalls
-      opFile << "headCount: " << headItemsCount << std::endl;
-      opFile << "headHitCount: " << headHitCount << std::endl;
-      opFile << "headRecall: " << (float)headHitCount/(float)headItemsCount << std::endl;
-
-      opFile << "tailCount: " << tailItemsCount << std::endl;
-      opFile << "tailHitCount: " << tailHitCount << std::endl;
-      opFile << "tailRecall: " << (float)tailHitCount/(float)tailItemsCount << std::endl;
       
-      opFile << "hitCount: " << headHitCount+tailHitCount << std::endl;
-      opFile << "Recall: " 
-        << (float)(headHitCount+tailHitCount)/(float)(headItemsCount+tailItemsCount) 
-        << std::endl;
+      opFile << "Tail size: ";
+      for (int tailM = 0; tailM <= maxTailM; tailM++) {
+        opFile << tailM << " ";
+      }
+      opFile << std::endl;
+      
+      opFile << "Tail recalls: ";
+      for (int tailM = 0; tailM <= maxTailM; tailM++) {
+        opFile <<  (float)tailHitCount[tailM]/(float)tailItemsCount << ",";
+      }
+      opFile << std::endl;
+      
+      opFile << "Head recalls: ";
+      for (int tailM = 0; tailM <= maxTailM; tailM++) {
+        opFile <<  (float)headHitCount[tailM]/(float)headItemsCount << ",";
+      }
+      opFile << std::endl;
+
+      opFile << "Recalls: ";
+      for (int tailM = 0; tailM <= maxTailM; tailM++) {
+        opFile <<  (float)(headHitCount[tailM]+tailHitCount[tailM])/(float)(headItemsCount+tailItemsCount) << ",";
+      }
+      opFile << std::endl;
     }
     
   }
   
   opFile << "nTestItems: " << nTestItems << std::endl;
   opFile << "testRMSE: " << sqrt(testRMSE/nTestItems) << std::endl;
-
-  //write recalls
-  opFile << "headCount: " << headItemsCount << std::endl;
-  opFile << "headHitCount: " << headHitCount << std::endl;
-  opFile << "headRecall: " << (float)headHitCount/(float)headItemsCount << std::endl;
-
-  opFile << "tailCount: " << tailItemsCount << std::endl;
-  opFile << "tailHitCount: " << tailHitCount << std::endl;
-  opFile << "tailRecall: " << (float)tailHitCount/(float)tailItemsCount << std::endl;
+      
+  opFile << "Tail size: ";
+  for (int tailM = 0; tailM <= maxTailM; tailM++) {
+    opFile << tailM << " ";
+  }
+  opFile << std::endl;
   
-  opFile << "hitCount: " << headHitCount+tailHitCount << std::endl;
-  opFile << "Recall: " 
-    << (float)(headHitCount+tailHitCount)/(float)(headItemsCount+tailItemsCount) 
-    << std::endl; 
- 
+  opFile << "Tail recalls: ";
+  for (int tailM = 0; tailM <= maxTailM; tailM++) {
+    opFile <<  (float)tailHitCount[tailM]/(float)tailItemsCount << ",";
+  }
+  opFile << std::endl;
+  
+  opFile << "Head recalls: ";
+  for (int tailM = 0; tailM <= maxTailM; tailM++) {
+    opFile <<  (float)headHitCount[tailM]/(float)headItemsCount << ",";
+  }
+  opFile << std::endl;
+
+  opFile << "Recalls: ";
+  for (int tailM = 0; tailM <= maxTailM; tailM++) {
+    opFile <<  (float)(headHitCount[tailM]+tailHitCount[tailM])/(float)(headItemsCount+tailItemsCount) << ",";
+  }
+  opFile << std::endl;
+
   opFile.close();
 }
 
