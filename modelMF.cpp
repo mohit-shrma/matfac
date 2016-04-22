@@ -241,7 +241,6 @@ void ModelMF::train(const Data &data, Model &bestModel,
     //check objective
     if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
-            bestValRMSE, prevValRMSE,
             invalidUsers, invalidItems)) {
         break; 
       }

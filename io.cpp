@@ -329,6 +329,75 @@ void writeCSRWSparsityStructure(gk_csr_t *mat, const char *opFileName,
 }
 
 
+int nTuples(std::vector<std::unordered_set<int>> uItemSet) {
+  int count = 0;
+  for (auto&& uSet : uItemSet) {
+    count += uSet.size();
+  }
+  return count;
+}
+
+
+void writeRandMatCSR(const char* opFileName,
+    std::vector<std::vector<double>>& uFac, 
+    std::vector<std::vector<double>>& iFac, int facDim, int seed, int nnz) {
+  
+  int nUsers = uFac.size();
+  int nItems = iFac.size();
+  
+  std::vector<std::unordered_set<int>> uItemSet(nUsers);
+
+  //initialize uniform random engine
+  std::mt19937 mt(seed);
+  //user dist
+  std::uniform_int_distribution<int> uDist(0, nUsers-1);
+  //item dist
+  std::uniform_int_distribution<int> iDist(0, nItems-1);
+
+  for (int u = 0; u < nUsers; u++) {
+    //sample item
+    int item = iDist(mt);
+    uItemSet[u].insert(item);
+  }
+  
+  for (int item = 0; item < nItems; item++) {
+    //sample user
+    int user = uDist(mt);
+    uItemSet[user].insert(item);
+  }
+  
+  int nPairs = nTuples(uItemSet);
+  while(nPairs < nnz) {
+  
+    for (int i = 0; i < nnz-nPairs; i++) {
+      //sample user
+      int user = uDist(mt);
+      //sample item
+      int item = iDist(mt);
+      uItemSet[user].insert(item);
+    }
+    
+    nPairs = nTuples(uItemSet);
+  }
+
+  //write as CSR the sampled entries
+  std::ofstream opFile(opFileName);
+  if (opFile.is_open()) {
+    for (int u = 0; u < nUsers; u++) {
+      auto uSet = uItemSet[u];
+      std::vector<int> items(uSet.begin(), uSet.end());
+      std::sort(items.begin(), items.end());
+      for (auto&& item: items) {
+        opFile << item << " " << dotProd(uFac[u], iFac[item], facDim) << " ";
+      }
+      opFile << std::endl;
+    }
+
+    opFile.close();
+  } 
+}
+
+
 void writeCSRWHalfSparsity(gk_csr_t *mat, const char *opFileName, int uStart,
     int uEnd, int iStart, int iEnd) {
   

@@ -6,7 +6,8 @@ void ModelMFLoc::zeroedTailItemFacs(std::unordered_set<int>& headItems) {
   for (int item = 0; item < nItems; item++) {
     if (headItems.find(item) == headItems.end()) {
       //tail item found
-      for (int i = facDim/2; i < facDim; i++) {
+      //for (int i = 3*(facDim/4); i < facDim; i++) {
+      for (int i = (facDim/2); i < facDim; i++) {
         iFac[item][i] = 0;
       }
     }
@@ -20,7 +21,8 @@ void ModelMFLoc::zeroedTailUserFacs(std::unordered_set<int>& headUsers) {
   for (int user = 0; user < nUsers; user++) {
     if (headUsers.find(user) == headUsers.end()) {
       //tail item found
-      for (int i = facDim/2; i < facDim; i++) {
+      //for (int i = 3*(facDim/4); i < facDim; i++) {
+      for (int i = (facDim/2); i < facDim; i++) {
         uFac[user][i] = 0;
       }
     }
@@ -128,7 +130,7 @@ void ModelMFLoc::train(const Data &data, Model &bestModel,
       effFacDim = facDim;
       if (bTailUsers[u]) {
         //tail user
-        effFacDim = facDim/2;
+        effFacDim = (facDim/2);
       }
 
       for (int i = 0; i < effFacDim; i++) {
@@ -147,7 +149,8 @@ void ModelMFLoc::train(const Data &data, Model &bestModel,
       effFacDim = facDim;
       if (bTailItems[item]) {
         //tail item
-        effFacDim = facDim/2;
+        //effFacDim = 3*(facDim/4);
+        effFacDim = (facDim/2);
       }
 
       for (int i = 0; i < effFacDim; i++) {

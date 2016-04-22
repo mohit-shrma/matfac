@@ -29,14 +29,14 @@ def getURMSEProbs(probFName, rmseFName):
       user = int(cols[0])
       probs = map(float, cols[1:])
       probs = map(np.log10, probs)
-      uProbs[user] = probs[:5]
+      uProbs[user] = probs
   
   with open(rmseFName, 'r') as f:
     for line in f:
       cols = line.strip().split()
       user = int(cols[0])
       rmse = map(float, cols[1:])
-      uRMSE[user] = rmse[:5]
+      uRMSE[user] = rmse
 
   return (uProbs, uRMSE)
 
@@ -115,14 +115,23 @@ def savePlotsToPDF(uRMSE, uProbs, uStats, pdfFName):
 
 
 def getLambdasRMSEProb():
-  lambdas = ['0.05', '0.25', '0.50', '0.75', '0.95']
+  lambdas = ['0.01', '0.25', '0.50', '0.75', '0.99']
   uLambdaDic = {}
   for lamda in lambdas:
     uLambdaDic[lamda] = {}
-    probFName = "mf_50_100_" + str(lamda) + "0000_uProbs.txt"
+    probFName = "mf_50_100_" + str(lamda)  
+    
+    if len(lamda) == 5:
+      probFName = probFName + "000"
+    else:
+      probFName = probFName + "0000"
+    
+    rmseFName = probFName + "_uRMSE.txt" 
+    uStatFName = probFName + "_userStats.txt"
+    probFName = probFName + "_uProbs.txt" 
+
     if (not os.path.isfile(probFName)):
       print 'Not found: ', probFName
-    rmseFName = "mf_50_100_" + str(lamda) + "0000_uRMSE.txt"
     if (not os.path.isfile(rmseFName)):
       print 'Not found: ", rmseFName'
     (uProbs, uRMSE) = getURMSEProbs(probFName, rmseFName)
@@ -131,7 +140,7 @@ def getLambdasRMSEProb():
         uLambdaDic[lamda][user] = [probs]
     for user, rmses in uRMSE.iteritems():
       uLambdaDic[lamda][user].append(rmses)
-    uStats = getUserStats("mf_50_100_" + str(lamda) + "0000_userStats.txt")
+    uStats = getUserStats(uStatFName)
   return (uLambdaDic, uStats)
 
 
@@ -179,7 +188,7 @@ def savePlotsLambdas(uLambdaDic, uStats, pdfFName):
       plt.plot(range(len(rmses)), rmses)
     plt.legend(labels=lambdas)
     axes = plt.gca()
-    axes.set_ylim([0, maxRMSE])
+    #axes.set_ylim([0, maxRMSE])
     plt.xlabel('buckets')
     plt.xticks(range(len(rmses)))
     plt.ylabel('RMSE')
@@ -197,7 +206,7 @@ def savePlotsLambdas(uLambdaDic, uStats, pdfFName):
       plt.plot(range(len(probs)), probs)
     plt.legend(labels=lambdas)
     axes = plt.gca()
-    axes.set_ylim([minProb, maxProb])
+    #axes.set_ylim([minProb, maxProb])
     plt.xlabel('buckets')
     plt.xticks(range(len(probs)))
     plt.ylabel('average steady state probabilities (log10)')

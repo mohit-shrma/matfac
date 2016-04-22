@@ -35,4 +35,20 @@ void svdSampUsersRMSEProb(gk_csr_t *trainMat, int nUsers, int nItems,
     std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
     std::unordered_set<int>& filtItems, 
     int nSampUsers, int seed, std::string prefix);
+void freqSampUsersRMSEProb(gk_csr_t *trainMat, 
+    int nUsers, int nItems, Model& origModel, Model& fullModel,
+    std::unordered_set<int>& invalUsers, 
+    std::unordered_set<int>& invalItems, std::unordered_set<int>& filtItems, 
+    int nSampUsers, int seed, std::string prefix);
+void optSampUsersRMSEProb(gk_csr_t *trainMat, int nUsers, int nItems, 
+    Model& origModel, Model& fullModel, 
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
+    std::unordered_set<int>& filtItems, 
+    int nSampUsers, int seed, std::string prefix);
+void predSampUsersRMSEProb(gk_csr_t *trainMat, gk_csr_t *graphMat,
+    int nUsers, int nItems, 
+    Model& origModel, Model& fullModel, Model& svdModel, 
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
+    std::unordered_set<int>& filtItems, 
+    int nSampUsers, int seed, std::string prefix);
 #endif

@@ -190,6 +190,21 @@ double Model::estRating(int user, int item) {
 }
 
 
+double Model::estAvgRating(int user, std::unordered_set<int>& invalidItems) {
+  double avgRat = 0;
+  int itemCount = 0;
+  for (int item = 0; item < nItems; item++) {
+    if (invalidItems.find(item) != invalidItems.end()) {
+      //invalid
+      continue;
+    }
+    avgRat += estRating(user, item);
+    itemCount++;
+  }
+  return avgRat/itemCount;
+}
+
+
 //compute RMSE with in the submatrix
 double Model::subMatRMSE(gk_csr_t *mat, int uStart, int uEnd, 
     int iStart, int iEnd) {

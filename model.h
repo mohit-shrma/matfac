@@ -118,5 +118,6 @@ class Model {
     void load(const char* uFacName, const char* iFacName, const char* uBFName,
       const char* iBFName, const char*gBFName);
     void updateFac(std::vector<double> &fac, std::vector<double> &grad);
+    double estAvgRating(int user, std::unordered_set<int>& invalidItems) ;
 };
 #endif

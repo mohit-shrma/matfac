@@ -38,7 +38,7 @@ def findAvgItemPerU(csrName, betterUs):
     for line in f:
       cols = line.strip().split()
       nItems = len(cols)/2
-      if u not in betterUSet:
+      if u in betterUSet:
         print u, nItems
       u += 1
 

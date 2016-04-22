@@ -52,6 +52,32 @@ std::vector<std::pair<int, double>> uIGraphItemScores(int user,
 }
 
 
+std::vector<std::pair<int, double>> prodScores(
+    std::vector<std::pair<int, double>> pairScores1,
+    std::vector<std::pair<int, double>> pairScores2) {
+  
+  std::vector<std::pair<int, double>> resScores;
+
+  std::map<int, double> mapScores1;
+  for (auto&& pairScore: pairScores1) {
+    mapScores1[pairScore.first] = pairScore.second;
+  }
+  
+  for (auto&& pairScore: pairScores2) {
+    int key = pairScore.first;
+    double score = pairScore.second;
+    if (mapScores1.find(key) != mapScores1.end()) {
+      resScores.push_back(std::make_pair(key, 
+            mapScores1[key]*score));
+    }
+  }
+  
+  std::sort(resScores.begin(), resScores.end(), descComp);
+  
+  return resScores;
+}
+
+
 std::vector<std::pair<int, double>> itemGraphItemScores(int user, 
     gk_csr_t *graphMat, gk_csr_t *mat, float lambda, int nUsers, 
     int nItems, std::unordered_set<int>& invalItems) {
@@ -124,11 +150,172 @@ std::vector<std::pair<int, double>> itemSVDScores(Model& svdModel, int user,
       //found, invalid, skip
       continue;
     }
+    /*
     //skip if found in train items
     if (std::binary_search(trainItems.begin(), trainItems.end(), item)) {
       continue;
     }
+    */
     itemScores.push_back(std::make_pair(item, svdModel.estRating(user, item)));
+  }
+  
+  //sort items in decreasing order of score
+  std::sort(itemScores.begin(), itemScores.end(), descComp);
+  
+  return itemScores;
+}
+
+
+std::vector<std::pair<int, double>> itemOptScores(Model& origModel, 
+    Model& fullModel, int user,
+    gk_csr_t *mat, int nItems, std::unordered_set<int>& invalItems) {
+
+  std::vector<std::pair<int, double>> itemScores;
+  
+  //asuuming matrix is sorted get training items
+  std::vector<int> trainItems;
+  for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
+    int item = mat->rowind[ii];
+    trainItems.push_back(item);
+  }
+
+  //get pr scores of items
+  for (int item = 0; item < nItems; item++) {
+    //skip if item is invalid
+    auto search = invalItems.find(item);
+    if (search != invalItems.end()) {
+      //found, invalid, skip
+      continue;
+    }
+    /*
+    //skip if found in train items
+    if (std::binary_search(trainItems.begin(), trainItems.end(), item)) {
+      continue;
+    }
+    */
+    auto origRating = origModel.estRating(user, item);
+    auto predRating = fullModel.estRating(user, item);
+    auto diff = fabs(origRating - predRating);
+    //since need to be sorted by ascending order add negative of diff
+    itemScores.push_back(std::make_pair(item, -1*diff));
+  }
+  
+  //sort items in decreasing order of score
+  std::sort(itemScores.begin(), itemScores.end(), descComp);
+  
+  return itemScores;
+}
+
+
+std::vector<std::pair<int, double>> itemPredScores( 
+    Model& fullModel, Model& origModel, int user,
+    gk_csr_t *mat, int nItems, std::unordered_set<int>& invalItems) {
+
+  std::vector<std::pair<int, double>> itemScores;
+  
+  //asuuming matrix is sorted get training items
+  std::vector<int> trainItems;
+  for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
+    int item = mat->rowind[ii];
+    trainItems.push_back(item);
+  }
+
+  //get scores of items
+  for (int item = 0; item < nItems; item++) {
+    //skip if item is invalid
+    auto search = invalItems.find(item);
+    if (search != invalItems.end()) {
+      //found, invalid, skip
+      continue;
+    }
+    
+    //skip if found in train items
+    if (std::binary_search(trainItems.begin(), trainItems.end(), item)) {
+      continue;
+    }
+    
+    auto predRating = fullModel.estRating(user, item);
+    auto origRating = origModel.estRating(user, item);
+    itemScores.push_back(std::make_pair(item, predRating));
+  }
+  
+  //sort items in decreasing order of score
+  std::sort(itemScores.begin(), itemScores.end(), descComp);
+  
+  return itemScores;
+}
+
+
+std::vector<std::pair<int, double>> itemOrigScores( 
+    Model& fullModel, Model& origModel, int user,
+    gk_csr_t *mat, int nItems, std::unordered_set<int>& invalItems) {
+
+  std::vector<std::pair<int, double>> itemScores;
+  
+  //asuuming matrix is sorted get training items
+  std::vector<int> trainItems;
+  for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
+    int item = mat->rowind[ii];
+    trainItems.push_back(item);
+  }
+
+  //get scores of items
+  for (int item = 0; item < nItems; item++) {
+    //skip if item is invalid
+    auto search = invalItems.find(item);
+    if (search != invalItems.end()) {
+      //found, invalid, skip
+      continue;
+    }
+    
+    //skip if found in train items
+    if (std::binary_search(trainItems.begin(), trainItems.end(), item)) {
+      continue;
+    }
+    
+    auto predRating = fullModel.estRating(user, item);
+    auto origRating = origModel.estRating(user, item);
+    itemScores.push_back(std::make_pair(item, origRating));
+  }
+  
+  //sort items in decreasing order of score
+  std::sort(itemScores.begin(), itemScores.end(), descComp);
+  
+  return itemScores;
+}
+
+
+std::vector<std::pair<int, double>> itemFreqScores( 
+    Model& fullModel, Model& origModel, std::vector<double> itemFreq,
+    int user,
+    gk_csr_t *mat, int nItems, std::unordered_set<int>& invalItems) {
+
+  std::vector<std::pair<int, double>> itemScores;
+  
+  //asuuming matrix is sorted get training items
+  std::vector<int> trainItems;
+  for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
+    int item = mat->rowind[ii];
+    trainItems.push_back(item);
+  }
+
+  //get scores of items
+  for (int item = 0; item < nItems; item++) {
+    //skip if item is invalid
+    auto search = invalItems.find(item);
+    if (search != invalItems.end()) {
+      //found, invalid, skip
+      continue;
+    }
+    
+    //skip if found in train items
+    if (std::binary_search(trainItems.begin(), trainItems.end(), item)) {
+      continue;
+    }
+    
+    auto predRating = fullModel.estRating(user, item);
+    auto origRating = origModel.estRating(user, item);
+    itemScores.push_back(std::make_pair(item, itemFreq[item]));
   }
   
   //sort items in decreasing order of score
@@ -155,7 +342,7 @@ void itemRMSEsProb(int user, gk_csr_t *graphMat, gk_csr_t *trainMat,
     double r_ui_est = fullModel.estRating(user, item);
     double se = (r_ui - r_ui_est)*(r_ui - r_ui_est);
     itemsRMSE.push_back(se);
-    itemsProb.push_back(score);
+    itemsProb.push_back(r_ui_est);
   }
 }
 
@@ -177,7 +364,7 @@ void itemRMSEsOrdByItemScores(int user, std::unordered_set<int>& filtItems,
     double r_ui_est = fullModel.estRating(user, item);
     double se = (r_ui - r_ui_est)*(r_ui - r_ui_est);
     itemsRMSE.push_back(se);
-    itemsScore.push_back(score);
+    itemsScore.push_back(r_ui_est);
   }
 }
 
@@ -281,20 +468,6 @@ void pprSampUsersRMSEProb(gk_csr_t *graphMat, gk_csr_t *trainMat,
   std::string probFName = prefix + "_uProbs.txt";
   std::ofstream probOpFile(probFName.c_str());
 
-  auto rowColFreq = getRowColFreq(trainMat);
-  auto userFreq = rowColFreq.first;
-  auto itemFreq = rowColFreq.second;
-  
-  /*
-  std::vector<std::pair<int, double>> itemScores;
-  for (int i = 0; i < itemFreq.size(); i++) {
-    itemScores.push_back(std::make_pair(i, itemFreq[i]));
-  }
-  //readItemScores(itemScores, "bwscores2.txt");
-  //sort items in decreasing order of score
-  std::sort(itemScores.begin(), itemScores.end(), descComp);
-  */
-
   while (sampUsers.size() < nSampUsers) {
     //sample user
     int user = uDist(mt);
@@ -311,20 +484,12 @@ void pprSampUsersRMSEProb(gk_csr_t *graphMat, gk_csr_t *trainMat,
       //found n skip
       continue;
     }
-
-    //check if user rating is b/w 50 and 100
-    int nRatings = trainMat->rowptr[user+1] - trainMat->rowptr[user];
-    if (nRatings < 50 || nRatings > 100) {
-      continue;
-    }
-
+    
     //insert the sampled user
     sampUsers.insert(user);
 
     itemRMSEsProb(user, graphMat, trainMat, lambda, nUsers, nItems, invalItems,
         filtItems, fullModel, origModel, itemsRMSE, itemsProb);
-    //itemRMSEsProb2(user, graphMat, trainMat, lambda, nUsers, nItems, invalItems,
-    //    filtItems, fullModel, origModel, itemsRMSE, itemsProb, itemScores);
     
     //reset user specific vec to 0
     std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
@@ -360,19 +525,146 @@ void pprSampUsersRMSEProb(gk_csr_t *graphMat, gk_csr_t *trainMat,
 
   for (int i = 0; i < nBuckets; i++) {
     rmseScores[i] = sqrt(rmseScores[i]/bucketNNZ[i]);
+    probs[i] = probs[i]/bucketNNZ[i];
   }
   std::string rmseScoreFName = prefix + "_rmseBuckets.txt";
   writeVector(rmseScores, rmseScoreFName.c_str());
+  
+  std::string avgScoreFName = prefix + "_avgScoreByPR.txt";
+  writeVector(probs, avgScoreFName.c_str());
 
   //generate stats for sampled users
-  
+  /*
   std::vector<int> users;
   for (auto&& user: sampUsers) {
     users.push_back(user);
   }
   std::string statsFName = prefix + "_userStats.txt";
   getUserStats(users, trainMat, invalItems, statsFName.c_str());
+  */  
+}
+
+
+void freqSampUsersRMSEProb(gk_csr_t *trainMat, 
+    int nUsers, int nItems, Model& origModel, Model& fullModel,
+    std::unordered_set<int>& invalUsers, 
+    std::unordered_set<int>& invalItems, std::unordered_set<int>& filtItems, 
+    int nSampUsers, int seed, std::string prefix) {
   
+  int nBuckets = 10;
+  int nItemsPerBuck = nItems/nBuckets;
+
+  std::vector<double> rmseScores(nBuckets, 0);
+  std::vector<double> uRMSEScores(nBuckets, 0);
+  
+  std::vector<double> scores(nBuckets, 0);
+  std::vector<double> uScores(nBuckets, 0);
+  
+  std::vector<double> bucketNNZ(nBuckets, 0);
+  std::vector<double> uBucketNNZ(nBuckets, 0);
+
+  std::vector<double> itemsRMSE;
+  std::vector<double> itemsScore;
+
+  //initialize random engine
+  std::mt19937 mt(seed);
+  //user distribution to sample users
+  std::uniform_int_distribution<int> uDist(0, nUsers-1);
+
+  std::unordered_set<int> sampUsers;
+
+  std::string rmseFName = prefix + "_uRMSE.txt" ;
+  std::ofstream rmseOpFile(rmseFName.c_str()); 
+
+  std::string scoreFName = prefix + "_uScore.txt";
+  std::ofstream scoreOpFile(scoreFName.c_str());
+
+  auto rowColFreq = getRowColFreq(trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+  
+  std::vector<std::pair<int, double>> itemScoresPair;
+  for (int i = 0; i < itemFreq.size(); i++) {
+    itemScoresPair.push_back(std::make_pair(i, itemFreq[i]));
+  }
+  //readItemScores(itemScores, "bwscores2.txt");
+  //sort items in decreasing order of score
+  std::sort(itemScoresPair.begin(), itemScoresPair.end(), descComp);
+
+  while (sampUsers.size() < nSampUsers) {
+    //sample user
+    int user = uDist(mt);
+
+    auto search = sampUsers.find(user);
+    if (search != sampUsers.end()) {
+      //already sampled user
+      continue;
+    }
+  
+    //skip if user is invalid
+    search = invalUsers.find(user);
+    if (search != invalUsers.end()) {
+      //found n skip
+      continue;
+    }
+    
+    //insert the sampled user
+    sampUsers.insert(user);
+    
+    itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE,
+        itemsScore, itemScoresPair);
+
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uRMSEScores.begin(), uRMSEScores.end(), 0);
+    updateBucketsArr(uRMSEScores, uBucketNNZ, itemsRMSE, nBuckets);
+    
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uScores.begin(), uScores.end(), 0);
+    updateBucketsArr(uScores, uBucketNNZ, itemsScore, nBuckets);
+
+    //write and update aggregated buckets
+    rmseOpFile << user << " ";
+    scoreOpFile << user << " ";
+    for (int i = 0; i < nBuckets; i++) {
+      bucketNNZ[i]  += uBucketNNZ[i];
+      rmseScores[i] += uRMSEScores[i];
+      rmseOpFile << sqrt(uRMSEScores[i]/uBucketNNZ[i]) << " ";
+      scores[i]      += uScores[i];
+      scoreOpFile << uScores[i]/uBucketNNZ[i] << " ";
+    }
+    rmseOpFile << std::endl;
+    scoreOpFile << std::endl;
+    
+    if (sampUsers.size() % PROGU == 0) {
+      std::cout << "Done... " << sampUsers.size()  << std::endl;
+    }
+
+  }
+  
+  rmseOpFile.close();
+  scoreOpFile.close();
+
+  for (int i = 0; i < nBuckets; i++) {
+    rmseScores[i] = sqrt(rmseScores[i]/bucketNNZ[i]);
+    scores[i] = scores[i]/bucketNNZ[i];
+  }
+  std::string rmseScoreFName = prefix + "_rmseBuckets.txt";
+  writeVector(rmseScores, rmseScoreFName.c_str());
+  
+  std::string avgScoreFName = prefix + "_avgScoreByFreq.txt";
+  writeVector(scores, avgScoreFName.c_str());
+
+  //generate stats for sampled users
+  /*
+  std::vector<int> users;
+  for (auto&& user: sampUsers) {
+    users.push_back(user);
+  }
+  std::string statsFName = prefix + "_userStats.txt";
+  getUserStats(users, trainMat, invalItems, statsFName.c_str());
+  */  
 }
 
 
@@ -410,10 +702,6 @@ void svdSampUsersRMSEProb(gk_csr_t *trainMat, int nUsers, int nItems,
   std::string scoreFName = prefix + "_uScore.txt" ;
   std::ofstream scoreOpFile(scoreFName.c_str()); 
   
-  auto rowColFreq = getRowColFreq(trainMat);
-  auto userFreq = rowColFreq.first;
-  auto itemFreq = rowColFreq.second;
-
   while (sampUsers.size() < nSampUsers) {
     //sample user
     int user = uDist(mt);
@@ -475,9 +763,428 @@ void svdSampUsersRMSEProb(gk_csr_t *trainMat, int nUsers, int nItems,
 
   for (int i = 0; i < nBuckets; i++) {
     rmseScores[i] = sqrt(rmseScores[i]/bucketNNZ[i]);
+    scores[i] = scores[i]/bucketNNZ[i];
   }
   std::string rmseScoreFName = prefix + "_rmseBuckets.txt";
   writeVector(rmseScores, rmseScoreFName.c_str());
+
+  std::string avgScoreFName = prefix + "_avgScore.txt";
+  writeVector(scores, avgScoreFName.c_str());
+
+  /*
+  //generate stats for sampled users
+  std::vector<int> users;
+  for (auto&& user: sampUsers) {
+    users.push_back(user);
+  }
+  std::string statsFName = prefix + "_userStats.txt";
+  getUserStats(users, trainMat, invalItems, statsFName.c_str());
+  */  
+}
+
+
+void optSampUsersRMSEProb(gk_csr_t *trainMat, int nUsers, int nItems, 
+    Model& origModel, Model& fullModel, 
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
+    std::unordered_set<int>& filtItems, 
+    int nSampUsers, int seed, std::string prefix) {
+  
+  int nBuckets = 10;
+  int nItemsPerBuck = nItems/nBuckets;
+
+  std::vector<double> rmseScores(nBuckets, 0);
+  std::vector<double> uRMSEScores(nBuckets, 0);
+  
+  std::vector<double> scores(nBuckets, 0);
+  std::vector<double> uScores(nBuckets, 0);
+  
+  std::vector<double> bucketNNZ(nBuckets, 0);
+  std::vector<double> uBucketNNZ(nBuckets, 0);
+
+  std::vector<double> itemsRMSE;
+  std::vector<double> itemsScore;
+
+  //initialize random engine
+  std::mt19937 mt(seed);
+  //user distribution to sample users
+  std::uniform_int_distribution<int> uDist(0, nUsers-1);
+
+  std::unordered_set<int> sampUsers;
+
+  std::string rmseFName = prefix + "_uRMSE.txt" ;
+  std::ofstream rmseOpFile(rmseFName.c_str()); 
+
+  std::string scoreFName = prefix + "_uScore.txt" ;
+  std::ofstream scoreOpFile(scoreFName.c_str()); 
+  
+  while (sampUsers.size() < nSampUsers) {
+    //sample user
+    int user = uDist(mt);
+
+    auto search = sampUsers.find(user);
+    if (search != sampUsers.end()) {
+      //already sampled user
+      continue;
+    }
+  
+    //skip if user is invalid
+    search = invalUsers.find(user);
+    if (search != invalUsers.end()) {
+      //found n skip
+      continue;
+    }
+
+    //insert the sampled user
+    sampUsers.insert(user);
+    
+    //get item scores ordered by SVD in decreasing order
+    auto itemScoresPair = itemOptScores(origModel, fullModel, user, trainMat, 
+        nItems, invalItems);
+    
+    //get itemsRMSE and itemsScore
+    itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
+        itemsScore, itemScoresPair);
+    
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uRMSEScores.begin(), uRMSEScores.end(), 0);
+    updateBucketsArr(uRMSEScores, uBucketNNZ, itemsRMSE, nBuckets);
+
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uScores.begin(), uScores.end(), 0);
+    updateBucketsArr(uScores, uBucketNNZ, itemsScore, nBuckets);
+    
+    //write and update aggregated buckets
+    rmseOpFile << user << " ";
+    for (int i = 0; i < nBuckets; i++) {
+      bucketNNZ[i]  += uBucketNNZ[i];
+      rmseScores[i] += uRMSEScores[i];
+      rmseOpFile << sqrt(uRMSEScores[i]/uBucketNNZ[i]) << " ";
+      scores[i]     += uScores[i];
+      scoreOpFile << uScores[i]/uBucketNNZ[i] << " ";
+    }
+    rmseOpFile << std::endl;
+    scoreOpFile << std::endl;
+
+    if (sampUsers.size() % PROGU == 0) {
+      std::cout << "Done... " << sampUsers.size() << " :" << std::endl;
+    }
+
+  }
+  
+  rmseOpFile.close();
+  scoreOpFile.close();
+
+  for (int i = 0; i < nBuckets; i++) {
+    rmseScores[i] = sqrt(rmseScores[i]/bucketNNZ[i]);
+    scores[i] = scores[i]/bucketNNZ[i];
+  }
+  std::string rmseScoreFName = prefix + "_rmseBuckets.txt";
+  writeVector(rmseScores, rmseScoreFName.c_str());
+
+  std::string avgScoreFName = prefix + "_avgScore.txt";
+  writeVector(scores, avgScoreFName.c_str());
+
+  /*
+  //generate stats for sampled users
+  std::vector<int> users;
+  for (auto&& user: sampUsers) {
+    users.push_back(user);
+  }
+  std::string statsFName = prefix + "_userStats.txt";
+  getUserStats(users, trainMat, invalItems, statsFName.c_str());
+  */  
+}
+
+
+void countInvRatings(Model& origModel, Model& fullModel, int user, 
+    std::vector<std::pair<int, double>> itemPreds, float avgRat,
+    int& predLowcount, int& predHighcount, int& lowCount, int& highCount, int N) {
+  
+  for (int i = 0; i < N; i++) {
+    
+    auto itemPred = itemPreds[i];
+    auto item = itemPred.first;
+    auto origRat = origModel.estRating(user, item);
+    auto predRat = fullModel.estRating(user, item);    
+    
+    if (origRat >= avgRat*1.1) {
+      highCount++;
+      //originally rated high
+      if (predRat <= avgRat*0.9) {
+        //predicted low
+        predLowcount++;
+      }
+    } else if (origRat <= avgRat*0.9) {
+      //originally rated low
+      lowCount++;
+      if (predRat >= avgRat*1.1) {
+        //predicted high
+        predHighcount++;
+      }
+    }
+    
+  }
+}
+
+
+//items in B not in A
+std::vector<std::pair<int, double>> compOrderingDiff(
+    std::vector<std::pair<int, double>> itemPairsA,
+    std::vector<std::pair<int, double>> itemPairsB, int sizeA) {
+  int overlapCount = 0;
+  
+  std::unordered_set<int> itemsA;
+  std::vector<std::pair<int, double>> diff;
+
+  for (int i = 0; i < sizeA; i++) {
+    int item = itemPairsA[i].first;
+    itemsA.insert(item);
+  }
+  
+  for (int i = 0; i < sizeA && i < itemPairsB.size(); i++) {
+    int item = itemPairsB[i].first;
+    if (itemsA.find(item) == itemsA.end()) {
+      //diff
+      diff.push_back(itemPairsB[i]);
+    }
+  }
+  return diff;
+}
+
+
+double compOrderingOverlap(std::vector<std::pair<int, double>> itemPairsA,
+    std::vector<std::pair<int, double>> itemPairsB, int sizeA) {
+  int overlapCount = 0;
+  std::unordered_set<int> itemsA;
+  for (int i = 0; i < sizeA; i++) {
+    int item = itemPairsA[i].first;
+    itemsA.insert(item);
+  }
+  
+  for (int i = 0; i < sizeA; i++) {
+    int item = itemPairsB[i].first;
+    if (itemsA.find(item) != itemsA.end()) {
+      //overlap
+      overlapCount++;
+    }
+  }
+  
+
+  return (double)overlapCount/ (double)itemsA.size();
+}
+
+
+void predSampUsersRMSEProb(gk_csr_t *trainMat, gk_csr_t *graphMat, 
+    int nUsers, int nItems, 
+    Model& origModel, Model& fullModel, Model& svdModel, 
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
+    std::unordered_set<int>& filtItems, 
+    int nSampUsers, int seed, std::string prefix) {
+  
+  int nBuckets = 10;
+  int nItemsPerBuck = nItems/nBuckets;
+
+  std::vector<double> rmseScores(nBuckets, 0);
+  std::vector<double> uRMSEScores(nBuckets, 0);
+  
+  std::vector<double> scores(nBuckets, 0);
+  std::vector<double> uScores(nBuckets, 0);
+  
+  std::vector<double> bucketNNZ(nBuckets, 0);
+  std::vector<double> uBucketNNZ(nBuckets, 0);
+
+  std::vector<double> itemsRMSE;
+  std::vector<double> itemsScore;
+
+  //initialize random engine
+  std::mt19937 mt(seed);
+  //user distribution to sample users
+  std::uniform_int_distribution<int> uDist(0, nUsers-1);
+
+  std::unordered_set<int> sampUsers;
+
+  std::string rmseFName = prefix + "_uRMSE.txt" ;
+  std::ofstream rmseOpFile(rmseFName.c_str()); 
+
+  std::string scoreFName = prefix + "_uScore.txt" ;
+  std::ofstream scoreOpFile(scoreFName.c_str()); 
+ 
+  auto avgTrainRating = meanRating(trainMat);
+  
+  int predLowcount = 0, predHighcount = 0;
+  int lowCount = 0, highCount = 0;
+  
+  auto rowColFreq = getRowColFreq(trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+
+  int topBuckN = 10;
+
+  std::cout << "\ntopBuckN: " << topBuckN << std::endl;
+
+  int nHighPredUsers = 0;
+
+  double predOrigOverlap = 0, svdOrigOverlap = 0, predSVDOrigOverlap = 0;
+  double pprOrigOverlap = 0;
+  double svdNotInPredOrigOverlap = 0;
+  double pprNotInPredOrigOverlap = 0;
+  double freqOrigOverlap = 0, svdPredOverlap = 0;
+  double freqNotInPredOrigOverlap = 0;
+
+  while (sampUsers.size() < nSampUsers) {
+    //sample user
+    int user = uDist(mt);
+
+    auto search = sampUsers.find(user);
+    if (search != sampUsers.end()) {
+      //already sampled user
+      continue;
+    }
+  
+    //skip if user is invalid
+    search = invalUsers.find(user);
+    if (search != invalUsers.end()) {
+      //found n skip
+      continue;
+    }
+
+    //insert the sampled user
+    sampUsers.insert(user);
+    
+    //get item scores ordered by predicted scores in decreasing order
+    //auto headItems = getHeadItems(trainMat, 0.2);
+
+    auto itemPredScoresPair = itemPredScores(fullModel, origModel, user, trainMat, 
+        nItems, invalItems);
+    auto itemOrigScoresPair = itemOrigScores(fullModel, origModel, user, trainMat, 
+        nItems, invalItems);
+    auto itemSVDScoresPair = itemSVDScores(svdModel, user, trainMat, nItems, 
+        invalItems);
+    //auto itemPPRScoresPair = itemGraphItemScores(user, graphMat, trainMat, 
+    //    0.01, nUsers, nItems, invalItems);
+
+    auto itemFreqPair = itemFreqScores(fullModel, origModel, itemFreq,
+        user, trainMat, nItems, invalItems);
+    //auto itemPredSVDScoresPair = prodScores(itemPredScoresPair, 
+    //    itemSVDScoresPair);
+    auto svdItemPairsNotInPred = compOrderingDiff(itemPredScoresPair,
+        itemSVDScoresPair, topBuckN);
+    
+    //auto pprItemPairsNotInPred = compOrderingDiff(itemPredScoresPair,
+    //    itemPPRScoresPair, topBuckN);
+
+    auto freqItemPairsNotInPred = compOrderingDiff(itemPredScoresPair,
+        itemFreqPair, topBuckN);
+
+    svdNotInPredOrigOverlap += compOrderingOverlap(itemOrigScoresPair,
+        svdItemPairsNotInPred, topBuckN);
+    //pprNotInPredOrigOverlap += compOrderingOverlap(itemOrigScoresPair,
+    //    pprItemPairsNotInPred, topBuckN);
+    freqNotInPredOrigOverlap += compOrderingOverlap(itemOrigScoresPair,
+        freqItemPairsNotInPred, topBuckN);
+
+    predOrigOverlap += compOrderingOverlap(itemOrigScoresPair, 
+        itemPredScoresPair, topBuckN);
+    svdOrigOverlap += compOrderingOverlap(itemOrigScoresPair,
+        itemSVDScoresPair, topBuckN);
+   // predSVDOrigOverlap += compOrderingOverlap(itemOrigScoresPair,
+   //     itemPredSVDScoresPair, topBuckN);
+    freqOrigOverlap += compOrderingOverlap(itemOrigScoresPair,
+        itemFreqPair, topBuckN);
+    //pprOrigOverlap += compOrderingOverlap(itemOrigScoresPair,
+    //    itemPPRScoresPair, topBuckN);
+
+    svdPredOverlap += compOrderingOverlap(itemSVDScoresPair,
+        itemPredScoresPair, topBuckN);
+
+    //auto itemPredPPRScoresPair = prodScores(itemPredScoresPair,
+    //    itemPPRScoresPair);
+
+    auto itemScoresPair = itemOrigScoresPair;
+    auto avgUserRating = origModel.estAvgRating(user, invalItems);
+    int temp = predHighcount;
+    
+    int uPredLowCount = 0, uPredHighCount = 0, uLowcount = 0, uHighCount = 0;
+
+    countInvRatings(origModel, fullModel, user, itemScoresPair, 
+        avgUserRating, predLowcount, predHighcount, lowCount, highCount, 
+        topBuckN);
+    if (predHighcount != temp) {
+      nHighPredUsers++;
+    }
+
+    //get itemsRMSE and itemsScore
+    itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
+        itemsScore, itemScoresPair);
+    
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uRMSEScores.begin(), uRMSEScores.end(), 0);
+    updateBucketsArr(uRMSEScores, uBucketNNZ, itemsRMSE, nBuckets);
+
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uScores.begin(), uScores.end(), 0);
+    updateBucketsArr(uScores, uBucketNNZ, itemsScore, nBuckets);
+    
+    //write and update aggregated buckets
+    rmseOpFile << user << " ";
+    for (int i = 0; i < nBuckets; i++) {
+      bucketNNZ[i]  += uBucketNNZ[i];
+      rmseScores[i] += uRMSEScores[i];
+      rmseOpFile << sqrt(uRMSEScores[i]/uBucketNNZ[i]) << " ";
+      scores[i]     += uScores[i];
+      scoreOpFile << uScores[i]/uBucketNNZ[i] << " ";
+    }
+    rmseOpFile << std::endl;
+    scoreOpFile << std::endl;
+
+    if (sampUsers.size() % PROGU == 0) {
+      std::cout << "Done... " << sampUsers.size() << " :" << std::endl;
+    }
+
+  }
+  
+  rmseOpFile.close();
+  scoreOpFile.close();
+
+  for (int i = 0; i < nBuckets; i++) {
+    rmseScores[i] = sqrt(rmseScores[i]/bucketNNZ[i]);
+    scores[i] = scores[i]/bucketNNZ[i];
+  }
+  std::string rmseScoreFName = prefix + "_rmseBuckets.txt";
+  writeVector(rmseScores, rmseScoreFName.c_str());
+
+  std::string avgScoreFName = prefix + "_avgScore.txt";
+  writeVector(scores, avgScoreFName.c_str());
+
+  std::cout << "\nbuck size: " << topBuckN 
+    << " predHighCount: " << (float)predHighcount << "\nlowCount: " << lowCount 
+    << "\nhighPredUsers: " << nHighPredUsers
+    << "\nlow rated Items pred high pc: " << (float)predHighcount/lowCount 
+    << "\nlow rated Items pc: "<< (float)lowCount/((float)topBuckN*sampUsers.size()) 
+    << std::endl;
+  
+  std::cout << "\npredLoCount: " << (float)predLowcount << " highcount: "
+    << highCount << " pc: " << (float)predLowcount/highCount  
+    << "\nhigh rated items pred low pc: " << (float)predLowcount/highCount 
+    << "\nhigh rated items pc: " << (float)highCount/((float)topBuckN*sampUsers.size())
+    << std::endl;
+  
+  std::cout << "predOrigOverlap: " << predOrigOverlap/sampUsers.size() << std::endl;
+  std::cout << "svdOrigOverlap: " << svdOrigOverlap/sampUsers.size() << std::endl;
+  std::cout << "freqOrigOverlap: " << freqOrigOverlap/sampUsers.size() << std::endl;
+  std::cout << "freqNotInPredOrigOverlap: " << freqNotInPredOrigOverlap/sampUsers.size() 
+    << std::endl;
+  //std::cout << "pprOrigOverlap: " << pprOrigOverlap/sampUsers.size() << std::endl;
+  //std::cout << "pprNotInPredOrigOverlap: " << pprNotInPredOrigOverlap/sampUsers.size() 
+  //  << std::endl;
+  std::cout << "svdPredOverlap: " << svdPredOverlap/sampUsers.size() << std::endl;
+  std::cout << "svdNotInPredOrigOverlap: " << svdNotInPredOrigOverlap/sampUsers.size() 
+    << std::endl;
+  //std::cout << "predSVDOrigOverlap: " << predSVDOrigOverlap/sampUsers.size() << std::endl;
 
   /*
   //generate stats for sampled users

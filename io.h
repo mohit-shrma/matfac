@@ -67,4 +67,7 @@ void writeItemScores(std::vector<std::pair<int, double>>& itemScores,
     const char* fileName);
 void writeTailTestMat(gk_csr_t *mat, const char* testFileName, 
     std::unordered_set<int>& headItems);
+void writeRandMatCSR(const char* opFileName,
+    std::vector<std::vector<double>>& uFac, 
+    std::vector<std::vector<double>>& iFac, int facDim, int seed, int nnz);
 #endif
