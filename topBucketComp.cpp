@@ -94,13 +94,16 @@ std::vector<std::pair<int, double>> itemGraphItemScores(int user,
   float sumRat = 0;
   for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
     int item = mat->rowind[ii];
-    //pr[item] = 1.0/nUserRat;
     sumRat += mat->rowval[ii];
   }
   
   for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
     int item = mat->rowind[ii];
-    pr[item] = mat->rowval[ii]/sumRat; 
+    if (sumRat > 0) {
+      pr[item] = mat->rowval[ii]/sumRat; 
+    } else {
+      pr[item] = 1.0/nUserRat;
+    }
   }
   
   //run personalized page rank on the graph w.r.t. u
@@ -1382,7 +1385,6 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
         invalItems);
     std::vector<std::pair<int, double>> itemPPRScoresPair;
 
-
     auto predInOrigTop = orderingOverlap(itemOrigScoresPair, 
         itemPredScoresPair, topBuckN);
     double svdScore = 0;
@@ -1412,7 +1414,12 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
         0.01, nUsers, nItems, invalItems);
       std::map<int, double> pprMap;
       for (auto&& itemScore: itemPPRScoresPair) {
-        pprMap[itemScore.first] = itemScore.second;
+        if (isnan(itemScore.second)) {
+          std::cerr << "Found NaN: " << itemScore.first << " " 
+            << itemScore.second << std::endl;
+        } else {
+          pprMap[itemScore.first] = itemScore.second;
+        }
       }
 
       double pprScore = 0;
@@ -1506,7 +1513,7 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
     << " svdOfPredNotInOrig: " << svdOfPredNotInOrig/sampUsers.size() << std::endl;
   
   std::cout << "pprOfPredInOrig: " << pprOfPredInOrig/sampUsers.size()
-    << " pprOfPredNotInOrig: " << pprOfPredNotInOrig/sampUsers.size();
+    << " pprOfPredNotInOrig: " << pprOfPredNotInOrig/sampUsers.size() << std::endl;
 
   /*
   //generate stats for sampled users
