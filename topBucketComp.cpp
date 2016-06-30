@@ -1351,8 +1351,7 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
   double pprNotInPred = 0, pprInPred = 0;
   double predPPROrigOverlap = 0;
 
-  //while (sampUsers.size() < nSampUsers) {
-  while (sampUsers.size() < 100) {
+  while (sampUsers.size() < nSampUsers) {
     //sample user
     int user = uDist(mt);
 
@@ -1383,10 +1382,6 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
         invalItems);
     std::vector<std::pair<int, double>> itemPPRScoresPair;
 
-    std::map<int, double> pprMap;
-    for (auto&& itemScore: itemPPRScoresPair) {
-      pprMap[itemScore.first] = itemScore.second;
-    }
 
     auto predInOrigTop = orderingOverlap(itemOrigScoresPair, 
         itemPredScoresPair, topBuckN);
@@ -1415,15 +1410,16 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
     if (NULL != graphMat) {
       itemPPRScoresPair = itemGraphItemScores(user, graphMat, trainMat, 
         0.01, nUsers, nItems, invalItems);
+      std::map<int, double> pprMap;
+      for (auto&& itemScore: itemPPRScoresPair) {
+        pprMap[itemScore.first] = itemScore.second;
+      }
+
       double pprScore = 0;
       for (auto&& pairs: predInOrigTop) {
         int item = pairs.first;
         pprScore += pprMap[item];
       }
-
-      std::cout << "pprScore: " << pprScore << " " << predInOrigTop.size() 
-        << std::endl; 
-
       if (predInOrigTop.size()) {
         pprScore = pprScore/predInOrigTop.size();
       }
@@ -1434,19 +1430,11 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
         int item = pairs.first;
         pprScore += pprMap[item];
       }
-      
-      std::cout << "pprScore: " << pprScore << " " << predNotInOrig.size() 
-        << std::endl; 
-      
       if (predNotInOrig.size()) {
         pprScore = pprScore/predNotInOrig.size();
       }
       pprOfPredNotInOrig += pprScore;
-      
-      std::cout << "ppr In Orig: " << pprOfPredInOrig << " NOT In Orig: " 
-        << pprOfPredNotInOrig << std::endl;
     }
-    
 
     //auto pprItemPairsNotInPred = compOrderingDiff(itemPredScoresPair,
     //    itemPPRScoresPair, topBuckN);
