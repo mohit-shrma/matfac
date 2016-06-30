@@ -798,8 +798,42 @@ int checkIfUISorted(gk_csr_t* mat) {
 }
 
 
+double avgPairs(std::vector<std::pair<int, double>> pairs) {
+  
+  double sum = 0;
+  for (auto&& pair: pairs) {
+    sum += pair.second;
+  }
+  if (pairs.size() > 0) {
+    sum = sum/pairs.size();
+  }
+  return sum;
+}
 
 
+bool compMat(gk_csr_t *mat1, gk_csr_t *mat2) {
+  
+  if (mat1->nrows != mat2->nrows || mat1->ncols != mat2->ncols) {
+    std::cerr << "\nnrows and ncols don't match: " 
+      << mat1->nrows << "," << mat1->ncols << " "
+      << mat2->nrows << "," << mat2->ncols << std::endl;
+    return false;
+  }
 
+  for (int u = 0; u < mat1->nrows; u++) {
+    if (mat1->rowptr[u+1] - mat1->rowptr[u] != 
+        mat2->rowptr[u+1] - mat2->rowptr[u]) {
+      return false;
+    }
+    for (int ii1 = mat1->rowptr[u], ii2 = mat2->rowptr[u]; 
+        ii1 < mat1->rowptr[u+1] && ii2 < mat2->rowptr[u+1]; ii1++, ii2++) {
+     if (mat1->rowind[ii1] != mat2->rowind[ii2]) {
+       return false;
+     } 
+    }
+  } 
+
+  return true;
+}
 
 

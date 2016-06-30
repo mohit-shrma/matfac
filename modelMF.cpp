@@ -244,18 +244,28 @@ void ModelMF::train(const Data &data, Model &bestModel,
             invalidUsers, invalidItems)) {
         break; 
       }
-      std::cout << "\nModelMF::train trainSeed: " << trainSeed
-                << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
-                << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)
-                << " Val RMSE: " << prevValRMSE
-                << std::endl;
-      std::cout << "\navg sub duration: " << subIterDuration/(iter+1) << std::endl;
-      //save best model found till now
-      std::string modelFName = std::string(data.prefix);
-      bestModel.saveFacs(modelFName);
+
+      if (iter % 50 == 0) {
+        std::cout << "ModelMF::train trainSeed: " << trainSeed
+                  << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
+                  << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)
+                  << " Val RMSE: " << prevValRMSE
+                  << std::endl;
+        //std::cout << "\navg sub duration: " << subIterDuration/(iter+1) << std::endl;
+      }
+
+      if (iter % 500 == 0 || iter == maxIter - 1) {
+        std::string modelFName = std::string(data.prefix);
+        bestModel.saveFacs(modelFName);
+      }
+
     }
-  
+     
   }
+      
+  //save best model found till now
+  std::string modelFName = std::string(data.prefix);
+  bestModel.saveFacs(modelFName);
 
   std::cout << "\nBest model validation RMSE: " << bestModel.RMSE(data.valMat, 
       invalidUsers, invalidItems);

@@ -364,7 +364,7 @@ void itemRMSEsOrdByItemScores(int user, std::unordered_set<int>& filtItems,
     double r_ui_est = fullModel.estRating(user, item);
     double se = (r_ui - r_ui_est)*(r_ui - r_ui_est);
     itemsRMSE.push_back(se);
-    itemsScore.push_back(r_ui_est);
+    itemsScore.push_back(r_ui);
   }
 }
 
@@ -929,6 +929,31 @@ void countInvRatings(Model& origModel, Model& fullModel, int user,
 }
 
 
+//items in B, also present in A
+std::vector<std::pair<int, double>> orderingOverlap(
+    std::vector<std::pair<int, double>> itemPairsA,
+    std::vector<std::pair<int, double>> itemPairsB, int sizeA) {
+  
+  std::unordered_set<int> itemsA;
+  std::vector<std::pair<int, double>> intersect;
+
+  for (int i = 0; i < sizeA; i++) {
+    int item = itemPairsA[i].first;
+    itemsA.insert(item);
+  }
+  
+  for (int i = 0; i < sizeA && i < itemPairsB.size(); i++) {
+    int item = itemPairsB[i].first;
+    if (itemsA.find(item) != itemsA.end()) {
+      //intersect
+      intersect.push_back(itemPairsB[i]);
+    }
+  }
+
+  return intersect;
+}
+
+
 //items in B not in A
 std::vector<std::pair<int, double>> compOrderingDiff(
     std::vector<std::pair<int, double>> itemPairsA,
@@ -954,9 +979,56 @@ std::vector<std::pair<int, double>> compOrderingDiff(
 }
 
 
+std::pair<double, double> compOrderingOverlapBScores(
+    std::vector<std::pair<int, double>> itemPairsA,
+    std::vector<std::pair<int, double>> itemPairsB, int sizeA) {
+  int overlapCount = 0;
+ 
+  double overlap_BScore = -1;
+  double notInA_BScore = -1;
+
+  if (itemPairsA.size() == 0 || itemPairsB.size() == 0) {
+    return std::make_pair(-1, -1);
+  }
+  
+  std::unordered_set<int> itemsA;
+  for (int i = 0; i < sizeA; i++) {
+    int item = itemPairsA[i].first;
+    itemsA.insert(item);
+  }
+  
+  for (int i = 0; i < sizeA; i++) {
+    int item = itemPairsB[i].first;
+    if (itemsA.find(item) != itemsA.end()) {
+      //overlap
+      overlapCount++;
+      overlap_BScore += itemPairsB[i].second;
+    } else {
+      //not in A
+      notInA_BScore += itemPairsB[i].second;
+    }
+  }
+    
+  if (overlapCount > 0) {
+    overlap_BScore = overlap_BScore/overlapCount;
+  }
+
+  if (sizeA - overlapCount > 0) {
+    notInA_BScore = notInA_BScore/(sizeA - overlapCount);
+  }
+
+  return std::make_pair(overlap_BScore, notInA_BScore);
+}
+
+
 double compOrderingOverlap(std::vector<std::pair<int, double>> itemPairsA,
     std::vector<std::pair<int, double>> itemPairsB, int sizeA) {
   int overlapCount = 0;
+  
+  if (itemPairsA.size() == 0 || itemPairsB.size() == 0) {
+    return overlapCount;
+  }
+  
   std::unordered_set<int> itemsA;
   for (int i = 0; i < sizeA; i++) {
     int item = itemPairsA[i].first;
@@ -1020,7 +1092,7 @@ void predSampUsersRMSEProb(gk_csr_t *trainMat, gk_csr_t *graphMat,
   auto userFreq = rowColFreq.first;
   auto itemFreq = rowColFreq.second;
 
-  int topBuckN = 10;
+  int topBuckN = 0.1*nItems;
 
   std::cout << "\ntopBuckN: " << topBuckN << std::endl;
 
@@ -1032,6 +1104,8 @@ void predSampUsersRMSEProb(gk_csr_t *trainMat, gk_csr_t *graphMat,
   double pprNotInPredOrigOverlap = 0;
   double freqOrigOverlap = 0, svdPredOverlap = 0;
   double freqNotInPredOrigOverlap = 0;
+  double predPPROrigOverlap = 0;
+  double over_svdScores = 0, notOver_svdScores = 0;
 
   while (sampUsers.size() < nSampUsers) {
     //sample user
@@ -1067,8 +1141,10 @@ void predSampUsersRMSEProb(gk_csr_t *trainMat, gk_csr_t *graphMat,
 
     auto itemFreqPair = itemFreqScores(fullModel, origModel, itemFreq,
         user, trainMat, nItems, invalItems);
-    //auto itemPredSVDScoresPair = prodScores(itemPredScoresPair, 
-    //    itemSVDScoresPair);
+    auto itemPredSVDScoresPair = prodScores(itemPredScoresPair, 
+        itemSVDScoresPair);
+    //auto itemPredPPRScoresPair = prodScores(itemPredScoresPair, 
+    //    itemPPRScoresPair);
     auto svdItemPairsNotInPred = compOrderingDiff(itemPredScoresPair,
         itemSVDScoresPair, topBuckN);
     
@@ -1089,13 +1165,25 @@ void predSampUsersRMSEProb(gk_csr_t *trainMat, gk_csr_t *graphMat,
         itemPredScoresPair, topBuckN);
     svdOrigOverlap += compOrderingOverlap(itemOrigScoresPair,
         itemSVDScoresPair, topBuckN);
-   // predSVDOrigOverlap += compOrderingOverlap(itemOrigScoresPair,
-   //     itemPredSVDScoresPair, topBuckN);
+
+    auto origOverScores = compOrderingOverlapBScores(itemOrigScoresPair, 
+        itemSVDScoresPair, topBuckN);
+    if (-1 != origOverScores.first) {
+      over_svdScores += origOverScores.first;
+    }
+
+    if (-1 != origOverScores.second) {
+      notOver_svdScores += origOverScores.second;
+    }
+
+    predSVDOrigOverlap += compOrderingOverlap(itemOrigScoresPair,
+        itemPredSVDScoresPair, topBuckN);
     freqOrigOverlap += compOrderingOverlap(itemOrigScoresPair,
         itemFreqPair, topBuckN);
     //pprOrigOverlap += compOrderingOverlap(itemOrigScoresPair,
     //    itemPPRScoresPair, topBuckN);
-
+    //predPPROrigOverlap += compOrderingOverlap(itemOrigScoresPair,
+    //    itemPredPPRScoresPair, topBuckN);
     svdPredOverlap += compOrderingOverlap(itemSVDScoresPair,
         itemPredScoresPair, topBuckN);
 
@@ -1179,12 +1267,258 @@ void predSampUsersRMSEProb(gk_csr_t *trainMat, gk_csr_t *graphMat,
   std::cout << "freqNotInPredOrigOverlap: " << freqNotInPredOrigOverlap/sampUsers.size() 
     << std::endl;
   //std::cout << "pprOrigOverlap: " << pprOrigOverlap/sampUsers.size() << std::endl;
+  //std::cout << "predPPROrigOverlap: " << predPPROrigOverlap/sampUsers.size() << std::endl;
+
   //std::cout << "pprNotInPredOrigOverlap: " << pprNotInPredOrigOverlap/sampUsers.size() 
   //  << std::endl;
   std::cout << "svdPredOverlap: " << svdPredOverlap/sampUsers.size() << std::endl;
   std::cout << "svdNotInPredOrigOverlap: " << svdNotInPredOrigOverlap/sampUsers.size() 
     << std::endl;
-  //std::cout << "predSVDOrigOverlap: " << predSVDOrigOverlap/sampUsers.size() << std::endl;
+  std::cout << "predSVDOrigOverlap: " << predSVDOrigOverlap/sampUsers.size() << std::endl;
+
+  //compute average of above over all users
+  std::cout << "svd overlap scores: " << over_svdScores << std::endl;
+  std::cout << "svd NOT overlap sccores: " << notOver_svdScores << std::endl;
+  
+  over_svdScores = over_svdScores/sampUsers.size();
+  notOver_svdScores = notOver_svdScores/sampUsers.size();
+  
+  std::cout << "svd overlap scores: " << over_svdScores << std::endl;
+  std::cout << "svd NOT overlap sccores: " << notOver_svdScores << std::endl;
+
+  /*
+  //generate stats for sampled users
+  std::vector<int> users;
+  for (auto&& user: sampUsers) {
+    users.push_back(user);
+  }
+  std::string statsFName = prefix + "_userStats.txt";
+  getUserStats(users, trainMat, invalItems, statsFName.c_str());
+  */  
+}
+
+
+void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat, 
+    int nUsers, int nItems, 
+    Model& origModel, Model& fullModel, Model& svdModel, 
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
+    std::unordered_set<int>& filtItems, 
+    int nSampUsers, int seed, std::string prefix) {
+  
+  int nBuckets = 10;
+  int nItemsPerBuck = nItems/nBuckets;
+
+  std::vector<double> rmseScores(nBuckets, 0);
+  std::vector<double> uRMSEScores(nBuckets, 0);
+  
+  std::vector<double> scores(nBuckets, 0);
+  std::vector<double> uScores(nBuckets, 0);
+  
+  std::vector<double> bucketNNZ(nBuckets, 0);
+  std::vector<double> uBucketNNZ(nBuckets, 0);
+
+  std::vector<double> itemsRMSE;
+  std::vector<double> itemsScore;
+
+  //initialize random engine
+  std::mt19937 mt(seed);
+  //user distribution to sample users
+  std::uniform_int_distribution<int> uDist(0, nUsers-1);
+
+  std::unordered_set<int> sampUsers;
+
+  auto avgTrainRating = meanRating(trainMat);
+  
+  int predLowcount = 0, predHighcount = 0;
+  int lowCount = 0, highCount = 0;
+  
+  auto rowColFreq = getRowColFreq(trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+
+  int topBuckN = 0.05*nItems;
+
+  std::cout << "\ntopBuckN: " << topBuckN << std::endl;
+
+  int nHighPredUsers = 0;
+
+  double predOrigOverlap = 0, svdOrigOverlap = 0;
+  double svdPredOverlap = 0;
+  double pprOrigOverlap = 0;
+  double svdNotInPred = 0, svdInPred = 0;
+  double svdOfPredInOrig = 0, svdOfPredNotInOrig = 0;
+  double pprOfPredInOrig = 0, pprOfPredNotInOrig = 0;
+  double pprNotInPred = 0, pprInPred = 0;
+  double predPPROrigOverlap = 0;
+
+  //while (sampUsers.size() < nSampUsers) {
+  while (sampUsers.size() < 100) {
+    //sample user
+    int user = uDist(mt);
+
+    auto search = sampUsers.find(user);
+    if (search != sampUsers.end()) {
+      //already sampled user
+      continue;
+    }
+  
+    //skip if user is invalid
+    search = invalUsers.find(user);
+    if (search != invalUsers.end()) {
+      //found n skip
+      continue;
+    }
+
+    //insert the sampled user
+    sampUsers.insert(user);
+    
+    //get item scores ordered by predicted scores in decreasing order
+    //auto headItems = getHeadItems(trainMat, 0.2);
+
+    auto itemPredScoresPair = itemPredScores(fullModel, origModel, user, trainMat, 
+        nItems, invalItems);
+    auto itemOrigScoresPair = itemOrigScores(fullModel, origModel, user, trainMat, 
+        nItems, invalItems);
+    auto itemSVDScoresPair = itemSVDScores(svdModel, user, trainMat, nItems, 
+        invalItems);
+    std::vector<std::pair<int, double>> itemPPRScoresPair;
+
+    std::map<int, double> pprMap;
+    for (auto&& itemScore: itemPPRScoresPair) {
+      pprMap[itemScore.first] = itemScore.second;
+    }
+
+    auto predInOrigTop = orderingOverlap(itemOrigScoresPair, 
+        itemPredScoresPair, topBuckN);
+    double svdScore = 0;
+    for (auto&& pairs: predInOrigTop) {
+      int item = pairs.first;
+      svdScore += svdModel.estRating(user, item);
+    }
+    if (predInOrigTop.size()) {
+      svdScore = svdScore/predInOrigTop.size();
+    }
+    svdOfPredInOrig += svdScore;
+
+    auto predNotInOrig = compOrderingDiff(itemOrigScoresPair,
+        itemPredScoresPair, topBuckN);
+    svdScore = 0;
+    for (auto&& pairs: predNotInOrig) {
+      int item = pairs.first;
+      svdScore += svdModel.estRating(user, item);  
+    }
+    if (predNotInOrig.size()) {
+      svdScore = svdScore/predNotInOrig.size();
+    }
+    svdOfPredNotInOrig += svdScore;
+
+    if (NULL != graphMat) {
+      itemPPRScoresPair = itemGraphItemScores(user, graphMat, trainMat, 
+        0.01, nUsers, nItems, invalItems);
+      double pprScore = 0;
+      for (auto&& pairs: predInOrigTop) {
+        int item = pairs.first;
+        pprScore += pprMap[item];
+      }
+
+      std::cout << "pprScore: " << pprScore << " " << predInOrigTop.size() 
+        << std::endl; 
+
+      if (predInOrigTop.size()) {
+        pprScore = pprScore/predInOrigTop.size();
+      }
+      pprOfPredInOrig += pprScore;
+      
+      pprScore = 0;
+      for (auto&& pairs: predNotInOrig) {
+        int item = pairs.first;
+        pprScore += pprMap[item];
+      }
+      
+      std::cout << "pprScore: " << pprScore << " " << predNotInOrig.size() 
+        << std::endl; 
+      
+      if (predNotInOrig.size()) {
+        pprScore = pprScore/predNotInOrig.size();
+      }
+      pprOfPredNotInOrig += pprScore;
+      
+      std::cout << "ppr In Orig: " << pprOfPredInOrig << " NOT In Orig: " 
+        << pprOfPredNotInOrig << std::endl;
+    }
+    
+
+    //auto pprItemPairsNotInPred = compOrderingDiff(itemPredScoresPair,
+    //    itemPPRScoresPair, topBuckN);
+
+    predOrigOverlap += compOrderingOverlap(itemOrigScoresPair, 
+        itemPredScoresPair, topBuckN);
+    svdOrigOverlap += compOrderingOverlap(itemOrigScoresPair,
+        itemSVDScoresPair, topBuckN);
+
+    //pprOrigOverlap += compOrderingOverlap(itemOrigScoresPair,
+    //    itemPPRScoresPair, topBuckN);
+    
+    svdPredOverlap += compOrderingOverlap(itemSVDScoresPair,
+        itemPredScoresPair, topBuckN);
+
+    //auto itemPredPPRScoresPair = prodScores(itemPredScoresPair,
+    //    itemPPRScoresPair);
+
+    auto itemScoresPair = itemOrigScoresPair;
+
+    //get itemsRMSE and itemsScore
+    itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
+        itemsScore, itemScoresPair);
+    
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uRMSEScores.begin(), uRMSEScores.end(), 0);
+    updateBucketsArr(uRMSEScores, uBucketNNZ, itemsRMSE, nBuckets);
+
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uScores.begin(), uScores.end(), 0);
+    updateBucketsArr(uScores, uBucketNNZ, itemsScore, nBuckets);
+    
+    //write and update aggregated buckets
+    for (int i = 0; i < nBuckets; i++) {
+      bucketNNZ[i]  += uBucketNNZ[i];
+      rmseScores[i] += uRMSEScores[i];
+      scores[i]     += uScores[i];
+    }
+
+    if (sampUsers.size() % PROGU == 0) {
+      std::cout << "Done... " << sampUsers.size() << " :" << std::endl;
+    }
+
+  }
+  
+  for (int i = 0; i < nBuckets; i++) {
+    rmseScores[i] = sqrt(rmseScores[i]/bucketNNZ[i]);
+    scores[i] = scores[i]/bucketNNZ[i];
+  }
+  std::string rmseScoreFName = prefix + "_rmseBuckets.txt";
+  writeVector(rmseScores, rmseScoreFName.c_str());
+
+  std::string avgScoreFName = prefix + "_avgScore.txt";
+  writeVector(scores, avgScoreFName.c_str());
+
+  std::cout << "predOrigOverlap: " << predOrigOverlap/sampUsers.size() << std::endl;
+  std::cout << "svdOrigOverlap: " << svdOrigOverlap/sampUsers.size() << std::endl;
+  std::cout << "svdInPred: " << svdInPred/sampUsers.size() << std::endl;
+  std::cout << "svdNotInPred: " << svdNotInPred/sampUsers.size() << std::endl;
+  //std::cout << "pprOrigOverlap: " << pprOrigOverlap/sampUsers.size() << std::endl;
+
+  //std::cout << "pprNotInPredOrigOverlap: " << pprNotInPredOrigOverlap/sampUsers.size() 
+  //  << std::endl;
+  std::cout << "svdPredOverlap: " << svdPredOverlap/sampUsers.size() << std::endl;
+  
+  std::cout << "svdOfPredInOrig: " << svdOfPredInOrig/sampUsers.size()
+    << " svdOfPredNotInOrig: " << svdOfPredNotInOrig/sampUsers.size() << std::endl;
+  
+  std::cout << "pprOfPredInOrig: " << pprOfPredInOrig/sampUsers.size()
+    << " pprOfPredNotInOrig: " << pprOfPredNotInOrig/sampUsers.size();
 
   /*
   //generate stats for sampled users

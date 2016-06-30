@@ -59,5 +59,7 @@ int coRatedUsersFrmSortedMatLinMerge(gk_csr_t* mat, int i, int j);
 std::vector<int> getInvalidUsers(gk_csr_t *mat);
 std::vector<std::vector<std::tuple<int,int,float>>> getRandUIRatings(
     gk_csr_t* mat, int nBlocks, int seed);
+double avgPairs(std::vector<std::pair<int, double>> pairs);
+bool compMat(gk_csr_t *mat1, gk_csr_t *mat2);
 #endif
 
