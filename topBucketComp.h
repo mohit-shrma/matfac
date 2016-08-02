@@ -12,8 +12,8 @@
 #include <cstdlib>
 #include <fstream>
 
-void writeTopBuckRMSEs(Model& origModel, Model& fullModel, gk_csr_t* graphMat,
-    gk_csr_t* trainMat,
+void writeTopBuckRMSEs(Model& origModel, Model& fullModel, Model& svdModel, 
+    gk_csr_t* graphMat, gk_csr_t* trainMat,
     float lambda, int max_niter, std::unordered_set<int>& invalUsers, 
     std::unordered_set<int>& invalItems, std::unordered_set<int>& filtItems,
     int nSampUsers, int seed, int N, std::string prefix);
@@ -29,7 +29,7 @@ void pprUsersRMSEProb(gk_csr_t *graphMat,
     std::vector<int> users, std::string& prefix);
 std::vector<std::pair<int, double>> itemGraphItemScores(int user, 
     gk_csr_t *graphMat, gk_csr_t *mat, float lambda, int nUsers, 
-    int nItems, std::unordered_set<int>& invalItems);
+    int nItems, std::unordered_set<int>& invalItems, bool useRatings);
 void svdSampUsersRMSEProb(gk_csr_t *trainMat, int nUsers, int nItems, 
     Model& origModel, Model& fullModel, Model& svdModel,
     std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
@@ -56,7 +56,7 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
     Model& origModel, Model& fullModel, Model& svdModel, 
     std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
     std::unordered_set<int>& filtItems, 
-    int nSampUsers, int seed, std::string prefix);
+    int nSampUsers, int seed, std::string prefix, std::vector<double> alphas);
 std::pair<double, double> compOrderingOverlapBScores(
     std::vector<std::pair<int, double>> itemPairsA,
     std::vector<std::pair<int, double>> itemPairsB, int sizeA);

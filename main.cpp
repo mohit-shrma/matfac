@@ -15,16 +15,16 @@
 
 Params parse_cmd_line(int argc, char *argv[]) {
   
-  if (argc < 21) {
+  if (argc < 22) {
     std::cout << "\nNot enough arguments";
     exit(0);
   }  
   
   Params params(atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), 
-      atoi(argv[5]), atoi(argv[6]),
-      atof(argv[7]), atof(argv[8]), atof(argv[9]), atof(argv[10]), atof(argv[11]),
-      argv[12], argv[13], argv[14], argv[15], argv[16], argv[17], argv[18], argv[19], 
-      argv[20]);
+      atoi(argv[5]), atoi(argv[6]), atoi(argv[7]),
+      atof(argv[8]), atof(argv[9]), atof(argv[10]), atof(argv[11]), atof(argv[12]),
+      argv[13], argv[14], argv[15], argv[16], argv[17], argv[18], argv[19], argv[20], 
+      argv[21]);
 
   return params;
 }
@@ -499,11 +499,11 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   ModelMF origModel(params, params.origUFacFile, params.origIFacFile, 
       params.seed);
 
-  std::cout << "\nCreating SVD model...";
+  std::cout << "\nCreating SVD model... dim: " << params.svdFacDim;
   Params svdParams(params);
-  svdParams.facDim = svdParams.origFacDim;
+  svdParams.facDim = svdParams.svdFacDim;
   ModelMF svdModel(svdParams, svdParams.seed);
-  svdFrmSvdlibCSR(data.trainMat, svdModel.facDim, svdModel.uFac, 
+  svdFrmSvdlibCSRSparsity(data.trainMat, svdModel.facDim, svdModel.uFac, 
       svdModel.iFac, true);
 
   //get number of ratings per user and item, i.e. frequency
@@ -565,6 +565,15 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   std::unordered_set<int> filtItems;
   //auto headItems = getHeadItems(data.trainMat, 0.2); 
   //filtItems = headItems;
+
+  //add top 100 frequent items to filtItems
+  for (auto&& pair: itemFreqPairs) {
+    filtItems.insert(pair.first);
+    if (filtItems.size() == 100) {
+      break;
+    }
+  }
+
 
   /*
   //add filtItems to invalItems
@@ -638,9 +647,9 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   */
   //prefix = std::string(params.prefix) + "_" + std::to_string(lambdas[nThreads])
   //  + "_" + std::to_string(N);
-  //writeTopBuckRMSEs(origModel, fullModel, data.graphMat, data.trainMat, 
-  //    lambdas[nThreads], MAX_PR_ITER, invalUsers, invalItems, filtItems, nSampUsers, 
-  //    params.seed, N, prefix);
+  writeTopBuckRMSEs(origModel, fullModel, svdModel, data.graphMat, data.trainMat, 
+      0.01, MAX_PR_ITER, invalidUsers, invalidItems, filtItems, nSampUsers, 
+      params.seed, 100, params.prefix);
   
   /*
   //last parameter in main thread
@@ -682,11 +691,15 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
       invalidUsers, invalidItems, filtItems, 5000, params.seed, prefix);
   */
 
+  /*
   prefix = std::string(params.prefix) + "_sampOrig";
-  predSampUsersRMSEProb2(data.trainMat, data.graphMat,
+  
+  std::vector<double> alphas = {0.0001, 0.001, 0.01, 0.1, 0.5, 1, 10, 100};
+    predSampUsersRMSEProb2(data.trainMat, data.graphMat,
       nUsers, nItems, origModel, fullModel,
       svdModel, invalidUsers, invalidItems, filtItems, 5000, params.seed, 
-      prefix);
+      prefix, alphas);
+  */  
 }
 
 
@@ -1745,7 +1758,7 @@ int main(int argc , char* argv[]) {
   //writeTailTestMat(data.testMat, "nf_480189x17772.tail.test.5.csr", headItems);
  
   /* 
-  std::string matPre = "j_59132x140_4"; 
+  std::string matPre = "nf_480189x17772_8"; 
   writeCSRWSparsityStructure(data.trainMat, 
       (matPre + ".syn.csr").c_str(),
       data.origUFac, data.origIFac, params.facDim);
@@ -1768,7 +1781,7 @@ int main(int argc , char* argv[]) {
       (matPre + ".syn.rand.test.csr").c_str(),
       (matPre + ".syn.rand.val.csr").c_str(),
       0.1, 0.1, params.seed);
-  */
+  */ 
 
   //writeBlkDiagJoinedCSR("", "", "");
 
@@ -1796,7 +1809,7 @@ int main(int argc , char* argv[]) {
   //ModelMF mfModel(params, params.initUFacFile, 
   //    params.initIFacFile, params.seed);
  
-  /*
+  
   std::string ans;
   std::cout << "Want to train? ";
   std::getline(std::cin, ans);
@@ -1804,6 +1817,7 @@ int main(int argc , char* argv[]) {
   if (!(ans.compare("yes") == 0 || ans.compare("y") == 0)) {
     return 0;
   }
+  
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
   svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
@@ -1813,7 +1827,7 @@ int main(int argc , char* argv[]) {
 
   ModelMF bestModel(mfModel);
   std::cout << "\nStarting model train...";
-  mfModel.train(data, bestModel, invalidUsers, invalidItems);
+  mfModel.hogTrain(data, bestModel, invalidUsers, invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
       invalidItems);
   std::cout << "\nValidation RMSE: " << bestModel.RMSE(data.valMat, invalidUsers, 
@@ -1828,9 +1842,9 @@ int main(int argc , char* argv[]) {
   //write out invalid items
   prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
-  */ 
+      
   
-  computeSampTopNFrmFullModel(data, params);  
+  //computeSampTopNFrmFullModel(data, params);  
   
   //testTailLocRec(data, params);
   //testTailRec(data, params);

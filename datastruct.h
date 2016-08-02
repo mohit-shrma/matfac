@@ -16,6 +16,7 @@ class Params {
     int facDim;
     int maxIter;
     int origFacDim;
+    int svdFacDim;
     int gluSz;
     int seed;
     float uReg;
@@ -34,7 +35,7 @@ class Params {
     char *prefix;
 
     Params(int p_nUsers, int p_nItems, int p_facDim, int p_maxIter, 
-        int p_origFacDim, int p_seed,
+        int p_origFacDim, int p_svdFacDim, int p_seed,
         float p_uReg, float p_iReg,  float p_learnRate, float p_rhoRMS, 
         float p_alpha,
         char *p_trainMatFile, char *p_testMatFile, char *p_valMatFile,
@@ -43,7 +44,7 @@ class Params {
         char *p_origIFacFile, char *p_initUFacFile, char *p_initIFacFile,
         char *p_prefix)
       : nUsers(p_nUsers), nItems(p_nItems), facDim(p_facDim), maxIter(p_maxIter),
-      origFacDim(p_origFacDim), seed(p_seed),
+      origFacDim(p_origFacDim), svdFacDim(p_svdFacDim), seed(p_seed),
       uReg(p_uReg), iReg(p_iReg), learnRate(p_learnRate), rhoRMS(p_rhoRMS), 
       alpha(p_alpha),
       trainMatFile(p_trainMatFile), testMatFile(p_testMatFile), 

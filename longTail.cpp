@@ -346,7 +346,7 @@ void topNRec(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
    
     //run personalized RW on graph w.r.t. user
     itemScorePairs = itemGraphItemScores(u, 
-        graphMat, trainMat, lambda, nUsers, nItems, invalidItems);
+        graphMat, trainMat, lambda, nUsers, nItems, invalidItems, true);
     std::sort(itemScorePairs.begin(), itemScorePairs.end(), compPairsIndAsc);
     std::fill(itemScores.begin(), itemScores.end(), 0);
     std::fill(itemFreqWtScores.begin(), itemFreqWtScores.end(), 0);
@@ -586,7 +586,7 @@ void topNRecTail(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
    
     //run personalized RW on graph w.r.t. user
     itemScorePairs = itemGraphItemScores(u, 
-        graphMat, trainMat, lambda, nUsers, nItems, invalidItems);
+        graphMat, trainMat, lambda, nUsers, nItems, invalidItems, true);
     //std::sort(itemScorePairs.begin(), itemScorePairs.end(), compPairsIndAsc);
     std::fill(itemScores.begin(), itemScores.end(), 0);
     
@@ -887,7 +887,7 @@ void topNRecTailWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
     
     //run personalized RW on graph w.r.t. user
     itemScorePairs = itemGraphItemScores(u, 
-        graphMat, trainMat, lambda, nUsers, nItems, invalidItems);
+        graphMat, trainMat, lambda, nUsers, nItems, invalidItems, true);
     //std::sort(itemScorePairs.begin(), itemScorePairs.end(), compPairsIndAsc);
     std::fill(itemScores.begin(), itemScores.end(), 0);
     
@@ -1199,7 +1199,7 @@ void topNRecTailWSVDFastSamp(Model& model, Model& svdModel, gk_csr_t *trainMat,
     
     //run personalized RW on graph w.r.t. user
     itemScorePairs = itemGraphItemScores(u, 
-        graphMat, trainMat, lambda, nUsers, nItems, invalidItems);
+        graphMat, trainMat, lambda, nUsers, nItems, invalidItems, true);
     //std::sort(itemScorePairs.begin(), itemScorePairs.end(), compPairsIndAsc);
     std::fill(itemScores.begin(), itemScores.end(), 0);
     
@@ -1488,7 +1488,7 @@ void topNsRecTailWSVDFastSamp(Model& model, Model& svdModel, gk_csr_t *trainMat,
     
     //run personalized RW on graph w.r.t. user
     itemScorePairs = itemGraphItemScores(u, 
-        graphMat, trainMat, lambda, nUsers, nItems, invalidItems);
+        graphMat, trainMat, lambda, nUsers, nItems, invalidItems, true);
     //std::sort(itemScorePairs.begin(), itemScorePairs.end(), compPairsIndAsc);
     std::fill(itemScores.begin(), itemScores.end(), 0);
     
@@ -1850,7 +1850,7 @@ void topNsRecWSVD(Model& model, Model& svdModel, gk_csr_t *trainMat,
     
     //run personalized RW on graph w.r.t. user
     itemScorePairs = itemGraphItemScores(u, 
-        graphMat, trainMat, lambda, nUsers, nItems, invalidItems);
+        graphMat, trainMat, lambda, nUsers, nItems, invalidItems, true);
     //std::sort(itemScorePairs.begin(), itemScorePairs.end(), compPairsIndAsc);
     std::fill(itemScores.begin(), itemScores.end(), 0);
     
@@ -2219,7 +2219,7 @@ void spotRec(Model& model, Model& svdModel, gk_csr_t *trainMat,
     
     //run personalized RW on graph w.r.t. user
     itemScorePairs = itemGraphItemScores(u, 
-        graphMat, trainMat, lambda, nUsers, nItems, invalidItems);
+        graphMat, trainMat, lambda, nUsers, nItems, invalidItems, true);
     //std::sort(itemScorePairs.begin(), itemScorePairs.end(), compPairsIndAsc);
     std::fill(itemScores.begin(), itemScores.end(), 0);
     

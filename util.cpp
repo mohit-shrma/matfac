@@ -111,6 +111,24 @@ double meanRating(gk_csr_t* mat) {
 }
 
 
+std::vector<double> meanItemRating(gk_csr_t *mat) {
+  std::vector<double> meanRating(mat->ncols, 0);
+  std::vector<int> count(mat->ncols, 0);
+  for (int u = 0; u < mat->nrows; u++) {
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      int item = mat->rowind[ii];
+      float rating = mat->rowval[ii];
+      meanRating[item] += rating;
+      count[item]++;
+    }
+  }
+  for (int i = 0; i < mat->ncols; i++) {
+    meanRating[i] = meanRating[i]/count[i];
+  }
+  return meanRating;
+}
+
+
 std::pair<double, double> getMeanVar(std::vector<std::vector<double>> uFac,
     std::vector<std::vector<double>> iFac, int facDim, int nUsers, int nItems) {
   
