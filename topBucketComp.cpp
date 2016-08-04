@@ -1600,8 +1600,12 @@ void predSampUsersRMSEProb(gk_csr_t *trainMat, gk_csr_t *graphMat,
 std::vector<double> aggScoresInBuckets(std::vector<double> scores, 
     int nBuckets) {
 
-  std::vector<double> bucketScores;
+  std::vector<double> bucketScores(nBuckets, 0);
   int nScoresPerBucket = scores.size()/nBuckets;
+
+  if (nScoresPerBucket == 0) {
+    std::cout << "scores size: " << scores.size() << std::endl;
+  }
 
   for (int i = 0; i < nBuckets; i++) {
     double sum = 0;
@@ -1620,7 +1624,7 @@ std::vector<double> aggScoresInBuckets(std::vector<double> scores,
       count++;
     }
     
-    bucketScores.push_back(sum/count);
+    bucketScores[i] = sum/count;
   }
 
   return bucketScores;
@@ -2013,10 +2017,12 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
 
     updateMisPredBins(misGTMFCountBins, misGTMFScoreBins, itemPredScoresPair,
         gtNotInPred, topBuckN, fullModel, user);
-    
-    aggSVDScores = aggScoresInBuckets(svdScores, 10);
-    for (int i = 0; i < 10; i++) {
-      aggSVDScoresNotInOrig[i] += aggSVDScores[i];
+   
+    if (svdScores.size() >= 10) {
+     aggSVDScores = aggScoresInBuckets(svdScores, 10);
+      for (int i = 0; i < 10; i++) {
+        aggSVDScoresNotInOrig[i] += aggSVDScores[i];
+      }
     }
 
     double svdVarPredNotInOrig = 0;
