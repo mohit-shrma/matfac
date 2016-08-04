@@ -8,7 +8,6 @@
 #include <utility>
 #include <unordered_set>
 #include <string>
-#include <omp.h>
 #include "io.h"
 #include "model.h"
 //#include "svd.h"
