@@ -827,12 +827,15 @@ Model::Model(const Params& params) {
   rhoRMS    = params.rhoRMS;
   maxIter   = params.maxIter;
   trainSeed = -1;
- 
+
+  std::default_random_engine generator (params.seed);
+  std::uniform_real_distribution<double> dist (0.0, 1.0);
+
   //init user latent factors
   uFac.assign(nUsers, std::vector<double>(facDim, 0));
   for (auto& uf: uFac) {
     for (auto& v: uf) {
-      v = (double)std::rand() / (double) (1.0 + RAND_MAX);    
+      v = dist(generator);    
     }
   }
 
@@ -841,20 +844,20 @@ Model::Model(const Params& params) {
   iFac.assign(nItems, std::vector<double>(facDim, 0));
   for (auto& itemf: iFac) {
     for (auto& v: itemf) {
-      v = (double)std::rand() / (double) (1.0 + RAND_MAX);
+      v = dist(generator);
     }
   }
  
   //init user biases
   uBias = std::vector<double>(nUsers, 0);
   for (auto& v: uBias) {
-    v = (double)std::rand() / (double) (1.0 + RAND_MAX);
+    v = dist(generator);  
   }
 
   //init item biases
   iBias = std::vector<double>(nItems, 0);
   for (auto& v: iBias) {
-    v = (double)std::rand() / (double) (1.0 + RAND_MAX);
+    v = dist(generator);
   }
 
 }
