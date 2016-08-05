@@ -1944,7 +1944,8 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
 
     svdOfMaxPredInorig += maxSvd;
     svdOfMinPredInOrig += minSvd;
-    
+   
+    /*
     auto aggSVDScores = aggScoresInBuckets(svdScores, 10);
     for (int i = 0; i < 10; i++) {
       aggSVDScoresInOrig[i] += aggSVDScores[i];
@@ -1954,6 +1955,7 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
     for (int i = 0; i < 10; i++) {
       aggPredScoresInOrig[i] += aggPredScores[i];
     }
+    */
 
     if (predInOrigTop.size()) {
       svdScore = svdScore/predInOrigTop.size();
@@ -2018,13 +2020,14 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
     updateMisPredBins(misGTMFCountBins, misGTMFScoreBins, itemPredScoresPair,
         gtNotInPred, topBuckN, fullModel, user);
    
+    /*
     if (svdScores.size() >= 10) {
      aggSVDScores = aggScoresInBuckets(svdScores, 10);
       for (int i = 0; i < 10; i++) {
         aggSVDScoresNotInOrig[i] += aggSVDScores[i];
       }
     }
-
+    */
     double svdVarPredNotInOrig = 0;
     for (auto&& pair: predNotInOrig) {
       int item = pair.first;
@@ -2222,6 +2225,7 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
   std::cout << "svdOfMedPredInOrig: " << svdOfMedPredInOrig/sampUsers.size() << std::endl; 
   std::cout << "svdOfBotPredInOrig: " << svdOfBotPredInOrig/sampUsers.size() << std::endl;
 
+  /* 
   std::cout << "aggregated Pred scores in orig: " <<  std::endl;
   for (auto&& score: aggPredScoresInOrig) {
     std::cout << score/sampUsers.size() << " ";
@@ -2239,6 +2243,7 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
     std::cout << score/sampUsers.size() << " ";
   }
   std::cout << std::endl;
+  */
 
   std::cout << "pprOfPredInOrig: " << pprOfPredInOrig/sampUsers.size()
     << " pprOfPredNotInOrig: " << pprOfPredNotInOrig/sampUsers.size() << std::endl;
