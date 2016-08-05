@@ -1757,9 +1757,18 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
   int nBuckets = 10;
   int nItemsPerBuck = nItems/nBuckets;
 
-  std::vector<double> rmseScores(nBuckets, 0);
-  std::vector<double> uRMSEScores(nBuckets, 0);
+  std::vector<double> rmseGTScores(nBuckets, 0);
+  std::vector<double> uRMSEGTScores(nBuckets, 0);
   
+  std::vector<double> rmseFreqScores(nBuckets, 0);
+  std::vector<double> uRMSEFreqScores(nBuckets, 0);
+ 
+  std::vector<double> rmsePPRScores(nBuckets, 0);
+  std::vector<double> uRMSEPPRScores(nBuckets, 0);
+
+  std::vector<double> rmseSVDScores(nBuckets, 0);
+  std::vector<double> uRMSESVDScores(nBuckets, 0);
+
   std::vector<double> scores(nBuckets, 0);
   std::vector<double> uScores(nBuckets, 0);
   
@@ -1784,7 +1793,11 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
   auto rowColFreq = getRowColFreq(trainMat);
   auto userFreq = rowColFreq.first;
   auto itemFreq = rowColFreq.second;
-  
+  std::vector<std::pair<int, double>> itemFreqScoresPair;
+  for (int i = 0; i < itemFreq.size(); i++) {
+    itemFreqScoresPair.push_back(std::make_pair(i, itemFreq[i]));
+  }
+
   auto itemAvgRatings = meanItemRating(trainMat);
 
   int topBuckN = 0.05*nItems;
@@ -2154,28 +2167,63 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
 
     //auto itemPredPPRScoresPair = prodScores(itemPredScoresPair,
     //    itemPPRScoresPair);
-
-    auto itemScoresPair = itemOrigScoresPair;
-
     //get itemsRMSE and itemsScore
+
     itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
-        itemsScore, itemScoresPair);
+        itemsScore, itemSVDScoresPair);
     
     //reset user specific vec to 0
     std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
-    std::fill(uRMSEScores.begin(), uRMSEScores.end(), 0);
-    updateBucketsArr(uRMSEScores, uBucketNNZ, itemsRMSE, nBuckets);
+    std::fill(uRMSESVDScores.begin(), uRMSESVDScores.end(), 0);
+    updateBucketsArr(uRMSESVDScores, uBucketNNZ, itemsRMSE, nBuckets);
+
+    //get itemsRMSE and itemsScore
+    itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
+        itemsScore, itemFreqScoresPair);
+    
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uRMSEFreqScores.begin(), uRMSEFreqScores.end(), 0);
+    updateBucketsArr(uRMSEFreqScores, uBucketNNZ, itemsRMSE, nBuckets);
+
+    if (NULL != graphMat) {
+      //get itemsRMSE and itemsScore
+      itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
+          itemsScore, itemPPRScoresPair);
+      
+      //reset user specific vec to 0
+      std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+      std::fill(uRMSEPPRScores.begin(), uRMSEPPRScores.end(), 0);
+      updateBucketsArr(uRMSEPPRScores, uBucketNNZ, itemsRMSE, nBuckets);
+    }
 
     //reset user specific vec to 0
     std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
     std::fill(uScores.begin(), uScores.end(), 0);
     updateBucketsArr(uScores, uBucketNNZ, itemsScore, nBuckets);
+ 
+    //get itemsRMSE and itemsScore
+    itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
+        itemsScore, itemOrigScoresPair);
     
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uRMSEGTScores.begin(), uRMSEGTScores.end(), 0);
+    updateBucketsArr(uRMSEGTScores, uBucketNNZ, itemsRMSE, nBuckets);
+    
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uScores.begin(), uScores.end(), 0);
+    updateBucketsArr(uScores, uBucketNNZ, itemsScore, nBuckets);
+   
     //write and update aggregated buckets
     for (int i = 0; i < nBuckets; i++) {
-      bucketNNZ[i]  += uBucketNNZ[i];
-      rmseScores[i] += uRMSEScores[i];
-      scores[i]     += uScores[i];
+      bucketNNZ[i]     += uBucketNNZ[i];
+      rmseGTScores[i]  += uRMSEGTScores[i];
+      rmseSVDScores[i] += uRMSESVDScores[i];
+      rmseFreqScores[i] += uRMSEFreqScores[i];
+      rmsePPRScores[i] += uRMSEPPRScores[i];
+      scores[i]        += uScores[i];
     }
 
     if (sampUsers.size() % PROGU == 0) {
@@ -2190,14 +2238,38 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
   predNotInOrigSVDFile.close();
 
   for (int i = 0; i < nBuckets; i++) {
-    rmseScores[i] = sqrt(rmseScores[i]/bucketNNZ[i]);
+    rmseGTScores[i] = sqrt(rmseGTScores[i]/bucketNNZ[i]);
+    rmseSVDScores[i] = sqrt(rmseSVDScores[i]/bucketNNZ[i]);
+    rmsePPRScores[i] = sqrt(rmsePPRScores[i]/bucketNNZ[i]);
+    rmseFreqScores[i] = sqrt(rmseFreqScores[i]/bucketNNZ[i]);
     scores[i] = scores[i]/bucketNNZ[i];
   }
-  std::string rmseScoreFName = prefix + "_rmseBuckets.txt";
-  writeVector(rmseScores, rmseScoreFName.c_str());
 
-  std::string avgScoreFName = prefix + "_avgScore.txt";
-  writeVector(scores, avgScoreFName.c_str());
+  std::cout << "GT RMSE buckets: ";
+  dispVector(rmseGTScores); 
+  std::cout << std::endl;
+
+  std::cout << "SVD RMSE buckets: ";
+  dispVector(rmseSVDScores);
+  std::cout << std::endl;
+
+  std::cout << "Freq RMSE buckets: ";
+  dispVector(rmseFreqScores);
+  std::cout << std::endl;
+
+  std::cout << "PPR RMSE buckets: ";
+  dispVector(rmsePPRScores);
+  std::cout << std::endl;
+
+  std::cout << "GT Score buckets: ";
+  dispVector(scores);
+  std::cout << std::endl;
+  
+  //std::string rmseScoreFName = prefix + "_rmseBuckets.txt";
+  //writeVector(rmseScores, rmseScoreFName.c_str());
+
+  //std::string avgScoreFName = prefix + "_avgScore.txt";
+  //writeVector(scores, avgScoreFName.c_str());
   
   std::cout << "No. sample users: " << sampUsers.size() << std::endl;
   std::cout << "predOrigOverlap: " << predOrigOverlap/sampUsers.size() << std::endl;
