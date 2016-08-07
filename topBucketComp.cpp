@@ -1865,20 +1865,22 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
   
   double avgTopSvd = 0, avgBottomSVD = 0;
 
-  while (sampUsers.size() < nSampUsers) {
-  //for (int user = 0; user < nUsers; user++) {
+  //while (sampUsers.size() < nSampUsers) {
+  for (int user = 0; user < nUsers; user++) {
     
     //sample user
-    int user = uDist(mt);
+    //int user = uDist(mt);
 
+    /*
     auto search = sampUsers.find(user);
     if (search != sampUsers.end()) {
       //already sampled user
       continue;
     }
+    */
 
     //skip if user is invalid
-    search = invalUsers.find(user);
+    auto search = invalUsers.find(user);
     if (search != invalUsers.end()) {
       //found n skip
       continue;
