@@ -1898,7 +1898,12 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
         nItems, invalItems);
     auto itemSVDScoresPair = itemSVDScores(svdModel, user, trainMat, nItems, 
         invalItems);
-    
+   
+    auto itemPredTopN = std::vector<std::pair<int, double>>(
+        itemPredScoresPair.begin(), itemPredScoresPair.begin()+topBuckN);
+    auto itemOrigTopN = std::vector<std::pair<int, double>>(
+        itemOrigScoresPair.begin(), itemOrigScoresPair.begin()+topBuckN);
+
     for (int i = 0; i < topBuckN; i++) {
       int item = itemPredScoresPair[i].first;
       predOpFile << itemPredScoresPair[i].second << " ";
@@ -2012,28 +2017,42 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
     }
     svdOfPredNotInOrig += svdScore;
 
+    //updateMisPredBins(misPredSVDCountBins, svdScoreBins, itemOrigScoresPair, 
+    //    predNotInOrig, topBuckN, svdModel, user);
     updateMisPredBins(misPredSVDCountBins, svdScoreBins, itemOrigScoresPair, 
-        predNotInOrig, topBuckN, svdModel, user);
+        itemPredTopN, topBuckN, svdModel, user);
     
+    //updateMisPredFreqBins(misPredFreqCountBins, freqScoreBins, itemOrigScoresPair,
+    //    predNotInOrig, topBuckN, itemFreq, user);
     updateMisPredFreqBins(misPredFreqCountBins, freqScoreBins, itemOrigScoresPair,
-        predNotInOrig, topBuckN, itemFreq, user);
+        itemPredTopN, topBuckN, itemFreq, user);
 
     auto gtNotInPred = orderingDiff(itemPredScoresPair, itemOrigScoresPair,
         topBuckN);
+    //updateMisPredBins(misGTSVDCountBins, misGTSVDScoreBins, itemPredScoresPair,
+    //    gtNotInPred, topBuckN, svdModel, user);
     updateMisPredBins(misGTSVDCountBins, misGTSVDScoreBins, itemPredScoresPair,
-        gtNotInPred, topBuckN, svdModel, user);
+        itemOrigTopN, topBuckN, svdModel, user);
     
+    //updateMisPredFreqBins(misGTFreqCountBins, misGTFreqScoreBins, itemPredScoresPair,
+    //    gtNotInPred, topBuckN, itemFreq, user);
     updateMisPredFreqBins(misGTFreqCountBins, misGTFreqScoreBins, itemPredScoresPair,
-        gtNotInPred, topBuckN, itemFreq, user);
+        itemOrigTopN, topBuckN, itemFreq, user);
 
+    //updateMisPredFreqBins(misGTAvgTrainCountBins, misGTAvgTrainScoreBins, 
+    //    itemPredScoresPair, gtNotInPred, topBuckN, itemAvgRatings, user);
     updateMisPredFreqBins(misGTAvgTrainCountBins, misGTAvgTrainScoreBins, 
-        itemPredScoresPair, gtNotInPred, topBuckN, itemAvgRatings, user);
+        itemPredScoresPair, itemOrigTopN, topBuckN, itemAvgRatings, user);
     
+    //updateMisPredBins(misGTOrigCountBins, misGTOrigScoreBins, itemPredScoresPair,
+    //    gtNotInPred, topBuckN, origModel, user);
     updateMisPredBins(misGTOrigCountBins, misGTOrigScoreBins, itemPredScoresPair,
-        gtNotInPred, topBuckN, origModel, user);
+        itemOrigTopN, topBuckN, origModel, user);
 
+    //updateMisPredBins(misGTMFCountBins, misGTMFScoreBins, itemPredScoresPair,
+    //    gtNotInPred, topBuckN, fullModel, user);
     updateMisPredBins(misGTMFCountBins, misGTMFScoreBins, itemPredScoresPair,
-        gtNotInPred, topBuckN, fullModel, user);
+        itemOrigTopN, topBuckN, fullModel, user);
    
     /*
     if (svdScores.size() >= 10) {
@@ -2067,11 +2086,15 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
         }
       }
 
+      //updateMisPredBins(misPredPPRCountBins, pprScoreBins, itemOrigScoresPair,
+      //    predNotInOrig, topBuckN, pprMap, user);
       updateMisPredBins(misPredPPRCountBins, pprScoreBins, itemOrigScoresPair,
-          predNotInOrig, topBuckN, pprMap, user);
+          itemPredTopN, topBuckN, pprMap, user);
 
+      //updateMisPredBins(misGTPPRCountBins, misGTPPRScoreBins, itemPredScoresPair,
+      //    gtNotInPred, topBuckN, pprMap, user);
       updateMisPredBins(misGTPPRCountBins, misGTPPRScoreBins, itemPredScoresPair,
-          gtNotInPred, topBuckN, pprMap, user);
+          itemOrigTopN, topBuckN, pprMap, user);
 
       double pprScore = 0;
       for (auto&& pairs: predInOrigTop) {
