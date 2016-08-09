@@ -57,6 +57,12 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
     std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
     std::unordered_set<int>& filtItems, 
     int nSampUsers, int seed, std::string prefix, std::vector<double> alphas);
+void predSampUsersRMSEProbPar(gk_csr_t *trainMat, gk_csr_t *graphMat, 
+    int nUsers, int nItems, 
+    Model& origModel, Model& fullModel, Model& svdModel, 
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
+    std::unordered_set<int>& filtItems, 
+    int nSampUsers, int seed, std::string prefix);
 std::pair<double, double> compOrderingOverlapBScores(
     std::vector<std::pair<int, double>> itemPairsA,
     std::vector<std::pair<int, double>> itemPairsB, int sizeA);

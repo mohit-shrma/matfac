@@ -2482,6 +2482,567 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
 }
 
 
+void predSampUsersRMSEProbPar(gk_csr_t *trainMat, gk_csr_t *graphMat, 
+    int nUsers, int nItems, 
+    Model& origModel, Model& fullModel, Model& svdModel, 
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
+    std::unordered_set<int>& filtItems, 
+    int nSampUsers, int seed, std::string prefix) {
+  
+  int nBuckets = 10;
+  int nItemsPerBuck = nItems/nBuckets;
+
+  std::vector<double> g_rmseGTScores(nBuckets, 0);
+  std::vector<double> g_rmseFreqScores(nBuckets, 0);
+  std::vector<double> g_rmsePPRScores(nBuckets, 0);
+  std::vector<double> g_rmseSVDScores(nBuckets, 0);
+  std::vector<double> g_scores(nBuckets, 0);
+  std::vector<double> g_bucketNNZ(nBuckets, 0);
+
+  //initialize random engine
+  std::mt19937 mt(seed);
+  //user distribution to sample users
+  std::uniform_int_distribution<int> uDist(0, nUsers-1);
+
+  std::unordered_set<int> sampUsers;
+
+  auto avgTrainRating = meanRating(trainMat);
+  
+  int predLowcount = 0, predHighcount = 0;
+  int lowCount = 0, highCount = 0;
+  
+  auto rowColFreq = getRowColFreq(trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+  std::vector<std::pair<int, double>> itemFreqScoresPair;
+  for (int i = 0; i < itemFreq.size(); i++) {
+    itemFreqScoresPair.push_back(std::make_pair(i, itemFreq[i]));
+  }
+
+  auto itemAvgRatings = meanItemRating(trainMat);
+
+  int topBuckN = 0.05*nItems;
+
+  std::cout << "\ntopBuckN: " << topBuckN << std::endl;
+
+  std::vector<double> g_misPredSVDCountBins(20, 0);
+  std::vector<double> g_misPredFreqCountBins(20, 0);
+  std::vector<double> g_misPredPPRCountBins(20, 0);
+ 
+  std::vector<double> g_svdScoreBins(20, 0);
+  std::vector<double> g_freqScoreBins(20, 0);
+  std::vector<double> g_pprScoreBins(20, 0);
+
+  std::vector<double> g_misGTSVDCountBins(20, 0);
+  std::vector<double> g_misGTSVDScoreBins(20, 0);
+  std::vector<double> g_misGTOrigCountBins(20, 0);
+  std::vector<double> g_misGTOrigScoreBins(20, 0);
+  
+  std::vector<double> g_misGTMFCountBins(20, 0);
+  std::vector<double> g_misGTMFScoreBins(20, 0);
+  std::vector<double> g_misGTFreqScoreBins(20, 0);
+  std::vector<double> g_misGTFreqCountBins(20, 0);
+  
+  std::vector<double> g_misGTAvgTrainScoreBins(20, 0);
+  std::vector<double> g_misGTAvgTrainCountBins(20, 0);
+  std::vector<double> g_misGTPPRCountBins(20, 0);
+  std::vector<double> g_misGTPPRScoreBins(20, 0);
+
+  double predOrigOverlap = 0, svdOrigOverlap = 0;
+  double svdPredOverlap = 0;
+  double pprOrigOverlap = 0;
+  
+  double svdNotInPred = 0, svdInPred = 0;
+
+  double svdOfPredInOrig = 0, svdOfPredNotInOrig = 0;
+  double svdVarOfPredInOrig = 0, svdVarOfPredNotInOrig = 0;
+  double svdOfMedPredInOrig = 0;
+  double svdOfMaxPredInorig = 0, svdOfMinPredInOrig = 0;
+  double svdOfTopPredInOrig = 0, svdOfBotPredInOrig = 0;
+  
+  double svdAboveAvgInOrig = 0;
+
+  double pprOfPredInOrig = 0, pprOfPredNotInOrig = 0;
+  double pprNotInPred = 0, pprInPred = 0;
+  double predPPROrigOverlap = 0;
+  double iterPredSVDOrigOverlap = 0;
+  
+  int totalSampUsers;
+
+#pragma omp parallel
+{
+  std::vector<double> misPredSVDCountBins(20, 0);
+  std::vector<double> misPredFreqCountBins(20, 0);
+  std::vector<double> misPredPPRCountBins(20, 0);
+  std::vector<double> svdScoreBins(20, 0);
+  std::vector<double> freqScoreBins(20, 0);
+  std::vector<double> pprScoreBins(20, 0);
+
+  std::vector<double> misGTSVDCountBins(20, 0);
+  std::vector<double> misGTSVDScoreBins(20, 0);
+  std::vector<double> misGTOrigCountBins(20, 0);
+  std::vector<double> misGTOrigScoreBins(20, 0);
+  std::vector<double> misGTMFCountBins(20, 0);
+  std::vector<double> misGTMFScoreBins(20, 0);
+  std::vector<double> misGTFreqScoreBins(20, 0);
+  std::vector<double> misGTFreqCountBins(20, 0);
+  std::vector<double> misGTAvgTrainScoreBins(20, 0);
+  std::vector<double> misGTAvgTrainCountBins(20, 0);
+  std::vector<double> misGTPPRCountBins(20, 0);
+  std::vector<double> misGTPPRScoreBins(20, 0);
+
+  std::vector<double> rmseGTScores(nBuckets, 0);
+  std::vector<double> rmseFreqScores(nBuckets, 0);
+  std::vector<double> rmsePPRScores(nBuckets, 0);
+  std::vector<double> rmseSVDScores(nBuckets, 0);
+  std::vector<double> scores(nBuckets, 0);
+  std::vector<double> bucketNNZ(nBuckets, 0);
+
+
+#pragma omp for reduction(+ :  predOrigOverlap, svdOrigOverlap, svdPredOverlap, pprOrigOverlap, svdNotInPred, svdInPred, svdOfPredInOrig, svdOfPredNotInOrig, svdVarOfPredInOrig, svdVarOfPredNotInOrig, svdOfMedPredInOrig, svdOfMaxPredInorig, svdOfMinPredInOrig, svdOfTopPredInOrig, svdOfBotPredInOrig, svdAboveAvgInOrig, pprOfPredInOrig, pprOfPredNotInOrig, pprNotInPred, pprInPred, predPPROrigOverlap, iterPredSVDOrigOverlap, totalSampUsers)  
+  for (int user = 0; user < nUsers; user++) {
+
+    //skip if user is invalid
+    auto search = invalUsers.find(user);
+    if (search != invalUsers.end()) {
+      //found n skip
+      continue;
+    }
+    
+    totalSampUsers++;
+
+    std::vector<double> uRMSEGTScores(nBuckets, 0);
+    std::vector<double> uRMSEFreqScores(nBuckets, 0);
+    std::vector<double> uRMSEPPRScores(nBuckets, 0);
+    std::vector<double> uRMSESVDScores(nBuckets, 0);
+    std::vector<double> uScores(nBuckets, 0);
+    std::vector<double> uBucketNNZ(nBuckets, 0);
+    std::vector<double> itemsRMSE;
+    std::vector<double> itemsScore;
+
+    //get item scores ordered by predicted scores in decreasing order
+    //auto headItems = getHeadItems(trainMat, 0.2);
+
+    auto itemPredScoresPair = itemPredScores(fullModel, user, trainMat, 
+        nItems, invalItems);
+    auto itemOrigScoresPair = itemOrigScores(origModel, user, trainMat, 
+        nItems, invalItems);
+    auto itemSVDScoresPair = itemSVDScores(svdModel, user, trainMat, nItems, 
+        invalItems);
+   
+    auto itemPredTopN = std::vector<std::pair<int, double>>(
+        itemPredScoresPair.begin(), itemPredScoresPair.begin()+topBuckN);
+    auto itemOrigTopN = std::vector<std::pair<int, double>>(
+        itemOrigScoresPair.begin(), itemOrigScoresPair.begin()+topBuckN);
+
+    std::vector<std::pair<int, double>> itemPPRScoresPair;
+
+    auto predInOrigTop = orderingOverlap(itemOrigScoresPair, 
+        itemPredScoresPair, topBuckN);
+    double svdScore = 0;
+    double maxSvd = 0, minSvd = 1;
+    
+    std::vector<double> svdScores;
+    std::vector<double> predScores;
+    for (auto&& pairs: predInOrigTop) {
+      int item = pairs.first;
+      double score = svdModel.estRating(user, item);
+      svdScores.push_back(score);
+      predScores.push_back(pairs.second);
+      svdScore += score;
+      if (score > maxSvd) {
+        maxSvd = score;
+      }
+      if (score < minSvd) {
+        minSvd = score;
+      }
+    }
+
+    svdOfMaxPredInorig += maxSvd;
+    svdOfMinPredInOrig += minSvd;
+
+    if (predInOrigTop.size()) {
+      svdScore = svdScore/predInOrigTop.size();
+      svdOfMedPredInOrig += svdModel.estRating(user, 
+          predInOrigTop[predInOrigTop.size()/2].first);
+      svdOfTopPredInOrig += svdModel.estRating(user,
+          predInOrigTop[0].first);
+      svdOfBotPredInOrig += svdModel.estRating(user,
+          predInOrigTop[predInOrigTop.size()-1].first);
+    }
+    svdOfPredInOrig += svdScore;
+
+    double svdVarPredInOrig = 0;
+    for (auto&& pair: predInOrigTop) {
+      int item = pair.first;
+      svdVarPredInOrig += std::pow(
+          svdModel.estRating(user, item) - svdScore, 2);      
+    }
+    if (predInOrigTop.size()) {
+      svdVarPredInOrig = svdVarPredInOrig/predInOrigTop.size();
+    }
+    svdVarOfPredInOrig += svdVarPredInOrig;
+
+
+    auto predNotInOrig = orderingDiff(itemOrigScoresPair,
+        itemPredScoresPair, topBuckN);
+    svdScore = 0;
+    svdScores.clear();
+    for (auto&& pairs: predNotInOrig) {
+      int item = pairs.first;
+      double score = svdModel.estRating(user, item);
+      svdScore += score;
+      svdScores.push_back(score);
+    }
+    if (predNotInOrig.size()) {
+      svdScore = svdScore/predNotInOrig.size();
+    }
+    svdOfPredNotInOrig += svdScore;
+
+    updateMisPredBins(misPredSVDCountBins, svdScoreBins, itemOrigScoresPair, 
+        itemPredTopN, topBuckN, svdModel, user);
+    
+    updateMisPredFreqBins(misPredFreqCountBins, freqScoreBins, itemOrigScoresPair,
+        itemPredTopN, topBuckN, itemFreq, user);
+
+    auto gtNotInPred = orderingDiff(itemPredScoresPair, itemOrigScoresPair,
+        topBuckN);
+    updateMisPredBins(misGTSVDCountBins, misGTSVDScoreBins, itemPredScoresPair,
+        itemOrigTopN, topBuckN, svdModel, user);
+    
+    updateMisPredFreqBins(misGTFreqCountBins, misGTFreqScoreBins, itemPredScoresPair,
+        itemOrigTopN, topBuckN, itemFreq, user);
+
+    updateMisPredFreqBins(misGTAvgTrainCountBins, misGTAvgTrainScoreBins, 
+        itemPredScoresPair, itemOrigTopN, topBuckN, itemAvgRatings, user);
+    
+    updateMisPredBins(misGTOrigCountBins, misGTOrigScoreBins, itemPredScoresPair,
+        itemOrigTopN, topBuckN, origModel, user);
+
+    updateMisPredBins(misGTMFCountBins, misGTMFScoreBins, itemPredScoresPair,
+        itemOrigTopN, topBuckN, fullModel, user);
+   
+    double svdVarPredNotInOrig = 0;
+    for (auto&& pair: predNotInOrig) {
+      int item = pair.first;
+      svdVarPredNotInOrig += std::pow(
+          svdModel.estRating(user, item) - svdScore, 2);
+    }
+    if (predNotInOrig.size()) {
+      svdVarPredNotInOrig = svdVarPredNotInOrig/predNotInOrig.size();
+    }
+    svdVarOfPredNotInOrig += svdVarPredNotInOrig;
+
+    if (NULL != graphMat) {
+      itemPPRScoresPair = itemGraphItemScores(user, graphMat, trainMat, 
+        0.01, nUsers, nItems, invalItems, false);
+      std::map<int, double> pprMap;
+      for (auto&& itemScore: itemPPRScoresPair) {
+        if (isnan(itemScore.second)) {
+          std::cerr << "Found NaN: " << itemScore.first << " " 
+            << itemScore.second << std::endl;
+        } else {
+          pprMap[itemScore.first] = itemScore.second;
+        }
+      }
+
+      updateMisPredBins(misPredPPRCountBins, pprScoreBins, itemOrigScoresPair,
+          itemPredTopN, topBuckN, pprMap, user);
+
+      updateMisPredBins(misGTPPRCountBins, misGTPPRScoreBins, itemPredScoresPair,
+          itemOrigTopN, topBuckN, pprMap, user);
+
+      double pprScore = 0;
+      for (auto&& pairs: predInOrigTop) {
+        int item = pairs.first;
+        pprScore += pprMap[item];
+      }
+      if (predInOrigTop.size()) {
+        pprScore = pprScore/predInOrigTop.size();
+      }
+      pprOfPredInOrig += pprScore;
+      
+      pprScore = 0;
+      for (auto&& pairs: predNotInOrig) {
+        int item = pairs.first;
+        pprScore += pprMap[item];
+      }
+      if (predNotInOrig.size()) {
+        pprScore = pprScore/predNotInOrig.size();
+      }
+      pprOfPredNotInOrig += pprScore;
+      
+      pprOrigOverlap += compOrderingOverlap(itemOrigScoresPair,
+          itemPPRScoresPair, topBuckN);
+    }
+    
+    predOrigOverlap += compOrderingOverlap(itemOrigScoresPair, 
+        itemPredScoresPair, topBuckN);
+    svdOrigOverlap += compOrderingOverlap(itemOrigScoresPair,
+        itemSVDScoresPair, topBuckN);
+    svdPredOverlap += compOrderingOverlap(itemSVDScoresPair,
+        itemPredScoresPair, topBuckN);
+
+    //get itemsRMSE and itemsScore
+    itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
+        itemsScore, itemSVDScoresPair);
+    
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uRMSESVDScores.begin(), uRMSESVDScores.end(), 0);
+    updateBucketsArr(uRMSESVDScores, uBucketNNZ, itemsRMSE, nBuckets);
+
+    //get itemsRMSE and itemsScore
+    itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
+        itemsScore, itemFreqScoresPair);
+    
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uRMSEFreqScores.begin(), uRMSEFreqScores.end(), 0);
+    updateBucketsArr(uRMSEFreqScores, uBucketNNZ, itemsRMSE, nBuckets);
+
+    if (NULL != graphMat) {
+      //get itemsRMSE and itemsScore
+      itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
+          itemsScore, itemPPRScoresPair);
+      
+      //reset user specific vec to 0
+      std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+      std::fill(uRMSEPPRScores.begin(), uRMSEPPRScores.end(), 0);
+      updateBucketsArr(uRMSEPPRScores, uBucketNNZ, itemsRMSE, nBuckets);
+    }
+
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uScores.begin(), uScores.end(), 0);
+    updateBucketsArr(uScores, uBucketNNZ, itemsScore, nBuckets);
+ 
+    //get itemsRMSE and itemsScore
+    itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
+        itemsScore, itemOrigScoresPair);
+    
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uRMSEGTScores.begin(), uRMSEGTScores.end(), 0);
+    updateBucketsArr(uRMSEGTScores, uBucketNNZ, itemsRMSE, nBuckets);
+    
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uScores.begin(), uScores.end(), 0);
+    updateBucketsArr(uScores, uBucketNNZ, itemsScore, nBuckets);
+   
+    //write and update aggregated buckets
+    for (int i = 0; i < nBuckets; i++) {
+      bucketNNZ[i]     += uBucketNNZ[i];
+      rmseGTScores[i]  += uRMSEGTScores[i];
+      rmseSVDScores[i] += uRMSESVDScores[i];
+      rmseFreqScores[i] += uRMSEFreqScores[i];
+      rmsePPRScores[i] += uRMSEPPRScores[i];
+      scores[i]        += uScores[i];
+    }
+  } //end for user
+
+#pragma omp critical
+{
+  for (int i = 0; i < nBuckets; i++) {
+      g_bucketNNZ[i]     += bucketNNZ[i];
+      g_rmseGTScores[i]  += rmseGTScores[i];
+      g_rmseSVDScores[i] += rmseSVDScores[i];
+      g_rmseFreqScores[i] += rmseFreqScores[i];
+      g_rmsePPRScores[i] += rmsePPRScores[i];
+      g_scores[i]        += scores[i];
+  }
+
+  for (int i = 0; i < 20; i++) {
+    g_misPredSVDCountBins[i] += misPredSVDCountBins[i];
+    g_misPredFreqCountBins[i] += misPredFreqCountBins[i];
+    g_misPredPPRCountBins[i] += misPredPPRCountBins[i];
+   
+    g_svdScoreBins[i] += svdScoreBins[i];
+    g_freqScoreBins[i] += freqScoreBins[i];
+    g_pprScoreBins[i] += pprScoreBins[i];
+
+    g_misGTSVDCountBins[i] += misGTSVDCountBins[i];
+    g_misGTSVDScoreBins[i] += misGTSVDScoreBins[i];
+    g_misGTOrigCountBins[i] += misGTOrigCountBins[i];
+    g_misGTOrigScoreBins[i] += misGTOrigScoreBins[i];
+    
+    g_misGTMFCountBins[i] += misGTMFCountBins[i];
+    g_misGTMFScoreBins[i] += misGTMFScoreBins[i];
+    g_misGTFreqScoreBins[i] += misGTFreqScoreBins[i];
+    g_misGTFreqCountBins[i] += misGTFreqCountBins[i];
+
+    g_misGTAvgTrainCountBins[i] += misGTAvgTrainCountBins[i];
+    g_misGTAvgTrainScoreBins[i] += misGTAvgTrainScoreBins[i];
+    g_misGTPPRCountBins[i] += misGTPPRCountBins[i];
+    g_misGTPPRScoreBins[i] += misGTPPRScoreBins[i];
+  }
+
+}
+
+}
+
+
+  for (int i = 0; i < nBuckets; i++) {
+    g_rmseGTScores[i] = sqrt(g_rmseGTScores[i]/g_bucketNNZ[i]);
+    g_rmseSVDScores[i] = sqrt(g_rmseSVDScores[i]/g_bucketNNZ[i]);
+    g_rmsePPRScores[i] = sqrt(g_rmsePPRScores[i]/g_bucketNNZ[i]);
+    g_rmseFreqScores[i] = sqrt(g_rmseFreqScores[i]/g_bucketNNZ[i]);
+    g_scores[i] = g_scores[i]/g_bucketNNZ[i];
+  }
+
+  std::cout << "GT RMSE buckets: ";
+  dispVector(g_rmseGTScores); 
+  std::cout << std::endl;
+
+  std::cout << "SVD RMSE buckets: ";
+  dispVector(g_rmseSVDScores);
+  std::cout << std::endl;
+
+  std::cout << "Freq RMSE buckets: ";
+  dispVector(g_rmseFreqScores);
+  std::cout << std::endl;
+
+  std::cout << "PPR RMSE buckets: ";
+  dispVector(g_rmsePPRScores);
+  std::cout << std::endl;
+
+  std::cout << "GT Score buckets: ";
+  dispVector(g_scores);
+  std::cout << std::endl;
+  
+  std::cout << "No. sample users: " << totalSampUsers << std::endl;
+  std::cout << "predOrigOverlap: " << predOrigOverlap/totalSampUsers << std::endl;
+  std::cout << "svdOrigOverlap: " << svdOrigOverlap/totalSampUsers << std::endl;
+  std::cout << "svdInPred: " << svdInPred/totalSampUsers << std::endl;
+  std::cout << "svdNotInPred: " << svdNotInPred/totalSampUsers << std::endl;
+  
+  std::cout << "pprOrigOverlap: " << pprOrigOverlap/totalSampUsers << std::endl;
+  std::cout << "pprofPredInOrig: " << pprOfPredInOrig/totalSampUsers << std::endl;
+  std::cout << "pprOfPredNotInOrig: " << pprOfPredNotInOrig/totalSampUsers << std::endl;
+
+  std::cout << "svdPredOverlap: " << svdPredOverlap/totalSampUsers << std::endl;
+  
+  std::cout << "svdOfPredInOrig: " << svdOfPredInOrig/totalSampUsers
+    << " svdOfPredNotInOrig: " << svdOfPredNotInOrig/totalSampUsers << std::endl;
+  
+  std::cout << "svdVarOfPredInOrig: " << svdVarOfPredInOrig/totalSampUsers 
+    << " svdVarOfPredNotInOrig: " << svdVarOfPredNotInOrig/totalSampUsers << std::endl;
+ 
+  std::cout << "svdAboveAvgInOrig: " << svdAboveAvgInOrig/totalSampUsers << std::endl; 
+
+  std::cout << "svdOfMaxPredInorig: " << svdOfMaxPredInorig/totalSampUsers << std::endl;
+  std::cout << "svdOfMinPredInOrig: " << svdOfMinPredInOrig/totalSampUsers << std::endl;
+  std::cout << "svdOfTopPredInOrig: " << svdOfTopPredInOrig/totalSampUsers << std::endl;
+  std::cout << "svdOfMedPredInOrig: " << svdOfMedPredInOrig/totalSampUsers << std::endl; 
+  std::cout << "svdOfBotPredInOrig: " << svdOfBotPredInOrig/totalSampUsers << std::endl;
+
+  std::cout << "pprOfPredInOrig: " << pprOfPredInOrig/totalSampUsers
+    << " pprOfPredNotInOrig: " << pprOfPredNotInOrig/totalSampUsers << std::endl;
+  
+  std::cout << "iterPredSVDOrigOverlap: " 
+    << iterPredSVDOrigOverlap/totalSampUsers << std::endl;
+
+
+  int sumSVDBins = 0;
+  int sumPPRBins = 0;
+  int sumGTSVDBins = 0;
+  int sumGTPPRBins = 0;
+  for (int i = 0; i < 20; i++) {
+    sumSVDBins += g_misPredSVDCountBins[i];
+    sumPPRBins += g_misPredPPRCountBins[i];
+
+    sumGTSVDBins += g_misGTSVDCountBins[i];
+    sumGTPPRBins += g_misGTPPRCountBins[i];
+  }
+
+  std::cout << "Total SVD misPred: " << sumSVDBins << std::endl;
+ 
+  std::cout << "Mispred SVD %: ";
+  for (int i = 0; i < 20; i++) {
+    std::cout << g_misPredSVDCountBins[i]/sumSVDBins << ",";
+  }
+  std::cout << std::endl;
+
+  std::cout << "Mispred avg SVD: ";
+  for (int i = 0; i < 20; i++) {
+    std::cout << g_svdScoreBins[i]/g_misPredSVDCountBins[i] << ",";
+  }
+  std::cout << std::endl;
+  
+  std::cout << "Mispred avg Freq: ";
+  for (int i = 0; i < 20; i++) {
+    std::cout << g_freqScoreBins[i]/g_misPredFreqCountBins[i] << ",";
+  }
+
+  std::cout << std::endl;
+  std::cout << "Total PPR misPred: " << sumPPRBins << std::endl;
+  std::cout << "Mispred PPR %: ";
+  for (int i = 0; i < 20; i++) {
+    std::cout << g_misPredPPRCountBins[i]/sumPPRBins << ","; 
+  }
+  std::cout << std::endl;
+
+  std::cout << "Mispred avg PPR: ";
+  for (int i = 0; i < 20; i++) {
+    std::cout << g_pprScoreBins[i]/g_misPredPPRCountBins[i] << ","; 
+  }
+  std::cout << std::endl;
+ 
+  std::cout << "Total SVD misGT: " << sumGTSVDBins << std::endl;
+  std::cout << "MisGT SVD %: ";
+  for (int i = 0; i < 20; i++) {
+    std::cout << g_misGTSVDCountBins[i]/sumGTSVDBins << ",";
+  }
+  std::cout << std::endl;
+
+  std::cout << "MisGT avg SVD: ";
+  for (int i =0; i < 20; i++) {
+    std::cout << g_misGTSVDScoreBins[i]/g_misGTSVDCountBins[i] << ",";
+  }
+  std::cout << std::endl;
+
+  std::cout << "MisGT avg Freq: ";
+  for (int i =0; i < 20; i++) {
+    std::cout << g_misGTFreqScoreBins[i]/g_misGTFreqCountBins[i] << ",";
+  }
+  std::cout << std::endl;
+
+  std::cout << "MisGT avg AllRatings: ";
+  for (int i =0; i < 20; i++) {
+    std::cout << g_misGTAvgTrainScoreBins[i]/g_misGTAvgTrainCountBins[i] << ",";
+  }
+  std::cout << std::endl;
+
+  std::cout << "MisGT avg GT: ";
+  for (int i =0; i < 20; i++) {
+    std::cout << g_misGTOrigScoreBins[i]/g_misGTOrigCountBins[i] << ",";
+  }
+  std::cout << std::endl;
+
+  std::cout << "MisGT avg Pred: ";
+  for (int i =0; i < 20; i++) {
+    std::cout << g_misGTMFScoreBins[i]/g_misGTMFCountBins[i] << ",";
+  }
+  std::cout << std::endl;
+
+  std::cout << std::endl;
+  std::cout << "Total PPR misGT: " << sumGTSVDBins << std::endl;
+  std::cout << "MisGT PPR %: ";
+  for (int i = 0; i < 20; i++) {
+    std::cout << g_misGTPPRCountBins[i]/sumGTPPRBins << ",";
+  }
+  std::cout << std::endl;
+
+  std::cout << "MisGT avg PPR: ";
+  for (int i =0; i < 20; i++) {
+    std::cout << g_misGTPPRScoreBins[i]/g_misGTPPRCountBins[i] << ",";
+  }
+  std::cout << std::endl;
+
+}
+
+
 //return a map of item- users
 std::map<int, std::vector<int>> pprSampTopNItemsUsers(gk_csr_t *graphMat, 
     gk_csr_t *trainMat,

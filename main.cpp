@@ -647,10 +647,11 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   */
   //prefix = std::string(params.prefix) + "_" + std::to_string(lambdas[nThreads])
   //  + "_" + std::to_string(N);
+  /*
   writeTopBuckRMSEs(origModel, fullModel, svdModel, data.graphMat, data.trainMat, 
       0.01, MAX_PR_ITER, invalidUsers, invalidItems, filtItems, nSampUsers, 
       params.seed, 100, params.prefix);
-  
+  */
   /*
   //last parameter in main thread
   prefix = std::string(params.prefix) + "_" + std::to_string(params.alpha)
@@ -691,15 +692,15 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
       invalidUsers, invalidItems, filtItems, 5000, params.seed, prefix);
   */
 
-  /*
+  
   prefix = std::string(params.prefix) + "_sampOrig";
   
   std::vector<double> alphas = {0.0001, 0.001, 0.01, 0.1, 0.5, 1, 10, 100};
-    predSampUsersRMSEProb2(data.trainMat, data.graphMat,
+    predSampUsersRMSEProbPar(data.trainMat, data.graphMat,
       nUsers, nItems, origModel, fullModel,
       svdModel, invalidUsers, invalidItems, filtItems, 5000, params.seed, 
-      prefix, alphas);
-  */  
+      prefix);
+    
 }
 
 
@@ -1758,7 +1759,7 @@ int main(int argc , char* argv[]) {
   //writeTailTestMat(data.testMat, "nf_480189x17772.tail.test.5.csr", headItems);
  
   /* 
-  std::string matPre = "nf_480189x17772_8"; 
+  std::string matPre = params.prefix;//"each_61265x1623_10"; 
   writeCSRWSparsityStructure(data.trainMat, 
       (matPre + ".syn.csr").c_str(),
       data.origUFac, data.origIFac, params.facDim);
@@ -1781,7 +1782,7 @@ int main(int argc , char* argv[]) {
       (matPre + ".syn.rand.test.csr").c_str(),
       (matPre + ".syn.rand.val.csr").c_str(),
       0.1, 0.1, params.seed);
-  */ 
+  */  
 
   //writeBlkDiagJoinedCSR("", "", "");
 
@@ -1809,7 +1810,7 @@ int main(int argc , char* argv[]) {
   //ModelMF mfModel(params, params.initUFacFile, 
   //    params.initIFacFile, params.seed);
  
-  
+  /*
   std::string ans;
   std::cout << "Want to train? ";
   std::getline(std::cin, ans);
@@ -1817,7 +1818,10 @@ int main(int argc , char* argv[]) {
   if (!(ans.compare("yes") == 0 || ans.compare("y") == 0)) {
     return 0;
   }
-  
+  */
+
+ 
+  /*
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
   svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
@@ -1829,6 +1833,7 @@ int main(int argc , char* argv[]) {
   std::cout << "\nStarting model train...";
   mfModel.hogTrain(data, bestModel, invalidUsers, invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
+ 
       invalidItems);
   std::cout << "\nValidation RMSE: " << bestModel.RMSE(data.valMat, invalidUsers, 
       invalidItems);
@@ -1842,9 +1847,9 @@ int main(int argc , char* argv[]) {
   //write out invalid items
   prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
-      
-  
-  //computeSampTopNFrmFullModel(data, params);  
+  */  
+
+  computeSampTopNFrmFullModel(data, params);  
   
   //testTailLocRec(data, params);
   //testTailRec(data, params);
