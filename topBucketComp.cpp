@@ -2861,50 +2861,51 @@ void predSampUsersRMSEProbPar(gk_csr_t *trainMat, gk_csr_t *graphMat,
    
     //write and update aggregated buckets
     for (int i = 0; i < nBuckets; i++) {
-      bucketNNZ[i]      + = uBucketNNZ[i];
-      rmseGTScores[i]   + = uRMSEGTScores[i];
-      rmseSVDScores[i]  + = uRMSESVDScores[i];
-      rmseFreqScores[i] + = uRMSEFreqScores[i];
-      rmsePPRScores[i]  + = uRMSEPPRScores[i];
-      scores[i]         + = uScores[i];
+   
+      bucketNNZ[i]      += uBucketNNZ[i];
+      rmseGTScores[i]   += uRMSEGTScores[i];
+      rmseSVDScores[i]  += uRMSESVDScores[i];
+      rmseFreqScores[i] += uRMSEFreqScores[i];
+      rmsePPRScores[i]  += uRMSEPPRScores[i];
+      scores[i]         += uScores[i];
     }
   } //end for user
 
 #pragma omp critical
 {
   for (int i = 0; i < nBuckets; i++) {
-      g_bucketNNZ[i]      + = bucketNNZ[i];
-      g_rmseGTScores[i]   + = rmseGTScores[i];
-      g_rmseSVDScores[i]  + = rmseSVDScores[i];
-      g_rmseFreqScores[i] + = rmseFreqScores[i];
-      g_rmsePPRScores[i]  + = rmsePPRScores[i];
-      g_scores[i]         + = scores[i];
+      g_bucketNNZ[i]      += bucketNNZ[i];
+      g_rmseGTScores[i]   += rmseGTScores[i];
+      g_rmseSVDScores[i]  += rmseSVDScores[i];
+      g_rmseFreqScores[i] += rmseFreqScores[i];
+      g_rmsePPRScores[i]  += rmsePPRScores[i];
+      g_scores[i]         += scores[i];
   }
 
   for (int i = 0; i < 20; i++) {
     
-    g_misPredSVDCountBins[i]  + = misPredSVDCountBins[i];
-    g_misPredFreqCountBins[i] + = misPredFreqCountBins[i];
-    g_misPredPPRCountBins[i]  + = misPredPPRCountBins[i];
+    g_misPredSVDCountBins[i]  += misPredSVDCountBins[i];
+    g_misPredFreqCountBins[i] += misPredFreqCountBins[i];
+    g_misPredPPRCountBins[i]  += misPredPPRCountBins[i];
    
-    g_svdScoreBins[i]  + = svdScoreBins[i];
-    g_freqScoreBins[i] + = freqScoreBins[i];
-    g_pprScoreBins[i]  + = pprScoreBins[i];
+    g_svdScoreBins[i]  += svdScoreBins[i];
+    g_freqScoreBins[i] += freqScoreBins[i];
+    g_pprScoreBins[i]  += pprScoreBins[i];
 
-    g_misGTSVDCountBins[i]  + = misGTSVDCountBins[i];
-    g_misGTSVDScoreBins[i]  + = misGTSVDScoreBins[i];
-    g_misGTOrigCountBins[i] + = misGTOrigCountBins[i];
-    g_misGTOrigScoreBins[i] + = misGTOrigScoreBins[i];
+    g_misGTSVDCountBins[i]  += misGTSVDCountBins[i];
+    g_misGTSVDScoreBins[i]  += misGTSVDScoreBins[i];
+    g_misGTOrigCountBins[i] += misGTOrigCountBins[i];
+    g_misGTOrigScoreBins[i] += misGTOrigScoreBins[i];
     
-    g_misGTMFCountBins[i]   + = misGTMFCountBins[i];
-    g_misGTMFScoreBins[i]   + = misGTMFScoreBins[i];
-    g_misGTFreqScoreBins[i] + = misGTFreqScoreBins[i];
-    g_misGTFreqCountBins[i] + = misGTFreqCountBins[i];
+    g_misGTMFCountBins[i]   += misGTMFCountBins[i];
+    g_misGTMFScoreBins[i]   += misGTMFScoreBins[i];
+    g_misGTFreqScoreBins[i] += misGTFreqScoreBins[i];
+    g_misGTFreqCountBins[i] += misGTFreqCountBins[i];
 
-    g_misGTAvgTrainCountBins[i] + = misGTAvgTrainCountBins[i];
-    g_misGTAvgTrainScoreBins[i] + = misGTAvgTrainScoreBins[i];
-    g_misGTPPRCountBins[i]      + = misGTPPRCountBins[i];
-    g_misGTPPRScoreBins[i]      + = misGTPPRScoreBins[i];
+    g_misGTAvgTrainCountBins[i] += misGTAvgTrainCountBins[i];
+    g_misGTAvgTrainScoreBins[i] += misGTAvgTrainScoreBins[i];
+    g_misGTPPRCountBins[i]      += misGTPPRCountBins[i];
+    g_misGTPPRScoreBins[i]      += misGTPPRScoreBins[i];
   }
 
 }
