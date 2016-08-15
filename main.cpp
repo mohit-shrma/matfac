@@ -1850,6 +1850,7 @@ int main(int argc , char* argv[]) {
   //write out invalid items
   prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
+  std::cout << std::endl << "**** Model parameters ****" << std::endl;
   mfModel.display();
   */  
 
