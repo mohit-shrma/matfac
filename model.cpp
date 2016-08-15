@@ -19,6 +19,15 @@ std::string Model::modelSignature() {
 }
 
 
+void Model::display() {
+  std::cout << "nUsers: " << nUsers << " nItems: " << nItems << std::endl;
+  std::cout << "facDim: " << facDim << std::endl;
+  std::cout << "uReg: " << uReg << " iReg: " << iReg << std::endl;
+  std::cout << "learnRate: " << learnRate << std::endl;
+  std::cout << "trainSeed: " << trainSeed;
+} 
+
+
 void Model::save(std::string prefix) {
 
   std::string modelSign = modelSignature();
@@ -350,6 +359,13 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
       bestModel = *this;
       bestObj = currObj;
       bestIter = iter;
+    }
+
+    if (iter - bestIter >= 100) {
+      //half the learning rate
+      if (learnRate > 1e-5) {
+        learnRate = learnRate/2;
+      }
     }
 
     if (iter - bestIter >= 500) {

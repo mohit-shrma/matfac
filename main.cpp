@@ -1742,6 +1742,9 @@ int main(int argc , char* argv[]) {
 
   //get passed parameters
   Params params = parse_cmd_line(argc, argv);
+  params.display();
+  
+  
   //initialize seed
   std::srand(params.seed);
 
@@ -1847,6 +1850,7 @@ int main(int argc , char* argv[]) {
   //write out invalid items
   prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
+  mfModel.display();
   */  
 
   computeSampTopNFrmFullModel(data, params);  

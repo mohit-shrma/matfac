@@ -53,7 +53,23 @@ class Params {
       initUFacFile(p_initUFacFile), initIFacFile(p_initIFacFile),
       prefix(p_prefix){}
 
-
+    void display() {
+      std::cout << "*** PARAMETERS ***" << std::endl;
+      std::cout << "nUsers: " << nUsers << " nItems: " << nItems << std::endl;
+      std::cout << "facDim: " << facDim << " origFacDim: " << origFacDim 
+        << " svdFacDim: " << svdFacDim << std::endl;
+      std::cout << "maxIter: " << maxIter << std::endl;
+      std::cout << "uReg: " << uReg << " iReg: " << iReg << std::endl;
+      std::cout << "learnRate: " << learnRate << std::endl;
+      std::cout << "trainMat: " << trainMatFile << std::endl;
+      std::cout << "testMat: " << testMatFile << std::endl;
+      std::cout << "valMat: " << valMatFile << std::endl;
+      std::cout << "graphMat: " << graphMatFile << std::endl;
+      std::cout << "origUFac: " << origUFacFile << std::endl;
+      std::cout << "origIFac: " << origIFacFile << std::endl;
+      std::cout << "initUFac: " << initUFacFile << std::endl;
+      std::cout << "initIFac: " << initIFacFile << std::endl;
+    }
 }; 
 
 

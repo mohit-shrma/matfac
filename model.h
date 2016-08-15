@@ -110,6 +110,7 @@ class Model {
     double fullRMSE(const Data& data);
     virtual double estRating(int user, int item);
     std::string modelSignature(); 
+    void display();
     void save(std::string prefix);
     void saveFacs(std::string prefix);
     void load(std::string prefix);
