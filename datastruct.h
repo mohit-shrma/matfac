@@ -2,7 +2,6 @@
 #define _DATASTRUCT_H_
 
 
-
 #include <iostream>
 #include <vector>
 #include <numeric>
