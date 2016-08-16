@@ -1,12 +1,13 @@
 #ifndef _DATASTRUCT_H_
 #define _DATASTRUCT_H_
 
+
 #include <iostream>
 #include <vector>
 #include <numeric>
 #include "GKlib.h"
 #include "io.h"
-
+#include "const.h"
 
 class Params {
   
@@ -142,7 +143,8 @@ class Params {
       if (NULL != params.trainMatFile) {
         std::cout << "\nReading partial train matrix 0-indexed... " 
           << params.trainMatFile;
-        trainMat = gk_csr_Read(params.trainMatFile, GK_CSR_FMT_CSR, 1, 0);
+        trainMat = gk_csr_Read(params.trainMatFile, GK_CSR_FMT_CSR, GK_CSR_IS_VAL, 0);
+        //trainMat = gk_csr_Read(params.trainMatFile, GK_CSR_FMT_CSR, 1, 0);
         gk_csr_CreateIndex(trainMat, GK_CSR_COL);
         //get nnz in train matrix
         trainNNZ = 0;
@@ -179,7 +181,8 @@ class Params {
       if (NULL != params.testMatFile) {
         std::cout << "\nReading test matrix 0-indexed... " 
           << params.testMatFile;
-        testMat = gk_csr_Read(params.testMatFile, GK_CSR_FMT_CSR, 1, 0);
+        testMat = gk_csr_Read(params.testMatFile, GK_CSR_FMT_CSR, GK_CSR_IS_VAL, 0);
+        //testMat = gk_csr_Read(params.testMatFile, GK_CSR_FMT_CSR, 1, 0);
         gk_csr_CreateIndex(testMat, GK_CSR_COL);
       }
       
@@ -187,7 +190,8 @@ class Params {
       if (NULL != params.valMatFile) {
         std::cout << "\nReading val matrix 0-indexed... " 
           << params.valMatFile;
-        valMat = gk_csr_Read(params.valMatFile, GK_CSR_FMT_CSR, 1, 0);
+        valMat = gk_csr_Read(params.valMatFile, GK_CSR_FMT_CSR, GK_CSR_IS_VAL, 0);
+        //valMat = gk_csr_Read(params.valMatFile, GK_CSR_FMT_CSR, 1, 0);
         gk_csr_CreateIndex(valMat, GK_CSR_COL);
       }
 

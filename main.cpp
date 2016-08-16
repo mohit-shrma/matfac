@@ -696,10 +696,10 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   prefix = std::string(params.prefix) + "_sampOrig";
   
   std::vector<double> alphas = {0.0001, 0.001, 0.01, 0.1, 0.5, 1, 10, 100};
-    predSampUsersRMSEProbPar(data.trainMat, data.graphMat,
-      nUsers, nItems, origModel, fullModel,
-      svdModel, invalidUsers, invalidItems, filtItems, 5000, params.seed, 
-      prefix);
+  predSampUsersRMSEProbPar(data.trainMat, data.graphMat,
+    nUsers, nItems, origModel, fullModel,
+    svdModel, invalidUsers, invalidItems, filtItems, 5000, params.seed, 
+    prefix);
     
 }
 
@@ -1733,9 +1733,9 @@ void computeHeadTailRMSE(Data& data, Params& params) {
 
 int main(int argc , char* argv[]) {
  
-  /*
+  /* 
   gk_csr_t *mat1 = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, 1, 0);
-  gk_csr_t *mat2 = gk_csr_Read(argv[2], GK_CSR_FMT_CSR, 1, 0);
+  gk_csr_t *mat2 = gk_csr_Read(argv[2], GK_CSR_FMT_CSR, GK_CSR_IS_VAL, 0);
   std::cout << "train test mat match: " <<  compMat(mat1, mat2) << std::endl;
   return 0;
   */
@@ -1750,6 +1750,17 @@ int main(int argc , char* argv[]) {
 
   Data data (params);
 
+  std::cout << "\nCreating original model..." << std::endl;
+  ModelMF origModel(params, params.origUFacFile, params.origIFacFile, 
+      params.seed);
+  origModel.updateMatWRatings(data.trainMat);
+  gk_csr_CreateIndex(data.trainMat, GK_CSR_COL);
+  origModel.updateMatWRatings(data.testMat);
+  gk_csr_CreateIndex(data.testMat, GK_CSR_COL);
+  origModel.updateMatWRatings(data.valMat);
+  gk_csr_CreateIndex(data.valMat, GK_CSR_COL);
+  
+  
   /*
   auto meanVar = getMeanVar(data.origUFac, data.origIFac, data.origFacDim, 
       data.nUsers, data.nItems);
@@ -1760,32 +1771,40 @@ int main(int argc , char* argv[]) {
 
   //auto headItems = getHeadItems(data.trainMat, 0.1);
   //writeTailTestMat(data.testMat, "nf_480189x17772.tail.test.5.csr", headItems);
- 
-  /* 
-  std::string matPre = params.prefix;//"each_61265x1623_10"; 
+  
+  /*  
+  std::string matPre = params.prefix;//"each_61265x1623_10";
+  std::string suff = ".syn.ind.csr"; 
+  
   writeCSRWSparsityStructure(data.trainMat, 
-      (matPre + ".syn.csr").c_str(),
+      (matPre + suff).c_str(),
       data.origUFac, data.origIFac, params.facDim);
-  data.trainMat = gk_csr_Read((char*)(matPre + ".syn.csr").c_str(), GK_CSR_FMT_CSR, 1, 0);
+  data.trainMat = gk_csr_Read((char*)(matPre + suff).c_str(), GK_CSR_FMT_CSR, 
+      GK_CSR_IS_VAL, 0);
   gk_csr_CreateIndex(data.trainMat, GK_CSR_COL);
   writeTrainTestValMat(data.trainMat,  
-      (matPre + ".syn.train.csr").c_str(),
-      (matPre + ".syn.test.csr").c_str(),
-      (matPre + ".syn.val.csr").c_str(),
+      (matPre + ".train" + suff).c_str(),
+      (matPre + ".test" + suff).c_str(),
+      (matPre + ".val" + suff).c_str(),
       0.1, 0.1, params.seed);
- 
   
   int nnz = getNNZ(data.trainMat); 
-  writeRandMatCSR((matPre + ".syn.rand.csr").c_str(), data.origUFac, 
-      data.origIFac, params.facDim, params.seed, nnz);
-  data.trainMat = gk_csr_Read((char*)(matPre + ".syn.rand.csr").c_str(), GK_CSR_FMT_CSR, 1, 0);
-  gk_csr_CreateIndex(data.trainMat, GK_CSR_COL);
-  writeTrainTestValMat(data.trainMat,  
-      (matPre + ".syn.rand.train.csr").c_str(),
-      (matPre + ".syn.rand.test.csr").c_str(),
-      (matPre + ".syn.rand.val.csr").c_str(),
+
+#pragma omp parallel for
+  for (int randSeed = 1; randSeed < 11; randSeed++) {
+    std::string suff = "." + std::to_string(randSeed) + ".syn.rand.ind.csr"; 
+    writeRandMatCSR((matPre + suff).c_str(), data.origUFac, 
+        data.origIFac, params.facDim, randSeed, nnz);
+    gk_csr_t* randMat = gk_csr_Read((char*)(matPre + suff).c_str(), 
+        GK_CSR_FMT_CSR, GK_CSR_IS_VAL, 0);
+    gk_csr_CreateIndex(randMat, GK_CSR_COL);
+    writeTrainTestValMat(randMat,  
+      (matPre + ".train" + suff).c_str(),
+      (matPre + ".test" + suff).c_str(),
+      (matPre + ".val" + suff).c_str(),
       0.1, 0.1, params.seed);
-  */  
+  }
+  */
 
   //writeBlkDiagJoinedCSR("", "", "");
 
@@ -1813,7 +1832,7 @@ int main(int argc , char* argv[]) {
   //ModelMF mfModel(params, params.initUFacFile, 
   //    params.initIFacFile, params.seed);
  
-  /*
+  /* 
   std::string ans;
   std::cout << "Want to train? ";
   std::getline(std::cin, ans);
@@ -1823,8 +1842,6 @@ int main(int argc , char* argv[]) {
   }
   */
 
- 
-  /*
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
   svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
@@ -1836,7 +1853,6 @@ int main(int argc , char* argv[]) {
   std::cout << "\nStarting model train...";
   mfModel.hogTrain(data, bestModel, invalidUsers, invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
- 
       invalidItems);
   std::cout << "\nValidation RMSE: " << bestModel.RMSE(data.valMat, invalidUsers, 
       invalidItems);
@@ -1852,10 +1868,11 @@ int main(int argc , char* argv[]) {
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
   std::cout << std::endl << "**** Model parameters ****" << std::endl;
   mfModel.display();
-  */  
+     
 
-  computeSampTopNFrmFullModel(data, params);  
+  //computeSampTopNFrmFullModel(data, params);  
   
+
   //testTailLocRec(data, params);
   //testTailRec(data, params);
   //testRec(data, params);

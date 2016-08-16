@@ -4,22 +4,20 @@ RM=rm -f
 GKINCHOME=/home/grad02/mohit/George/GKlib/trunk
 GKLIBHOME=/home/grad02/mohit/George/GKlib/trunk/build/Linux-x86_64/
 
-EIGENPATH=/home/grad02/mohit/exmoh/lib/eigen
-SPECTRAPATH=/home/grad02/mohit/exmoh/lib/spectra/include
-SVDLIBPATH=/home/grad02/mohit/exmoh/lib/SVDLIBC
+SVDLIBPATH=/home/grad02/mohit/dev/SVDLIBC
 
 #Standard Libraries
-STDLIBS=-lm -lpthread
+STDLIBS=-lm -lpthread -fopenmp
 
 #external libraries
-EXT_LIBS=-lGKlib  
-EXT_LIBS_DIR=-L$(GKLIBHOME) 
+EXT_LIBS=-lGKlib -lsvd 
+EXT_LIBS_DIR=-L$(GKLIBHOME) -L$(SVDLIBPATH) 
 
-CPPFLAGS=-g -o3 -Wall -std=c++11 -I$(GKINCHOME) -I$(EIGENPATH) 
+CPPFLAGS=-g -O3 -Wall -fopenmp -std=c++11 -I$(GKINCHOME) -I$(SVDLIBPATH)
 LDFLAGS=-g
 LDLIBS=$(STDLIBS) $(EXT_LIBS_DIR) $(EXT_LIBS)  
 
-SRCS=model.cpp modelMF.cpp modelMFWtRegArb.cpp modelMFWtReg.cpp io.cpp util.cpp svd.cpp main.cpp
+SRCS=model.cpp modelMF.cpp modelMFLoc.cpp io.cpp longTail.cpp util.cpp svdFrmsvdlib.cpp topBucketComp.cpp confCompute.cpp main.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 
 all: mf
