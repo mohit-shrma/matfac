@@ -29,6 +29,9 @@ class ModelMF : public Model {
     void hogTrain(const Data& data, Model& bestModel,
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems) ;
+    void hogSpTrain(const Data &data, Model &bestModel, 
+        std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems, Model& origModel);
     void hogAdapTrain(const Data& data, Model& bestModel,
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems) ;

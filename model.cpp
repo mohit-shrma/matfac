@@ -194,6 +194,64 @@ double Model::RMSE(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
 }
 
 
+double Model::RMSE(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems, Model& origModel) {
+  int u, ii, item, nnz;
+  float r_ui;
+  double r_ui_est, diff, rmse;
+
+  nnz = 0;
+  rmse = 0;
+  for (u = 0; u < nUsers; u++) { 
+    //skip if invalid user
+    auto search = invalidUsers.find(u);
+    if (search != invalidUsers.end()) {
+      //found and skip
+      continue;
+    }
+    for (ii = mat->rowptr[u]; ii <  mat->rowptr[u+1]; ii++) {
+      item = mat->rowind[ii];
+      //skip if invalid item
+      search = invalidItems.find(item);
+      if (search != invalidItems.end() || item >= nItems) {
+        //found and skip
+        continue;
+      }
+      r_ui = origModel.estRating(u, item);
+      r_ui_est = estRating(u, item);
+      diff = r_ui - r_ui_est;
+      rmse += diff*diff;
+      nnz++;
+    }
+  }
+  rmse = sqrt(rmse/nnz);
+  
+  return rmse;
+}
+
+
+double Model::RMSE(std::vector<std::tuple<int, int, float>>& trainRatings) {
+  int u, item, nnz;
+  float itemRat;
+  double diff, rmse;
+
+  rmse = 0;
+  nnz = trainRatings.size();
+
+  for (auto&& uiRating: trainRatings) {
+    u = std::get<0>(uiRating);
+    item = std::get<1>(uiRating);
+    itemRat = std::get<2>(uiRating);
+    diff = itemRat - estRating(u, item);
+    rmse += diff*diff;
+  }
+  
+  rmse = sqrt(rmse/nnz);
+  
+  return rmse;
+}
+
+
 double Model::estRating(int user, int item) {
   return dotProd(uFac[user], iFac[item], facDim);
 }
@@ -395,6 +453,56 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
 
 
 bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
+    int& bestIter, double& bestObj, double& prevObj, 
+    std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems,
+    std::vector<std::tuple<int, int, float>>& trainRatings) {
+  bool ret = false;
+  double currObj = objective(data, invalidUsers, invalidItems, trainRatings);
+
+  if (iter > 0) {
+    
+    if (currObj < bestObj) {
+      bestModel = *this;
+      bestObj = currObj;
+      bestIter = iter;
+    }
+
+    if (iter - bestIter >= 100) {
+      //half the learning rate
+      if (learnRate > 1e-5) {
+        learnRate = learnRate/2;
+      } else if (learnRate < 1e-5) {
+        learnRate = 1e-5;
+      }
+    }
+
+    if (iter - bestIter >= 500) {
+      //can't go lower than best objective after 500 iterations
+      printf("\nNOT CONVERGED: bestIter:%d bestObj: %.10e"
+          " currIter:%d currObj: %.10e", bestIter, bestObj, iter, currObj);
+      ret = true;
+    }
+    
+    if (fabs(prevObj - currObj) < EPS) {
+      //convergence
+      printf("\nConverged in iteration: %d prevObj: %.10e currObj: %.10e", iter,
+              prevObj, currObj); 
+      ret = true;
+    }
+  }
+
+  if (iter == 0) {
+    bestObj = currObj;
+    bestIter = iter;
+  }
+
+  prevObj = currObj;
+
+  return ret;
+}
+
+
+bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
     int& bestIter, double& bestObj, double& prevObj, double& bestValRMSE,
     double& prevValRMSE, std::unordered_set<int>& invalidUsers, 
     std::unordered_set<int>& invalidItems) {
@@ -564,6 +672,51 @@ double Model::objective(const Data& data) {
 
 
 double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems, 
+    std::vector<std::tuple<int, int, float>>& trainRatings) {
+
+  int u, item;
+  float itemRat;
+  double rmse = 0, uRegErr = 0, iRegErr = 0, obj = 0, diff = 0;
+
+  for (auto&& uiRating: trainRatings) {
+    u = std::get<0>(uiRating);
+    item = std::get<1>(uiRating);
+    itemRat = std::get<2>(uiRating);
+    diff = itemRat - estRating(u, item);
+    rmse += diff*diff;
+  }
+  for (u = 0; u < nUsers; u++) {
+    //skip if invalid user
+    auto search = invalidUsers.find(u);
+    if (search != invalidUsers.end()) {
+      //found and skip
+      continue;
+    }
+    uRegErr += dotProd(uFac[u], uFac[u], facDim);
+  }
+  uRegErr = uRegErr*uReg;
+
+  for (item = 0; item < nItems; item++) {
+    //skip if invalid item
+    auto search = invalidItems.find(item);
+    if (search != invalidItems.end()) {
+      //found and skip
+      continue;
+    }
+    iRegErr += dotProd(iFac[item], iFac[item], facDim);
+  }
+  iRegErr = iRegErr*iReg;
+
+  obj = rmse + uRegErr + iRegErr;
+    
+  //std::cout <<"\nrmse: " << std::scientific << rmse << " uReg: " << uRegErr << " iReg: " << iRegErr ; 
+
+  return obj;
+}
+
+
+double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems) {
 
   int u, ii, item;
@@ -612,6 +765,7 @@ double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
 
   return obj;
 }
+
 
 double Model::objectiveSubMat(const Data& data, int uStart, int uEnd,
     int iStart, int iEnd) {
@@ -828,6 +982,32 @@ double Model::subMatKnownRankNonObsErrWSet(const Data& data, int uStart, int uEn
   rmseUnknown = sqrt(seUnknown/nnzUnknown);
 
   return rmseUnknown;
+}
+
+std::vector<std::tuple<int, int, float>> Model::getUIRatings(gk_csr_t* mat, 
+    std::unordered_set<int>& invalidUsers, 
+    std::unordered_set<int>& invalidItems) {
+  std::vector<std::tuple<int, int, float>> uiRatings;
+  for (int u = 0; u < mat->nrows; u++) {
+    //skip if in invalid users
+    auto search = invalidUsers.find(u);
+    if (search != invalidUsers.end()) {
+      //found and skip
+      continue;
+    }
+    
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      int item = mat->rowind[ii];
+      //skip if in invalid items
+      search = invalidItems.find(item);
+      if (search != invalidItems.end()) {
+        //found and skip
+        continue;
+      }
+      uiRatings.push_back(std::make_tuple(u, item, estRating(u, item)));
+    }
+  }
+  return uiRatings;
 }
 
 

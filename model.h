@@ -69,11 +69,15 @@ class Model {
       std::cerr << "\nsubExTrain not in base class";
     };
 
+    std::vector<std::tuple<int, int, float>> getUIRatings(gk_csr_t* mat);
     virtual double objective(const Data& data);
     virtual double objective(const Data& data, 
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems);
-    double objectiveSubMat(const Data& data, int uStart, int uEnd,
+    double objective(const Data& data, std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems, 
+        std::vector<std::tuple<int, int, float>>& trainRatings);
+        double objectiveSubMat(const Data& data, int uStart, int uEnd,
       int iStart, int iEnd);
     double objectiveExSubMat(const Data& data, int uStart, int uEnd,
       int iStart, int iEnd);
@@ -87,6 +91,10 @@ class Model {
       int& bestIter, double& bestObj, double& prevObj, double& bestValRMSE,
       double& prevValRMSE, std::unordered_set<int>& invalidUsers, 
       std::unordered_set<int>& invalidItems);
+    bool isTerminateModel(Model& bestModel, const Data& data, int iter,
+        int& bestIter, double& bestObj, double& prevObj, 
+        std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems,
+        std::vector<std::tuple<int, int, float>>& trainRatings);
     bool isTerminateModelSubMat(Model& bestModel, const Data& data, int iter,
       int& bestIter, double& bestObj, double& prevObj, int uStart, int uEnd,
       int iStart, int iEnd); 
@@ -96,6 +104,9 @@ class Model {
     double RMSE(gk_csr_t* mat);
     double RMSE(gk_csr_t* mat, std::unordered_set<int>& invalidUsers,
       std::unordered_set<int>& invalidItems);
+    double RMSE(std::vector<std::tuple<int, int, float>>& trainRatings);
+    double RMSE(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems, Model& origModel);
     double subMatRMSE(gk_csr_t *mat, int uStart, int uEnd, int iStart, 
                       int iEnd);
     double subMatExRMSE(gk_csr_t *mat, int uStart, int uEnd, 
@@ -120,5 +131,8 @@ class Model {
       const char* iBFName, const char*gBFName);
     void updateFac(std::vector<double> &fac, std::vector<double> &grad);
     double estAvgRating(int user, std::unordered_set<int>& invalidItems) ;
+    std::vector<std::tuple<int, int, float>> getUIRatings(gk_csr_t* mat, 
+        std::unordered_set<int>& invalidUsers, 
+        std::unordered_set<int>& invalidItems);
 };
 #endif

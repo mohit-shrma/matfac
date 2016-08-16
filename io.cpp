@@ -189,13 +189,13 @@ void writeTrainTestValMat(gk_csr_t *mat,  const char* trainFileName,
   gk_csr_t** mats = gk_csr_Split(mat, color);
   
   //save first matrix as train
-  gk_csr_Write(mats[0], (char*) trainFileName, GK_CSR_FMT_CSR, 1, 0);
+  gk_csr_Write(mats[0], (char*) trainFileName, GK_CSR_FMT_CSR, GK_CSR_IS_VAL, 0);
 
   //save second matrix as test
-  gk_csr_Write(mats[1], (char*) testFileName, GK_CSR_FMT_CSR, 1, 0);
+  gk_csr_Write(mats[1], (char*) testFileName, GK_CSR_FMT_CSR, GK_CSR_IS_VAL, 0);
 
   //save third matrix as val
-  gk_csr_Write(mats[2], (char*) valFileName, GK_CSR_FMT_CSR, 1, 0);
+  gk_csr_Write(mats[2], (char*) valFileName, GK_CSR_FMT_CSR, GK_CSR_IS_VAL, 0);
   
   free(color);
   gk_csr_Free(&mats[0]);
@@ -318,8 +318,12 @@ void writeCSRWSparsityStructure(gk_csr_t *mat, const char *opFileName,
     for (u = 0; u < mat->nrows; u++) {
       for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
         item = mat->rowind[ii];
-        rating = dotProd(uFac[u], iFac[item], facDim);         
-        opFile << item << " " << rating << " ";
+        rating = dotProd(uFac[u], iFac[item], facDim);        
+        if (GK_CSR_IS_VAL) {
+          opFile << item << " " << rating << " ";
+        } else {
+          opFile << item << " ";
+        }
       }
       opFile << std::endl;
     }
@@ -388,7 +392,11 @@ void writeRandMatCSR(const char* opFileName,
       std::vector<int> items(uSet.begin(), uSet.end());
       std::sort(items.begin(), items.end());
       for (auto&& item: items) {
-        opFile << item << " " << dotProd(uFac[u], iFac[item], facDim) << " ";
+        if (GK_CSR_IS_VAL) {
+          opFile << item << " " << dotProd(uFac[u], iFac[item], facDim) << " ";
+        } else {
+          opFile << item << " ";
+        }
       }
       opFile << std::endl;
     }
