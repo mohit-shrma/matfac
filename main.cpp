@@ -1851,11 +1851,11 @@ int main(int argc , char* argv[]) {
 
   ModelMF bestModel(mfModel);
   std::cout << "\nStarting model train...";
-  mfModel.hogSpTrain(data, bestModel, invalidUsers, invalidItems, origModel);
+  mfModel.hogTrain(data, bestModel, invalidUsers, invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
       invalidItems);
   std::cout << "\nValidation RMSE: " << bestModel.RMSE(data.valMat, invalidUsers, 
-      invalidItems, origModel);
+      invalidItems);
   
   std::string modelSign = bestModel.modelSignature();
 
@@ -1870,7 +1870,7 @@ int main(int argc , char* argv[]) {
   mfModel.display();
      
 
-  //computeSampTopNFrmFullModel(data, params);  
+  computeSampTopNFrmFullModel(data, params);  
   
 
   //testTailLocRec(data, params);

@@ -69,7 +69,6 @@ class Model {
       std::cerr << "\nsubExTrain not in base class";
     };
 
-    std::vector<std::tuple<int, int, float>> getUIRatings(gk_csr_t* mat);
     virtual double objective(const Data& data);
     virtual double objective(const Data& data, 
         std::unordered_set<int>& invalidUsers,
