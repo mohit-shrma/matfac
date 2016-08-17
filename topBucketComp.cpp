@@ -2956,11 +2956,11 @@ void predSampUsersRMSEProbPar(gk_csr_t *trainMat, gk_csr_t *graphMat,
 
   opFile << "svdPredOverlap: " << svdPredOverlap/totalSampUsers << std::endl;
   
-  opFile << "svdOfPredInOrig: " << svdOfPredInOrig/totalSampUsers
-    << " svdOfPredNotInOrig: " << svdOfPredNotInOrig/totalSampUsers << std::endl;
+  opFile << "svdOfPredInOrig: " << svdOfPredInOrig/totalSampUsers << std::endl
+    << "svdOfPredNotInOrig: " << svdOfPredNotInOrig/totalSampUsers << std::endl;
   
-  opFile << "svdVarOfPredInOrig: " << svdVarOfPredInOrig/totalSampUsers 
-    << " svdVarOfPredNotInOrig: " << svdVarOfPredNotInOrig/totalSampUsers << std::endl;
+  opFile << "svdVarOfPredInOrig: " << svdVarOfPredInOrig/totalSampUsers << std::endl
+    << "svdVarOfPredNotInOrig: " << svdVarOfPredNotInOrig/totalSampUsers << std::endl;
  
   opFile << "svdAboveAvgInOrig: " << svdAboveAvgInOrig/totalSampUsers << std::endl; 
 
@@ -2970,8 +2970,8 @@ void predSampUsersRMSEProbPar(gk_csr_t *trainMat, gk_csr_t *graphMat,
   opFile << "svdOfMedPredInOrig: " << svdOfMedPredInOrig/totalSampUsers << std::endl; 
   opFile << "svdOfBotPredInOrig: " << svdOfBotPredInOrig/totalSampUsers << std::endl;
 
-  opFile << "pprOfPredInOrig: " << pprOfPredInOrig/totalSampUsers
-    << " pprOfPredNotInOrig: " << pprOfPredNotInOrig/totalSampUsers << std::endl;
+  opFile << "pprOfPredInOrig: " << pprOfPredInOrig/totalSampUsers << std::endl
+    << "pprOfPredNotInOrig: " << pprOfPredNotInOrig/totalSampUsers << std::endl;
   
   opFile << "iterPredSVDOrigOverlap: " 
     << iterPredSVDOrigOverlap/totalSampUsers << std::endl;
