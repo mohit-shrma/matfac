@@ -1,5 +1,5 @@
 import sys
-
+import numpy as np
 
 def updateMetricDic(ipFName, metricDic):
   with open(ipFName, 'r') as f:
