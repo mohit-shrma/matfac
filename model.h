@@ -22,6 +22,7 @@ class Model {
     int nItems;
     int facDim;
     int trainSeed;
+    float origLearnRate;
     float learnRate;
     float rhoRMS;
     int maxIter;

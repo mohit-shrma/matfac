@@ -13,7 +13,7 @@ std::string Model::modelSignature() {
   std::string sign = std::to_string(nUsers) + "X" + std::to_string(nItems)
     + "_" + std::to_string(facDim) 
     + "_" + std::to_string(uReg) + "_" + std::to_string(iReg)
-    + "_" + std::to_string(learnRate);
+    + "_" + std::to_string(origLearnRate);
   
   return sign;
 }
@@ -1006,6 +1006,7 @@ Model::Model(const Params& params) {
   uReg      = params.uReg;
   iReg      = params.iReg;
   learnRate = params.learnRate;
+  origLearnRate = params.learnRate;
   rhoRMS    = params.rhoRMS;
   maxIter   = params.maxIter;
   trainSeed = -1;
