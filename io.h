@@ -23,6 +23,7 @@ void writeCSRWSparsityStructure(gk_csr_t *mat, const char *opFileName,
 void writeCSRWHalfSparsity(gk_csr_t *mat, const char *opFileName, int uStart,
     int uEnd, int iStart, int iEnd);
 void writeVector(std::vector<double>& vec, const char *opFileName);
+void writeVector(std::vector<double>& vec, std::ofstream& opFile);
 std::vector<int> readVector(const char *ipFileName);
 std::vector<double> readDVector(const char *ipFileName);
 void writeTrainTestMat(gk_csr_t *mat,  const char* trainFileName, 

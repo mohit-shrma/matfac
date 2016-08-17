@@ -146,6 +146,17 @@ void writeVector(std::vector<double>& vec, const char *opFileName) {
 }
 
 
+void writeVector(std::vector<double>& vec, std::ofstream& opFile) {
+  if (opFile.is_open()) {
+    for (int i = 0; i < vec.size(); i++) {
+      opFile << vec[i] << ",";    
+    }
+  } else {
+    std::cerr << "Can't write as opFile not open" << std::endl;
+  }
+}
+
+
 void dispVector(std::vector<double>& vec) {
   for (int i = 0; i < vec.size(); i++) {
     std::cout << vec[i] << ",";

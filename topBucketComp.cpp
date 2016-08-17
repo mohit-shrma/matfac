@@ -2921,56 +2921,59 @@ void predSampUsersRMSEProbPar(gk_csr_t *trainMat, gk_csr_t *graphMat,
     g_scores[i] = g_scores[i]/g_bucketNNZ[i];
   }
 
-  std::cout << "GT RMSE buckets: ";
-  dispVector(g_rmseGTScores); 
-  std::cout << std::endl;
 
-  std::cout << "SVD RMSE buckets: ";
-  dispVector(g_rmseSVDScores);
-  std::cout << std::endl;
+  std::ofstream opFile(prefix + ".txt");
 
-  std::cout << "Freq RMSE buckets: ";
-  dispVector(g_rmseFreqScores);
-  std::cout << std::endl;
+  opFile << "GT RMSE buckets: ";
+  writeVector(g_rmseGTScores, opFile); 
+  opFile << std::endl;
 
-  std::cout << "PPR RMSE buckets: ";
-  dispVector(g_rmsePPRScores);
-  std::cout << std::endl;
+  opFile << "SVD RMSE buckets: ";
+  writeVector(g_rmseSVDScores, opFile);
+  opFile << std::endl;
 
-  std::cout << "GT Score buckets: ";
-  dispVector(g_scores);
-  std::cout << std::endl;
+  opFile << "Freq RMSE buckets: ";
+  writeVector(g_rmseFreqScores, opFile);
+  opFile << std::endl;
+
+  opFile << "PPR RMSE buckets: ";
+  writeVector(g_rmsePPRScores, opFile);
+  opFile << std::endl;
+
+  opFile << "GT Score buckets: ";
+  writeVector(g_scores, opFile);
+  opFile << std::endl;
   
-  std::cout << "No. sample users: " << totalSampUsers << std::endl;
-  std::cout << "predOrigOverlap: " << predOrigOverlap/totalSampUsers << std::endl;
-  std::cout << "svdOrigOverlap: " << svdOrigOverlap/totalSampUsers << std::endl;
-  std::cout << "svdInPred: " << svdInPred/totalSampUsers << std::endl;
-  std::cout << "svdNotInPred: " << svdNotInPred/totalSampUsers << std::endl;
+  opFile << "No. sample users: " << totalSampUsers << std::endl;
+  opFile << "predOrigOverlap: " << predOrigOverlap/totalSampUsers << std::endl;
+  opFile << "svdOrigOverlap: " << svdOrigOverlap/totalSampUsers << std::endl;
+  opFile << "svdInPred: " << svdInPred/totalSampUsers << std::endl;
+  opFile << "svdNotInPred: " << svdNotInPred/totalSampUsers << std::endl;
   
-  std::cout << "pprOrigOverlap: " << pprOrigOverlap/totalSampUsers << std::endl;
-  std::cout << "pprofPredInOrig: " << pprOfPredInOrig/totalSampUsers << std::endl;
-  std::cout << "pprOfPredNotInOrig: " << pprOfPredNotInOrig/totalSampUsers << std::endl;
+  opFile << "pprOrigOverlap: " << pprOrigOverlap/totalSampUsers << std::endl;
+  opFile << "pprofPredInOrig: " << pprOfPredInOrig/totalSampUsers << std::endl;
+  opFile << "pprOfPredNotInOrig: " << pprOfPredNotInOrig/totalSampUsers << std::endl;
 
-  std::cout << "svdPredOverlap: " << svdPredOverlap/totalSampUsers << std::endl;
+  opFile << "svdPredOverlap: " << svdPredOverlap/totalSampUsers << std::endl;
   
-  std::cout << "svdOfPredInOrig: " << svdOfPredInOrig/totalSampUsers
+  opFile << "svdOfPredInOrig: " << svdOfPredInOrig/totalSampUsers
     << " svdOfPredNotInOrig: " << svdOfPredNotInOrig/totalSampUsers << std::endl;
   
-  std::cout << "svdVarOfPredInOrig: " << svdVarOfPredInOrig/totalSampUsers 
+  opFile << "svdVarOfPredInOrig: " << svdVarOfPredInOrig/totalSampUsers 
     << " svdVarOfPredNotInOrig: " << svdVarOfPredNotInOrig/totalSampUsers << std::endl;
  
-  std::cout << "svdAboveAvgInOrig: " << svdAboveAvgInOrig/totalSampUsers << std::endl; 
+  opFile << "svdAboveAvgInOrig: " << svdAboveAvgInOrig/totalSampUsers << std::endl; 
 
-  std::cout << "svdOfMaxPredInorig: " << svdOfMaxPredInorig/totalSampUsers << std::endl;
-  std::cout << "svdOfMinPredInOrig: " << svdOfMinPredInOrig/totalSampUsers << std::endl;
-  std::cout << "svdOfTopPredInOrig: " << svdOfTopPredInOrig/totalSampUsers << std::endl;
-  std::cout << "svdOfMedPredInOrig: " << svdOfMedPredInOrig/totalSampUsers << std::endl; 
-  std::cout << "svdOfBotPredInOrig: " << svdOfBotPredInOrig/totalSampUsers << std::endl;
+  opFile << "svdOfMaxPredInorig: " << svdOfMaxPredInorig/totalSampUsers << std::endl;
+  opFile << "svdOfMinPredInOrig: " << svdOfMinPredInOrig/totalSampUsers << std::endl;
+  opFile << "svdOfTopPredInOrig: " << svdOfTopPredInOrig/totalSampUsers << std::endl;
+  opFile << "svdOfMedPredInOrig: " << svdOfMedPredInOrig/totalSampUsers << std::endl; 
+  opFile << "svdOfBotPredInOrig: " << svdOfBotPredInOrig/totalSampUsers << std::endl;
 
-  std::cout << "pprOfPredInOrig: " << pprOfPredInOrig/totalSampUsers
+  opFile << "pprOfPredInOrig: " << pprOfPredInOrig/totalSampUsers
     << " pprOfPredNotInOrig: " << pprOfPredNotInOrig/totalSampUsers << std::endl;
   
-  std::cout << "iterPredSVDOrigOverlap: " 
+  opFile << "iterPredSVDOrigOverlap: " 
     << iterPredSVDOrigOverlap/totalSampUsers << std::endl;
 
 
@@ -2986,90 +2989,91 @@ void predSampUsersRMSEProbPar(gk_csr_t *trainMat, gk_csr_t *graphMat,
     sumGTPPRBins += g_misGTPPRCountBins[i];
   }
 
-  std::cout << "Total SVD misPred: " << sumSVDBins << std::endl;
+  opFile << "Total SVD misPred: " << sumSVDBins << std::endl;
  
-  std::cout << "Mispred SVD %: ";
+  opFile << "Mispred SVD %: ";
   for (int i = 0; i < 20; i++) {
-    std::cout << g_misPredSVDCountBins[i]/sumSVDBins << ",";
+    opFile << g_misPredSVDCountBins[i]/sumSVDBins << ",";
   }
-  std::cout << std::endl;
+  opFile << std::endl;
 
-  std::cout << "Mispred avg SVD: ";
+  opFile << "Mispred avg SVD: ";
   for (int i = 0; i < 20; i++) {
-    std::cout << g_svdScoreBins[i]/g_misPredSVDCountBins[i] << ",";
+    opFile << g_svdScoreBins[i]/g_misPredSVDCountBins[i] << ",";
   }
-  std::cout << std::endl;
+  opFile << std::endl;
   
-  std::cout << "Mispred avg Freq: ";
+  opFile << "Mispred avg Freq: ";
   for (int i = 0; i < 20; i++) {
-    std::cout << g_freqScoreBins[i]/g_misPredFreqCountBins[i] << ",";
+    opFile << g_freqScoreBins[i]/g_misPredFreqCountBins[i] << ",";
   }
 
-  std::cout << std::endl;
-  std::cout << "Total PPR misPred: " << sumPPRBins << std::endl;
-  std::cout << "Mispred PPR %: ";
+  opFile << std::endl;
+  opFile << "Total PPR misPred: " << sumPPRBins << std::endl;
+  opFile << "Mispred PPR %: ";
   for (int i = 0; i < 20; i++) {
-    std::cout << g_misPredPPRCountBins[i]/sumPPRBins << ","; 
+    opFile << g_misPredPPRCountBins[i]/sumPPRBins << ","; 
   }
-  std::cout << std::endl;
+  opFile << std::endl;
 
-  std::cout << "Mispred avg PPR: ";
+  opFile << "Mispred avg PPR: ";
   for (int i = 0; i < 20; i++) {
-    std::cout << g_pprScoreBins[i]/g_misPredPPRCountBins[i] << ","; 
+    opFile << g_pprScoreBins[i]/g_misPredPPRCountBins[i] << ","; 
   }
-  std::cout << std::endl;
+  opFile << std::endl;
  
-  std::cout << "Total SVD misGT: " << sumGTSVDBins << std::endl;
-  std::cout << "MisGT SVD %: ";
+  opFile << "Total SVD misGT: " << sumGTSVDBins << std::endl;
+  opFile << "MisGT SVD %: ";
   for (int i = 0; i < 20; i++) {
-    std::cout << g_misGTSVDCountBins[i]/sumGTSVDBins << ",";
+    opFile << g_misGTSVDCountBins[i]/sumGTSVDBins << ",";
   }
-  std::cout << std::endl;
+  opFile << std::endl;
 
-  std::cout << "MisGT avg SVD: ";
+  opFile << "MisGT avg SVD: ";
   for (int i =0; i < 20; i++) {
-    std::cout << g_misGTSVDScoreBins[i]/g_misGTSVDCountBins[i] << ",";
+    opFile << g_misGTSVDScoreBins[i]/g_misGTSVDCountBins[i] << ",";
   }
-  std::cout << std::endl;
+  opFile << std::endl;
 
-  std::cout << "MisGT avg Freq: ";
+  opFile << "MisGT avg Freq: ";
   for (int i =0; i < 20; i++) {
-    std::cout << g_misGTFreqScoreBins[i]/g_misGTFreqCountBins[i] << ",";
+    opFile << g_misGTFreqScoreBins[i]/g_misGTFreqCountBins[i] << ",";
   }
-  std::cout << std::endl;
+  opFile << std::endl;
 
-  std::cout << "MisGT avg AllRatings: ";
+  opFile << "MisGT avg AllRatings: ";
   for (int i =0; i < 20; i++) {
-    std::cout << g_misGTAvgTrainScoreBins[i]/g_misGTAvgTrainCountBins[i] << ",";
+    opFile << g_misGTAvgTrainScoreBins[i]/g_misGTAvgTrainCountBins[i] << ",";
   }
-  std::cout << std::endl;
+  opFile << std::endl;
 
-  std::cout << "MisGT avg GT: ";
+  opFile << "MisGT avg GT: ";
   for (int i =0; i < 20; i++) {
-    std::cout << g_misGTOrigScoreBins[i]/g_misGTOrigCountBins[i] << ",";
+    opFile << g_misGTOrigScoreBins[i]/g_misGTOrigCountBins[i] << ",";
   }
-  std::cout << std::endl;
+  opFile << std::endl;
 
-  std::cout << "MisGT avg Pred: ";
+  opFile << "MisGT avg Pred: ";
   for (int i =0; i < 20; i++) {
-    std::cout << g_misGTMFScoreBins[i]/g_misGTMFCountBins[i] << ",";
+    opFile << g_misGTMFScoreBins[i]/g_misGTMFCountBins[i] << ",";
   }
-  std::cout << std::endl;
+  opFile << std::endl;
 
-  std::cout << std::endl;
-  std::cout << "Total PPR misGT: " << sumGTSVDBins << std::endl;
-  std::cout << "MisGT PPR %: ";
+  opFile << std::endl;
+  opFile << "Total PPR misGT: " << sumGTSVDBins << std::endl;
+  opFile << "MisGT PPR %: ";
   for (int i = 0; i < 20; i++) {
-    std::cout << g_misGTPPRCountBins[i]/sumGTPPRBins << ",";
+    opFile << g_misGTPPRCountBins[i]/sumGTPPRBins << ",";
   }
-  std::cout << std::endl;
+  opFile << std::endl;
 
-  std::cout << "MisGT avg PPR: ";
+  opFile << "MisGT avg PPR: ";
   for (int i =0; i < 20; i++) {
-    std::cout << g_misGTPPRScoreBins[i]/g_misGTPPRCountBins[i] << ",";
+    opFile << g_misGTPPRScoreBins[i]/g_misGTPPRCountBins[i] << ",";
   }
-  std::cout << std::endl;
+  opFile << std::endl;
 
+  opFile.close();
 }
 
 

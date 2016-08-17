@@ -693,7 +693,7 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   */
 
   
-  prefix = std::string(params.prefix) + "_sampOrig";
+  prefix = std::string(params.prefix) + "_top_";
   
   std::vector<double> alphas = {0.0001, 0.001, 0.01, 0.1, 0.5, 1, 10, 100};
   predSampUsersRMSEProbPar(data.trainMat, data.graphMat,
