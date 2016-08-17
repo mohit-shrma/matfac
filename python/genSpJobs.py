@@ -46,7 +46,7 @@ def genJobs(prog, mats, latfacs, ipDir, suff='mf'):
       opLog = os.path.join(ipDir, suff + '_' + str(ind) + '_' + str(dim) + '_log') 
       print 'cd ' + ipDir + ' && ', prog, nUsers, nItems, dim, 50000, dim, dim, 1, 0.01, 0.01, \
       LEARN_RATE, 0.0, 0.0, trainMat, testMat, valMat, 'null1', uFac, iFac, \
-          'null1', 'null2', suff + '_' + str(ind) , ' > ', opLog  
+          'null1', 'null2', suff + '_' + str(dim) + '_' + str(ind) , ' > ', opLog  
 
 
 def main():

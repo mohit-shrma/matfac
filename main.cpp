@@ -696,8 +696,7 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   prefix = std::string(params.prefix) + "_top_";
   
   std::vector<double> alphas = {0.0001, 0.001, 0.01, 0.1, 0.5, 1, 10, 100};
-  predSampUsersRMSEProbPar(data.trainMat, data.graphMat,
-    nUsers, nItems, origModel, fullModel,
+  predSampUsersRMSEProbPar(data, nUsers, nItems, origModel, fullModel,
     svdModel, invalidUsers, invalidItems, filtItems, 5000, params.seed, 
     prefix);
     
@@ -1841,7 +1840,8 @@ int main(int argc , char* argv[]) {
     return 0;
   }
   */
-
+  
+  
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
   svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
@@ -1868,10 +1868,8 @@ int main(int argc , char* argv[]) {
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
   std::cout << std::endl << "**** Model parameters ****" << std::endl;
   mfModel.display();
-     
 
   computeSampTopNFrmFullModel(data, params);  
-  
 
   //testTailLocRec(data, params);
   //testTailRec(data, params);

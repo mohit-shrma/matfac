@@ -2482,7 +2482,7 @@ void predSampUsersRMSEProb2(gk_csr_t *trainMat, gk_csr_t *graphMat,
 }
 
 
-void predSampUsersRMSEProbPar(gk_csr_t *trainMat, gk_csr_t *graphMat, 
+void predSampUsersRMSEProbPar(const Data& data, 
     int nUsers, int nItems, 
     Model& origModel, Model& fullModel, Model& svdModel, 
     std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
@@ -2491,6 +2491,9 @@ void predSampUsersRMSEProbPar(gk_csr_t *trainMat, gk_csr_t *graphMat,
   
   int nBuckets = 10;
   int nItemsPerBuck = nItems/nBuckets;
+
+  gk_csr_t* trainMat = data.trainMat;
+  gk_csr_t* graphMat = data.graphMat;
 
   std::vector<double> g_rmseGTScores(nBuckets, 0);
   std::vector<double> g_rmseFreqScores(nBuckets, 0);
@@ -2912,7 +2915,6 @@ void predSampUsersRMSEProbPar(gk_csr_t *trainMat, gk_csr_t *graphMat,
 
 }
 
-
   for (int i = 0; i < nBuckets; i++) {
     g_rmseGTScores[i] = sqrt(g_rmseGTScores[i]/g_bucketNNZ[i]);
     g_rmseSVDScores[i] = sqrt(g_rmseSVDScores[i]/g_bucketNNZ[i]);
@@ -2920,7 +2922,6 @@ void predSampUsersRMSEProbPar(gk_csr_t *trainMat, gk_csr_t *graphMat,
     g_rmseFreqScores[i] = sqrt(g_rmseFreqScores[i]/g_bucketNNZ[i]);
     g_scores[i] = g_scores[i]/g_bucketNNZ[i];
   }
-
 
   std::ofstream opFile(prefix + ".txt");
 
@@ -3072,6 +3073,13 @@ void predSampUsersRMSEProbPar(gk_csr_t *trainMat, gk_csr_t *graphMat,
     opFile << g_misGTPPRScoreBins[i]/g_misGTPPRCountBins[i] << ",";
   }
   opFile << std::endl;
+  
+  opFile << "Train RMSE: " 
+    << fullModel.RMSE(trainMat, invalUsers, invalItems) << std::endl;
+  opFile << "Train RMSE: " 
+    << fullModel.RMSE(data.testMat, invalUsers, invalItems) << std::endl;
+  opFile << "Train RMSE: " 
+    << fullModel.RMSE(data.valMat, invalUsers, invalItems) << std::endl;
 
   opFile.close();
 }
