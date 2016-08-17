@@ -2923,7 +2923,12 @@ void predSampUsersRMSEProbPar(const Data& data,
     g_scores[i] = g_scores[i]/g_bucketNNZ[i];
   }
 
-  std::ofstream opFile(prefix + ".txt");
+  std::ofstream opFile;
+  if (NULL != graphMat) {
+    opFile.open(prefix + "samp.txt");
+  } else {
+    opFile.open(prefix + ".txt");
+  }
 
   opFile << "GT RMSE buckets: ";
   writeVector(g_rmseGTScores, opFile); 
