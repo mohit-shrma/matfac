@@ -2554,7 +2554,8 @@ void predSampUsersRMSEProbPar(const Data& data,
   double predOrigOverlap = 0, svdOrigOverlap = 0;
   double svdPredOverlap = 0;
   double pprOrigOverlap = 0;
-  
+  double freqOrigOverlap = 0;
+
   double svdNotInPred = 0, svdInPred = 0;
 
   double svdOfPredInOrig = 0, svdOfPredNotInOrig = 0;
@@ -2636,7 +2637,7 @@ void predSampUsersRMSEProbPar(const Data& data,
   std::vector<double> scores(nBuckets, 0);
   std::vector<double> bucketNNZ(nBuckets, 0);
 
-#pragma omp for reduction(+ :  predOrigOverlap, svdOrigOverlap, svdPredOverlap, pprOrigOverlap, svdNotInPred, svdInPred, svdOfPredInOrig, svdOfPredNotInOrig, svdVarOfPredInOrig, svdVarOfPredNotInOrig, svdOfMedPredInOrig, svdOfMaxPredInorig, svdOfMinPredInOrig, svdOfTopPredInOrig, svdOfBotPredInOrig, svdAboveAvgInOrig, pprOfPredInOrig, pprOfPredNotInOrig, pprNotInPred, pprInPred, predPPROrigOverlap, iterPredSVDOrigOverlap, totalSampUsers)  
+#pragma omp for reduction(+ :  freqOrigOverlap, predOrigOverlap, svdOrigOverlap, svdPredOverlap, pprOrigOverlap, svdNotInPred, svdInPred, svdOfPredInOrig, svdOfPredNotInOrig, svdVarOfPredInOrig, svdVarOfPredNotInOrig, svdOfMedPredInOrig, svdOfMaxPredInorig, svdOfMinPredInOrig, svdOfTopPredInOrig, svdOfBotPredInOrig, svdAboveAvgInOrig, pprOfPredInOrig, pprOfPredNotInOrig, pprNotInPred, pprInPred, predPPROrigOverlap, iterPredSVDOrigOverlap, totalSampUsers)  
   for (int uInd=0; uInd < sampUsersSz; uInd++) {
     int user = sampUsersVec[uInd];
 
@@ -2811,8 +2812,11 @@ void predSampUsersRMSEProbPar(const Data& data,
         itemPredScoresPair, topBuckN);
     svdOrigOverlap += compOrderingOverlap(itemOrigScoresPair,
         itemSVDScoresPair, topBuckN);
+    freqOrigOverlap += compOrderingOverlap(itemOrigScoresPair, 
+        itemFreqScoresPair, topBuckN);
     svdPredOverlap += compOrderingOverlap(itemSVDScoresPair,
         itemPredScoresPair, topBuckN);
+    
 
     //get itemsRMSE and itemsScore
     itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
@@ -2953,10 +2957,12 @@ void predSampUsersRMSEProbPar(const Data& data,
   opFile << "No. sample users: " << totalSampUsers << std::endl;
   opFile << "predOrigOverlap: " << predOrigOverlap/totalSampUsers << std::endl;
   opFile << "svdOrigOverlap: " << svdOrigOverlap/totalSampUsers << std::endl;
+  opFile << "freqOrigOverlap: " << freqOrigOverlap/totalSampUsers << std::endl;
+  opFile << "pprOrigOverlap: " << pprOrigOverlap/totalSampUsers << std::endl;
+  
   opFile << "svdInPred: " << svdInPred/totalSampUsers << std::endl;
   opFile << "svdNotInPred: " << svdNotInPred/totalSampUsers << std::endl;
   
-  opFile << "pprOrigOverlap: " << pprOrigOverlap/totalSampUsers << std::endl;
   opFile << "pprofPredInOrig: " << pprOfPredInOrig/totalSampUsers << std::endl;
   opFile << "pprOfPredNotInOrig: " << pprOfPredNotInOrig/totalSampUsers << std::endl;
 
