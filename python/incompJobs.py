@@ -6,6 +6,7 @@ def checkIfIncompOld(jobStr):
   prefix = jobStr[ind-100:ind].split()[-1]
   cols = prefix.split('_')
   topFName = prefix + '_top_.txt'
+  #topFName = prefix + '_top_samp.txt'
   logFile = jobStr[ind+1:].strip() 
   if not os.path.isfile(logFile):
     print 'Log file not found: '+ logFile
