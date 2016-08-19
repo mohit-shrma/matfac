@@ -3087,11 +3087,11 @@ void predSampUsersRMSEProbPar(const Data& data,
   
   opFile << "Train RMSE: " 
     << fullModel.RMSE(trainMat, invalUsers, invalItems) << std::endl;
-  opFile << "Train RMSE: " 
+  opFile << "Test RMSE: " 
     << fullModel.RMSE(data.testMat, invalUsers, invalItems) << std::endl;
-  opFile << "Train RMSE: " 
+  opFile << "Val RMSE: " 
     << fullModel.RMSE(data.valMat, invalUsers, invalItems) << std::endl;
-
+  opFile << "Full RMSE: " << fullModel.fullLowRankErr(data) << std::endl; 
   opFile.close();
 }
 
