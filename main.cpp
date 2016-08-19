@@ -1841,11 +1841,14 @@ int main(int argc , char* argv[]) {
   }
   */
   
-  
+    
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
   svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
-  
+  //initialize MF model with last learned model if any
+  mfModel.loadFacs(params.prefix);
+
+
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
 
@@ -1868,6 +1871,7 @@ int main(int argc , char* argv[]) {
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
   std::cout << std::endl << "**** Model parameters ****" << std::endl;
   mfModel.display();
+    
 
   computeSampTopNFrmFullModel(data, params);  
 

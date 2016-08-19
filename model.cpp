@@ -97,11 +97,18 @@ void Model::loadFacs(std::string prefix) {
   std::string modelSign = modelSignature();
   //read user latent factors
   std::string uFacName = prefix + "_uFac_" + modelSign + ".mat";
-  readMat(uFac, nUsers, facDim, uFacName.c_str());
-  
+  //load if file exists
+  if (isFileExist(uFacName.c_str())) {
+    std::cout << "Loading user factors: " << uFacName << std::endl;
+    readMat(uFac, nUsers, facDim, uFacName.c_str());
+  }
+
   //read item latent factors
   std::string iFacName = prefix + "_iFac_" + modelSign +  ".mat";
-  readMat(iFac, nItems, facDim, iFacName.c_str());
+  if (isFileExist(iFacName.c_str())) { 
+    std::cout << "Loading item factors: " << iFacName << std::endl;
+    readMat(iFac, nItems, facDim, iFacName.c_str());
+  }
 }
 
 

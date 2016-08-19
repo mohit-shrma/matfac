@@ -47,7 +47,7 @@ void svdFrmSvdlibCSR(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& 
     }
   }
 
-  std::cout << "\nVt nrows: " << svd->Vt->rows << " ncols: " << svd->Vt->cols;
+  std::cout << "\nVt nrows: " << svd->Vt->rows << " ncols: " << svd->Vt->cols << std::endl;
   //copy singular vectors to iFac
   for (item = 0; item < mat->ncols; item++) {
     for (j = 0; j < rank; j++) {
