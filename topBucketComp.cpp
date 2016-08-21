@@ -1292,6 +1292,30 @@ std::pair<double, double> compOrderingOverlapBScores(
 }
 
 
+std::pair<double, double> compDiffPc(
+    std::vector<std::pair<int, double>>& itemPairsA, 
+    std::vector<std::pair<int, double>>& itemPairsB) {
+  int ovCount = 0;
+  double diffPcA = 0, diffPcB = 0;
+  std::unordered_set<int> itemsA;
+  if (itemPairsA.size() && itemPairsB.size()) {
+    for (auto&& pair: itemPairsA) {
+      itemsA.insert(pair.first);
+    }
+    for (auto&& pair: itemPairsB) {
+      int item = pair.first;
+      if (itemsA.find(item) != itemsA.end()) {
+        ovCount++;
+      }
+    }
+    
+    diffPcA = ((double)(itemsA.size() - ovCount))/itemsA.size();
+    diffPcB = ((double)(itemPairsB.size() - ovCount))/itemPairsB.size();
+  }
+  return std::make_pair(diffPcA, diffPcB);
+}
+
+
 double compOrderingOverlap2(std::vector<std::pair<int, double>> itemPairsA,
     std::vector<std::pair<int, double>> itemPairsB, int sizeA) {
   int overlapCount = 0;
@@ -2555,6 +2579,13 @@ void predSampUsersRMSEProbPar(const Data& data,
   double svdPredOverlap = 0;
   double pprOrigOverlap = 0;
   double freqOrigOverlap = 0;
+  
+  double freqNOTinSVDPc = 0;
+  double svdNOTinFreqPc = 0;
+  double freqNOTinPPRPc = 0;
+  double pprNOTinFreqPc = 0;
+  double svdNOTinPPRPc = 0;
+  double pprNOTinSVDPc = 0;
 
   double svdNotInPred = 0, svdInPred = 0;
 
@@ -2637,7 +2668,7 @@ void predSampUsersRMSEProbPar(const Data& data,
   std::vector<double> scores(nBuckets, 0);
   std::vector<double> bucketNNZ(nBuckets, 0);
 
-#pragma omp for reduction(+ :  freqOrigOverlap, predOrigOverlap, svdOrigOverlap, svdPredOverlap, pprOrigOverlap, svdNotInPred, svdInPred, svdOfPredInOrig, svdOfPredNotInOrig, svdVarOfPredInOrig, svdVarOfPredNotInOrig, svdOfMedPredInOrig, svdOfMaxPredInorig, svdOfMinPredInOrig, svdOfTopPredInOrig, svdOfBotPredInOrig, svdAboveAvgInOrig, pprOfPredInOrig, pprOfPredNotInOrig, pprNotInPred, pprInPred, predPPROrigOverlap, iterPredSVDOrigOverlap, totalSampUsers)  
+#pragma omp for reduction(+ : freqNOTinSVDPc, svdNOTinFreqPc, freqNOTinPPRPc, pprNOTinFreqPc, svdNOTinPPRPc, pprNOTinSVDPc, freqOrigOverlap, predOrigOverlap, svdOrigOverlap, svdPredOverlap, pprOrigOverlap, svdNotInPred, svdInPred, svdOfPredInOrig, svdOfPredNotInOrig, svdVarOfPredInOrig, svdVarOfPredNotInOrig, svdOfMedPredInOrig, svdOfMaxPredInorig, svdOfMinPredInOrig, svdOfTopPredInOrig, svdOfBotPredInOrig, svdAboveAvgInOrig, pprOfPredInOrig, pprOfPredNotInOrig, pprNotInPred, pprInPred, predPPROrigOverlap, iterPredSVDOrigOverlap, totalSampUsers)  
   for (int uInd=0; uInd < sampUsersSz; uInd++) {
     int user = sampUsersVec[uInd];
 
@@ -2765,6 +2796,12 @@ void predSampUsersRMSEProbPar(const Data& data,
     }
     svdVarOfPredNotInOrig += svdVarPredNotInOrig;
 
+    auto freqInTopOrig = orderingOverlap(itemOrigScoresPair, itemFreqScoresPair, topBuckN);
+    auto svdInTopOrig = orderingOverlap(itemOrigScoresPair, itemSVDScoresPair, topBuckN);
+    auto freqSVDDiffPc = compDiffPc(freqInTopOrig, svdInTopOrig);
+    freqNOTinSVDPc += freqSVDDiffPc.first;
+    svdNOTinFreqPc += freqSVDDiffPc.second;
+    
     if (NULL != graphMat) {
       itemPPRScoresPair = itemGraphItemScores(user, graphMat, trainMat, 
         0.01, nUsers, nItems, invalItems, false);
@@ -2806,6 +2843,14 @@ void predSampUsersRMSEProbPar(const Data& data,
       
       pprOrigOverlap += compOrderingOverlap(itemOrigScoresPair,
           itemPPRScoresPair, topBuckN);
+      
+      auto pprInTopOrig = orderingOverlap(itemOrigScoresPair, itemPPRScoresPair, topBuckN);
+      auto freqPPRDiffPc = compDiffPc(freqInTopOrig, pprInTopOrig);
+      freqNOTinPPRPc += freqPPRDiffPc.first;
+      pprNOTinFreqPc += freqPPRDiffPc.second;
+      auto svdPPRDiffPc = compDiffPc(svdInTopOrig, pprInTopOrig);
+      svdNOTinPPRPc += svdPPRDiffPc.first;
+      pprNOTinSVDPc += svdPPRDiffPc.second;
     }
     
     predOrigOverlap += compOrderingOverlap(itemOrigScoresPair, 
@@ -2816,7 +2861,7 @@ void predSampUsersRMSEProbPar(const Data& data,
         itemFreqScoresPair, topBuckN);
     svdPredOverlap += compOrderingOverlap(itemSVDScoresPair,
         itemPredScoresPair, topBuckN);
-    
+
 
     //get itemsRMSE and itemsScore
     itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
@@ -2959,7 +3004,14 @@ void predSampUsersRMSEProbPar(const Data& data,
   opFile << "svdOrigOverlap: " << svdOrigOverlap/totalSampUsers << std::endl;
   opFile << "freqOrigOverlap: " << freqOrigOverlap/totalSampUsers << std::endl;
   opFile << "pprOrigOverlap: " << pprOrigOverlap/totalSampUsers << std::endl;
-  
+
+  opFile << "freqNOTinSVDPc: " << freqNOTinSVDPc/totalSampUsers << std::endl;
+  opFile << "svdNOTinFreqPc: " << svdNOTinFreqPc/totalSampUsers << std::endl;
+  opFile << "freqNOTinPPRPc: " << freqNOTinPPRPc/totalSampUsers << std::endl;
+  opFile << "pprNOTinFreqPc: " << pprNOTinFreqPc/totalSampUsers << std::endl;
+  opFile << "svdNOTinPPRPc: " << svdNOTinPPRPc/totalSampUsers << std::endl;
+  opFile << "pprNOTinSVDPc: " << pprNOTinSVDPc/totalSampUsers << std::endl;
+
   opFile << "svdInPred: " << svdInPred/totalSampUsers << std::endl;
   opFile << "svdNotInPred: " << svdNotInPred/totalSampUsers << std::endl;
   
@@ -3091,7 +3143,10 @@ void predSampUsersRMSEProbPar(const Data& data,
     << fullModel.RMSE(data.testMat, invalUsers, invalItems) << std::endl;
   opFile << "Val RMSE: " 
     << fullModel.RMSE(data.valMat, invalUsers, invalItems) << std::endl;
-  opFile << "Full RMSE: " << fullModel.fullLowRankErr(data) << std::endl; 
+  opFile << "Full RMSE: " << fullModel.fullLowRankErr(data) << std::endl;
+
+  
+
   opFile.close();
 }
 
