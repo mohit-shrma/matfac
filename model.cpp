@@ -864,6 +864,31 @@ double Model::fullLowRankErr(const Data& data) {
 }
 
 
+double Model::fullLowRankErr(const Data& data, 
+    std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems) {
+  double r_ui_est, r_ui_orig, diff, rmse;
+  rmse = 0;
+  for (int u = 0; u < nUsers; u++) {
+    //skip if invalid user
+    if (invalidUsers.find(u) != invalidUsers.end()) {
+      continue;
+    }
+    for (int item = 0; item < nItems; item++) {
+      //skip if invalid item
+      if (invalidItems.find(item) != invalidItems.end()) {
+        continue;
+      }
+      r_ui_est = estRating(u, item);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      diff = r_ui_orig - r_ui_est;
+      rmse += diff*diff;
+    }
+  }
+  rmse = sqrt(rmse/((nUsers-invalidUsers.size())*(nItems-invalidItems.size())));
+  return rmse;
+}
+
+
 double Model::subMatKnownRankErr(const Data& data, int uStart, int uEnd,
     int iStart, int iEnd) {
   double r_ui_est, r_ui_orig, diff, rmse;

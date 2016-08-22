@@ -3143,9 +3143,8 @@ void predSampUsersRMSEProbPar(const Data& data,
     << fullModel.RMSE(data.testMat, invalUsers, invalItems) << std::endl;
   opFile << "Val RMSE: " 
     << fullModel.RMSE(data.valMat, invalUsers, invalItems) << std::endl;
-  opFile << "Full RMSE: " << fullModel.fullLowRankErr(data) << std::endl;
-
-  
+  opFile << "Full RMSE: " 
+    << fullModel.fullLowRankErr(data, invalUsers, invalItems) << std::endl;
 
   opFile.close();
 }
