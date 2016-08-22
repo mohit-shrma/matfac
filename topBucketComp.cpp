@@ -2545,7 +2545,9 @@ void predSampUsersRMSEProbPar(const Data& data,
   for (int i = 0; i < itemFreq.size(); i++) {
     itemFreqScoresPair.push_back(std::make_pair(i, itemFreq[i]));
   }
-
+  //sort item frequency in decreasing order
+  std::sort(itemFreqScoresPair.begin(), itemFreqScoresPair.end(), descComp);
+  
   auto itemAvgRatings = meanItemRating(trainMat);
 
   int topBuckN = 0.05*nItems;

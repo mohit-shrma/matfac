@@ -887,13 +887,17 @@ double Model::fullLowRankErr(const Data& data) {
 
 double Model::fullLowRankErr(const Data& data, 
     std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems) {
-  double r_ui_est, r_ui_orig, diff, rmse;
+  double rmse;
   rmse = 0;
+#pragma omp parallel for reduction(+ : rmse) 
   for (int u = 0; u < nUsers; u++) {
     //skip if invalid user
     if (invalidUsers.find(u) != invalidUsers.end()) {
       continue;
     }
+    
+    double r_ui_est, r_ui_orig, diff;
+
     for (int item = 0; item < nItems; item++) {
       //skip if invalid item
       if (invalidItems.find(item) != invalidItems.end()) {
