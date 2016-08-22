@@ -535,7 +535,8 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   std::cout << "\nTrain RMSE: " << bestModel.RMSE(data.trainMat, invalidUsers, invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, invalidItems);
   std::cout << "\nVal RMSE: " << bestModel.RMSE(data.valMat, invalidUsers, invalidItems);
- 
+  std::cout << "\nFull RMSE: " << bestModel.fullLowRankErr(data, invalidUsers, invalidItems);
+  std::cout << std::endl;
   /*
   //write out invalid users
   std::string prefix = std::string(params.prefix) + "_" + modelSign + "_invalUsers.txt";
@@ -1841,7 +1842,7 @@ int main(int argc , char* argv[]) {
   }
   */
   
-    
+  /*  
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
   svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
@@ -1871,7 +1872,7 @@ int main(int argc , char* argv[]) {
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
   std::cout << std::endl << "**** Model parameters ****" << std::endl;
   mfModel.display();
-    
+  */   
 
   computeSampTopNFrmFullModel(data, params);  
 
