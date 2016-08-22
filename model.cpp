@@ -279,6 +279,27 @@ double Model::estAvgRating(int user, std::unordered_set<int>& invalidItems) {
 }
 
 
+double Model::estAvgRating(std::unordered_set<int>& invalidUsers, 
+    std::unordered_set<int>& invalidItems) {
+  double avgRat = 0;
+  int count = 0;
+  for (int user = 0; user < nUsers; user++) {
+    if (invalidUsers.find(user) != invalidUsers.end()) {
+      continue;
+    }
+    for (int item = 0; item < nItems; item++) {
+      if (invalidItems.find(item) != invalidItems.end()) {
+        //invalid
+        continue;
+      }
+      avgRat += estRating(user, item);
+      count++;
+    }
+  }
+  return avgRat/count;
+}
+
+
 //compute RMSE with in the submatrix
 double Model::subMatRMSE(gk_csr_t *mat, int uStart, int uEnd, 
     int iStart, int iEnd) {

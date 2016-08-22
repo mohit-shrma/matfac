@@ -131,6 +131,8 @@ class Model {
       const char* iBFName, const char*gBFName);
     void updateFac(std::vector<double> &fac, std::vector<double> &grad);
     double estAvgRating(int user, std::unordered_set<int>& invalidItems) ;
+    double estAvgRating(std::unordered_set<int>& invalidUsers, 
+        std::unordered_set<int>& invalidItems);
     void updateMatWRatings(gk_csr_t *mat);
     double fullLowRankErr(const Data& data, 
         std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems);
