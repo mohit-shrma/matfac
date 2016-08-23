@@ -325,13 +325,6 @@ std::vector<std::pair<int, double>> itemOptScores(Model& origModel,
 
   std::vector<std::pair<int, double>> itemScores;
   
-  //asuuming matrix is sorted get training items
-  std::vector<int> trainItems;
-  for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
-    int item = mat->rowind[ii];
-    trainItems.push_back(item);
-  }
-
   //get pr scores of items
   for (int item = 0; item < nItems; item++) {
     //skip if item is invalid
@@ -340,12 +333,6 @@ std::vector<std::pair<int, double>> itemOptScores(Model& origModel,
       //found, invalid, skip
       continue;
     }
-    /*
-    //skip if found in train items
-    if (std::binary_search(trainItems.begin(), trainItems.end(), item)) {
-      continue;
-    }
-    */
     auto origRating = origModel.estRating(user, item);
     auto predRating = fullModel.estRating(user, item);
     auto diff = fabs(origRating - predRating);
@@ -2523,6 +2510,7 @@ void predSampUsersRMSEProbPar(const Data& data,
   std::vector<double> g_rmseFreqScores(nBuckets, 0);
   std::vector<double> g_rmsePPRScores(nBuckets, 0);
   std::vector<double> g_rmseSVDScores(nBuckets, 0);
+  std::vector<double> g_rmseOPTScores(nBuckets, 0);
   std::vector<double> g_scores(nBuckets, 0);
   std::vector<double> g_bucketNNZ(nBuckets, 0);
 
@@ -2664,6 +2652,7 @@ void predSampUsersRMSEProbPar(const Data& data,
   std::vector<double> misGTPPRScoreBins(20, 0);
 
   std::vector<double> rmseGTScores(nBuckets, 0);
+  std::vector<double> rmseOPTScores(nBuckets, 0);
   std::vector<double> rmseFreqScores(nBuckets, 0);
   std::vector<double> rmsePPRScores(nBuckets, 0);
   std::vector<double> rmseSVDScores(nBuckets, 0);
@@ -2677,6 +2666,7 @@ void predSampUsersRMSEProbPar(const Data& data,
     totalSampUsers++;
 
     std::vector<double> uRMSEGTScores(nBuckets, 0);
+    std::vector<double> uRMSEOPTScores(nBuckets, 0);
     std::vector<double> uRMSEFreqScores(nBuckets, 0);
     std::vector<double> uRMSEPPRScores(nBuckets, 0);
     std::vector<double> uRMSESVDScores(nBuckets, 0);
@@ -2864,6 +2854,14 @@ void predSampUsersRMSEProbPar(const Data& data,
     svdPredOverlap += compOrderingOverlap(itemSVDScoresPair,
         itemPredScoresPair, topBuckN);
 
+    auto itemOptScoresPair = itemOptScores(origModel, fullModel, user, 
+        data.trainMat, nItems, invalItems);
+    itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE,
+        itemsScore, itemOptScoresPair);
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uRMSEOPTScores.begin(), uRMSEOPTScores.end(), 0);
+    updateBucketsArr(uRMSEOPTScores, uBucketNNZ, itemsRMSE, nBuckets);
 
     //get itemsRMSE and itemsScore
     itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
@@ -2915,9 +2913,9 @@ void predSampUsersRMSEProbPar(const Data& data,
    
     //write and update aggregated buckets
     for (int i = 0; i < nBuckets; i++) {
-   
       bucketNNZ[i]      += uBucketNNZ[i];
       rmseGTScores[i]   += uRMSEGTScores[i];
+      rmseOPTScores[i]  += uRMSEOPTScores[i];
       rmseSVDScores[i]  += uRMSESVDScores[i];
       rmseFreqScores[i] += uRMSEFreqScores[i];
       rmsePPRScores[i]  += uRMSEPPRScores[i];
@@ -2930,6 +2928,7 @@ void predSampUsersRMSEProbPar(const Data& data,
   for (int i = 0; i < nBuckets; i++) {
       g_bucketNNZ[i]      += bucketNNZ[i];
       g_rmseGTScores[i]   += rmseGTScores[i];
+      g_rmseOPTScores[i]  += rmseOPTScores[i];
       g_rmseSVDScores[i]  += rmseSVDScores[i];
       g_rmseFreqScores[i] += rmseFreqScores[i];
       g_rmsePPRScores[i]  += rmsePPRScores[i];
@@ -2968,6 +2967,7 @@ void predSampUsersRMSEProbPar(const Data& data,
 
   for (int i = 0; i < nBuckets; i++) {
     g_rmseGTScores[i] = sqrt(g_rmseGTScores[i]/g_bucketNNZ[i]);
+    g_rmseOPTScores[i] = sqrt(g_rmseOPTScores[i]/g_bucketNNZ[i]);
     g_rmseSVDScores[i] = sqrt(g_rmseSVDScores[i]/g_bucketNNZ[i]);
     g_rmsePPRScores[i] = sqrt(g_rmsePPRScores[i]/g_bucketNNZ[i]);
     g_rmseFreqScores[i] = sqrt(g_rmseFreqScores[i]/g_bucketNNZ[i]);
@@ -2991,6 +2991,10 @@ void predSampUsersRMSEProbPar(const Data& data,
 
   opFile << "Freq RMSE buckets: ";
   writeVector(g_rmseFreqScores, opFile);
+  opFile << std::endl;
+
+  opFile << "OPT RMSE buckets: ";
+  writeVector(g_rmseOPTScores, opFile);
   opFile << std::endl;
 
   opFile << "PPR RMSE buckets: ";
