@@ -1047,7 +1047,9 @@ void Model::updateMatWRatings(gk_csr_t *mat) {
   for (int u = 0; u < mat->nrows; u++) {
     for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
       int item = mat->rowind[ii];
-      mat->rowval[ii] = estRating(u, item);
+      if (item < nItems) {
+        mat->rowval[ii] = estRating(u, item);
+      }
     }
   }
 
