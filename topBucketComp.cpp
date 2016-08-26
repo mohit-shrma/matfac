@@ -2533,6 +2533,8 @@ void predSampUsersRMSEProbPar(const Data& data,
   std::vector<double> g_rmseSVDScores(nBuckets, 0);
   std::vector<double> g_svdOrderedFreq(nBuckets, 0);
   std::vector<double> g_svdOrderedPPR(nBuckets, 0);
+  std::vector<double> g_svdOrderedGT(nBuckets, 0);
+  std::vector<double> g_svdOrderedPred(nBuckets, 0);
   std::vector<double> g_rmseOPTScores(nBuckets, 0);
   std::vector<double> g_scores(nBuckets, 0);
   std::vector<double> g_bucketNNZ(nBuckets, 0);
@@ -2692,6 +2694,8 @@ void predSampUsersRMSEProbPar(const Data& data,
 
   std::vector<double> svdOrderedFreq(nBuckets, 0);
   std::vector<double> svdOrderedPPR(nBuckets, 0);
+  std::vector<double> svdOrderedGT(nBuckets, 0);
+  std::vector<double> svdOrderedPred(nBuckets, 0);
   
   std::vector<double> scores(nBuckets, 0);
   std::vector<double> bucketNNZ(nBuckets, 0);
@@ -2709,6 +2713,8 @@ void predSampUsersRMSEProbPar(const Data& data,
     std::vector<double> uRMSESVDScores(nBuckets, 0);
     std::vector<double> uSVDOrderedFreq(nBuckets, 0);
     std::vector<double> uSVDOrderedPPR(nBuckets, 0);
+    std::vector<double> uSVDOrderedGT(nBuckets, 0);
+    std::vector<double> uSVDOrderedPred(nBuckets, 0);
     std::vector<double> uScores(nBuckets, 0);
     std::vector<double> uBucketNNZ(nBuckets, 0);
     std::vector<double> itemsRMSE;
@@ -2723,7 +2729,15 @@ void predSampUsersRMSEProbPar(const Data& data,
         nItems, invalItems);
     auto itemSVDScoresPair = itemSVDScores(svdModel, user, trainMat, nItems, 
         invalItems);
-   
+    std::map<int, double> itemOrigMap;
+    for (auto&& itemScorePair: itemOrigScoresPair) {
+      itemOrigMap[itemScorePair.first] = itemScorePair.second;
+    }
+    std::map<int, double> itemPredMap;
+    for (auto&& itemScorePair: itemPredScoresPair) {
+      itemPredMap[itemScorePair.first] = itemScorePair.second;
+    }
+
     auto itemPredTopN = std::vector<std::pair<int, double>>(
         itemPredScoresPair.begin(), itemPredScoresPair.begin()+topBuckN);
     auto itemOrigTopN = std::vector<std::pair<int, double>>(
@@ -2923,8 +2937,14 @@ void predSampUsersRMSEProbPar(const Data& data,
     std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
     std::fill(uSVDOrderedFreq.begin(), uSVDOrderedFreq.end(), 0); 
     std::fill(uSVDOrderedPPR.begin(), uSVDOrderedPPR.end(), 0);
+    std::fill(uSVDOrderedGT.begin(), uSVDOrderedGT.end(), 0);
+    std::fill(uSVDOrderedPred.begin(), uSVDOrderedPred.end(), 0);
     itemScoresFrmMap(itemSVDScoresPair, itemFreqMap, itemsScore);
     updateBucketsArr(uSVDOrderedFreq, uBucketNNZ, itemsScore, nBuckets);
+    itemScoresFrmMap(itemSVDScoresPair, itemOrigMap, itemsScore);
+    updateBucketsArr(uSVDOrderedGT, uBucketNNZ, itemsScore, nBuckets);
+    itemScoresFrmMap(itemSVDScoresPair, itemPredMap, itemsScore);
+    updateBucketsArr(uSVDOrderedPred, uBucketNNZ, itemsScore, nBuckets);
     if (NULL != graphMat) {
       itemScoresFrmMap(itemSVDScoresPair, pprMap, itemsScore);
       updateBucketsArr(uSVDOrderedPPR, uBucketNNZ, itemsScore, nBuckets);
@@ -2980,6 +3000,8 @@ void predSampUsersRMSEProbPar(const Data& data,
       scores[i]         += uScores[i];
       svdOrderedFreq[i] += uSVDOrderedFreq[i];
       svdOrderedPPR[i]  += uSVDOrderedPPR[i];
+      svdOrderedGT[i]  += uSVDOrderedGT[i];
+      svdOrderedPred[i]  += uSVDOrderedPred[i];
     }
   } //end for user
 
@@ -2995,6 +3017,8 @@ void predSampUsersRMSEProbPar(const Data& data,
       g_scores[i]         += scores[i];
       g_svdOrderedFreq[i] += svdOrderedFreq[i];
       g_svdOrderedPPR[i]  += svdOrderedPPR[i];
+      g_svdOrderedGT[i]  += svdOrderedGT[i];
+      g_svdOrderedPred[i]  += svdOrderedPred[i];
   }
 
   for (int i = 0; i < 20; i++) {
@@ -3036,6 +3060,8 @@ void predSampUsersRMSEProbPar(const Data& data,
     g_scores[i] = g_scores[i]/g_bucketNNZ[i];
     g_svdOrderedFreq[i] = g_svdOrderedFreq[i]/g_bucketNNZ[i];
     g_svdOrderedPPR[i] = g_svdOrderedPPR[i]/g_bucketNNZ[i];
+    g_svdOrderedGT[i] = g_svdOrderedGT[i]/g_bucketNNZ[i];
+    g_svdOrderedPred[i] = g_svdOrderedPred[i]/g_bucketNNZ[i];
   }
 
   std::ofstream opFile;
@@ -3061,6 +3087,14 @@ void predSampUsersRMSEProbPar(const Data& data,
   writeVector(g_svdOrderedPPR, opFile);
   opFile << std::endl;
 
+  opFile << "SVD ordered GT: ";
+  writeVector(g_svdOrderedGT, opFile);
+  opFile << std::endl;
+  
+  opFile << "SVD ordered Pred: ";
+  writeVector(g_svdOrderedPred, opFile);
+  opFile << std::endl;
+  
   opFile << "Freq RMSE buckets: ";
   writeVector(g_rmseFreqScores, opFile);
   opFile << std::endl;
