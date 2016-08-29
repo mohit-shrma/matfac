@@ -1820,8 +1820,9 @@ int main(int argc , char* argv[]) {
   //writeItemSimMat(data.trainMat, "ratings_26779x26779_25.syn.trainItems.metis");
   //writeItemSimMatNonSymm(data.trainMat, 
   //    "ratings_26779x26779_25.syn.trainItems.nonsym.metis");
-  
-  //writeItemJaccSimMat(data.trainMat, "syn.train.jacSim.metis");
+ 
+  std::string graphFName = params.prefix + std::string(".train.jacSim.metis");
+  writeItemJaccSimMat(data.trainMat, graphFName.c_str());
   
   //writeItemJaccSimFrmCorat(data.trainMat, data.graphMat, 
   //    "ratings_26779x26779_25.syn.trainItems.jacSim2.metis");
@@ -1849,7 +1850,6 @@ int main(int argc , char* argv[]) {
   //initialize MF model with last learned model if any
   mfModel.loadFacs(params.prefix);
 
-
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
 
@@ -1872,9 +1872,10 @@ int main(int argc , char* argv[]) {
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
   std::cout << std::endl << "**** Model parameters ****" << std::endl;
   mfModel.display();
-  */   
+     
 
   computeSampTopNFrmFullModel(data, params);  
+  */
 
   //testTailLocRec(data, params);
   //testTailRec(data, params);
