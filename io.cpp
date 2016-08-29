@@ -550,15 +550,16 @@ void writeItemJaccSimMat(gk_csr_t *mat, const char *fName) {
     exit(0);
   }
 
-  float nCoRatedUsers = 0, nUnionUsers = 0, sim = 0;
   std::vector<std::vector<float>> jacSim(nItems, std::vector<float>(nItems, 0.0));
   std::cout << "\nComputing jaccard similarities..." << std::endl;
+
+#pragma omp parallel for
   for (int item1 = 0; item1 < nItems; item1++) {
     for (int item2 = item1+1; item2 < nItems; item2++) {
       //find number of users who corated item1 and item2 
-      nCoRatedUsers = (float)coRatedUsersFrmSortedMatLinMerge(mat, item1, item2);
-      nUnionUsers = itemFreq[item1] + itemFreq[item2] - nCoRatedUsers; 
-      sim = 0;
+      float nCoRatedUsers = (float)coRatedUsersFrmSortedMatLinMerge(mat, item1, item2);
+      float nUnionUsers = itemFreq[item1] + itemFreq[item2] - nCoRatedUsers; 
+      float sim = 0;
       if (nUnionUsers > 0) {
         sim = nCoRatedUsers/nUnionUsers;
       }
