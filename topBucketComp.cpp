@@ -638,6 +638,28 @@ void itemRMSEsOrdByItemScores(int user, std::unordered_set<int>& filtItems,
 } 
 
 
+void itemSignEsOrdByItemScores(int user, std::unordered_set<int>& filtItems, 
+    Model& fullModel, Model& origModel, std::vector<double>& itemsRMSE, 
+    std::vector<double>& itemsScore, 
+    std::vector<std::pair<int,double>>& itemScoresPair) {
+  itemsRMSE.clear();
+  itemsScore.clear();
+  for (auto&& itemScore: itemScoresPair) {
+    int item = itemScore.first;
+    if (filtItems.find(item) != filtItems.end()) {
+      //skip found in filtered items
+      continue;
+    }
+    double score = itemScore.second;
+    double r_ui = origModel.estRating(user, item);
+    double r_ui_est = fullModel.estRating(user, item);
+    double se = (r_ui - r_ui_est);
+    itemsRMSE.push_back(se);
+    itemsScore.push_back(r_ui);
+   }
+} 
+
+
 void itemScoresFrmMap(std::vector<std::pair<int, double>>& itemScoresPair,
     std::map<int, double>& itemScoreMap, std::vector<double>& orderedScore) {
   orderedScore.clear();
@@ -2528,6 +2550,7 @@ void predSampUsersRMSEProbPar(const Data& data,
   gk_csr_t* graphMat = data.graphMat;
 
   std::vector<double> g_rmseGTScores(nBuckets, 0);
+  std::vector<double> g_signEGTScores(nBuckets, 0);
   std::vector<double> g_rmseFreqScores(nBuckets, 0);
   std::vector<double> g_rmsePPRScores(nBuckets, 0);
   std::vector<double> g_rmseSVDScores(nBuckets, 0);
@@ -2685,7 +2708,8 @@ void predSampUsersRMSEProbPar(const Data& data,
   std::vector<double> misGTAvgTrainCountBins(20, 0);
   std::vector<double> misGTPPRCountBins(20, 0);
   std::vector<double> misGTPPRScoreBins(20, 0);
-
+  
+  std::vector<double> signEGTScores(nBuckets, 0);
   std::vector<double> rmseGTScores(nBuckets, 0);
   std::vector<double> rmseOPTScores(nBuckets, 0);
   std::vector<double> rmseFreqScores(nBuckets, 0);
@@ -2706,6 +2730,7 @@ void predSampUsersRMSEProbPar(const Data& data,
 
     totalSampUsers++;
 
+    std::vector<double> uSignEGTScores(nBuckets, 0);
     std::vector<double> uRMSEGTScores(nBuckets, 0);
     std::vector<double> uRMSEOPTScores(nBuckets, 0);
     std::vector<double> uRMSEFreqScores(nBuckets, 0);
@@ -2988,10 +3013,25 @@ void predSampUsersRMSEProbPar(const Data& data,
     std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
     std::fill(uScores.begin(), uScores.end(), 0);
     updateBucketsArr(uScores, uBucketNNZ, itemsScore, nBuckets);
-   
+ 
+    //get signerror
+    itemSignEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
+        itemsScore, itemOrigScoresPair);
+    
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uSignEGTScores.begin(), uSignEGTScores.end(), 0);
+    updateBucketsArr(uSignEGTScores, uBucketNNZ, itemsRMSE, nBuckets);
+    
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uScores.begin(), uScores.end(), 0);
+    updateBucketsArr(uScores, uBucketNNZ, itemsScore, nBuckets);
+
     //write and update aggregated buckets
     for (int i = 0; i < nBuckets; i++) {
       bucketNNZ[i]      += uBucketNNZ[i];
+      signEGTScores[i]  += uSignEGTScores[i];
       rmseGTScores[i]   += uRMSEGTScores[i];
       rmseOPTScores[i]  += uRMSEOPTScores[i];
       rmseSVDScores[i]  += uRMSESVDScores[i];
@@ -3009,6 +3049,7 @@ void predSampUsersRMSEProbPar(const Data& data,
 {
   for (int i = 0; i < nBuckets; i++) {
       g_bucketNNZ[i]      += bucketNNZ[i];
+      g_signEGTScores[i]  += signEGTScores[i];
       g_rmseGTScores[i]   += rmseGTScores[i];
       g_rmseOPTScores[i]  += rmseOPTScores[i];
       g_rmseSVDScores[i]  += rmseSVDScores[i];
@@ -3051,13 +3092,16 @@ void predSampUsersRMSEProbPar(const Data& data,
 
 }
 
+  std::vector<double> g_relRMSE;
   for (int i = 0; i < nBuckets; i++) {
+    g_signEGTScores[i] = g_signEGTScores[i]/g_bucketNNZ[i];
     g_rmseGTScores[i] = sqrt(g_rmseGTScores[i]/g_bucketNNZ[i]);
     g_rmseOPTScores[i] = sqrt(g_rmseOPTScores[i]/g_bucketNNZ[i]);
     g_rmseSVDScores[i] = sqrt(g_rmseSVDScores[i]/g_bucketNNZ[i]);
     g_rmsePPRScores[i] = sqrt(g_rmsePPRScores[i]/g_bucketNNZ[i]);
     g_rmseFreqScores[i] = sqrt(g_rmseFreqScores[i]/g_bucketNNZ[i]);
     g_scores[i] = g_scores[i]/g_bucketNNZ[i];
+    g_relRMSE.push_back(g_rmseGTScores[i]/g_scores[i]);
     g_svdOrderedFreq[i] = g_svdOrderedFreq[i]/g_bucketNNZ[i];
     g_svdOrderedPPR[i] = g_svdOrderedPPR[i]/g_bucketNNZ[i];
     g_svdOrderedGT[i] = g_svdOrderedGT[i]/g_bucketNNZ[i];
@@ -3071,10 +3115,18 @@ void predSampUsersRMSEProbPar(const Data& data,
     opFile.open(prefix + ".txt");
   }
 
+  opFile << "GT sign error buckets: ";
+  writeVector(g_signEGTScores, opFile); 
+  opFile << std::endl;
+  
   opFile << "GT RMSE buckets: ";
   writeVector(g_rmseGTScores, opFile); 
   opFile << std::endl;
 
+  opFile << "GT relRMSE buckets: ";
+  writeVector(g_relRMSE, opFile); 
+  opFile << std::endl;
+  
   opFile << "SVD RMSE buckets: ";
   writeVector(g_rmseSVDScores, opFile);
   opFile << std::endl;
