@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <cassert>
 #include <random>
+#include <omp.h>
 #include "GKlib.h"
 #include "util.h"
 #include "const.h"
@@ -59,6 +60,7 @@ void writeBlkDiagJoinedCSR(const char* mat1Name, const char* mat2Name,
 void writeItemSimMat(gk_csr_t *mat, const char* fName);
 void writeItemSimMatNonSymm(gk_csr_t *mat, const char* fName);
 void writeItemJaccSimMat(gk_csr_t *mat, const char *fName);
+void writeItemJaccSimMatPar(gk_csr_t *mat, const char *fName);
 void writeCoRatings(gk_csr_t *mat, const char *fName);
 void writeItemJaccSimFrmCorat(gk_csr_t *mat, gk_csr_t *coRatMat, 
     const char *fName);

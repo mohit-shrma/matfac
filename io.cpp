@@ -586,6 +586,71 @@ void writeItemJaccSimMat(gk_csr_t *mat, const char *fName) {
 }
 
 
+void writeItemJaccSimMatPar(gk_csr_t *mat, const char *fName) {
+  auto rowColFreq = getRowColFreq(mat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+  int nItems = mat->ncols;
+
+  int isSorted = checkIfUISorted(mat);
+  if (!isSorted) {
+    std::cerr << "\nwriteItemJaccSimMat: matrix not sorted" << std::endl;
+    exit(0);
+  }
+
+  std::cout << "\nComputing jaccard similarities..." << std::endl;
+  std::ofstream opFile(fName);
+  int maxThreads = omp_get_max_threads();
+  std::cout << "Max threads: " << maxThreads << std::endl;
+  std::vector<std::vector<float>> jacSim(maxThreads, std::vector<float>(nItems, 0.0));
+
+  for (int item1 = 0; item1 < nItems; item1+=maxThreads) {
+    
+    for (auto&& v: jacSim) {
+      v.clear();
+    }
+
+#pragma omp parallel for collapse(2)
+    for (int j = 0; j < maxThreads; j++) {
+      for (int item2 = 0; item2 < nItems; item2++) {
+        int itemA = item1+j; 
+        if (itemA >= nItems) {
+          continue;
+        }
+        //find number of users who corated item1 and item2 
+        float nCoRatedUsers = (float)coRatedUsersFrmSortedMatLinMerge(mat, itemA, item2);
+        float nUnionUsers = itemFreq[itemA] + itemFreq[item2] - nCoRatedUsers; 
+        float sim = 0;
+        if (nUnionUsers > 0) {
+          sim = nCoRatedUsers/nUnionUsers;
+        }
+        jacSim[j][item2] = sim; 
+      }
+    }
+
+    if (item1 % 1000 == 0) {
+      std::cout << "\nDone... items " << item1 << std::endl;
+    }
+    
+    for (int j = 0; j < maxThreads; j++) {
+      int itemA = item1+j; 
+      if (itemA >= nItems) {
+        continue;
+      }
+      for (int item2 = 0; item2 < nItems; item2++) {
+        if (item2 != itemA && jacSim[j][item2] > EPS) {
+          opFile << item2 << " " << jacSim[j][item2] << " ";
+        }
+      }
+      opFile << std::endl;
+    }
+
+  }
+
+  opFile.close();
+}
+
+
 void writeItemJaccSimFrmCorat(gk_csr_t *mat, gk_csr_t *coRatMat, const char *fName) {
   auto rowColFreq = getRowColFreq(mat);
   auto userFreq = rowColFreq.first;
