@@ -599,7 +599,7 @@ void writeItemJaccSimMatPar(gk_csr_t *mat, const char *fName) {
   }
 
   std::cout << "\nComputing jaccard similarities..." << std::endl;
-  std::ofstream opFile(fName);
+  std::ofstream opFile(fName, std::ios::binary);
   int maxThreads = omp_get_max_threads();
   std::cout << "Max threads: " << maxThreads << std::endl;
   std::vector<std::vector<float>> jacSim(maxThreads, std::vector<float>(nItems, 0.0));
@@ -631,18 +631,25 @@ void writeItemJaccSimMatPar(gk_csr_t *mat, const char *fName) {
     if (item1 % 1000 == 0) {
       std::cout << "\nDone... items " << item1 << std::endl;
     }
-    
+   
+    float temp;
     for (int j = 0; j < maxThreads; j++) {
       int itemA = item1+j; 
       if (itemA >= nItems) {
         continue;
       }
       for (int item2 = 0; item2 < nItems; item2++) {
+        int count = 0;
         if (item2 != itemA && jacSim[j][item2] > EPS) {
-          opFile << item2 << " " << jacSim[j][item2] << " ";
+          count++;
+        }
+        opFile.write((char*) &count, sizeof(int));
+        if (item2 != itemA && jacSim[j][item2] > EPS) {
+          opFile.write((char*) &item2, sizeof(int));
+          temp = jacSim[j][item2];
+          opFile.write((char*) &temp, sizeof(float));
         }
       }
-      opFile << std::endl;
     }
 
   }
