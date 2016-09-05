@@ -2561,9 +2561,10 @@ void predSampUsersRMSEProbPar(const Data& data,
   std::vector<double> g_scores(nBuckets, 0);
   std::vector<double> g_bucketNNZ(nBuckets, 0);
 
-  std::vector<double> g_svdOrderedAvgFreq(nBuckets, 0);
-  std::vector<double> g_pprOrderedAvgFreq(nBuckets, 0);
-  std::vector<double> g_freqOrderedAvgFreq(nBuckets, 0);
+  std::vector<double> g_svdOrderedAvgFreq(20, 0);
+  std::vector<double> g_pprOrderedAvgFreq(20, 0);
+  std::vector<double> g_freqOrderedAvgFreq(20, 0);
+  std::vector<double> g_bucketNNZ20(20, 0);
 
   std::vector<double> g_misPredSVDCountBins(20, 0);
   std::vector<double> g_misPredFreqCountBins(20, 0);
@@ -2734,9 +2735,10 @@ void predSampUsersRMSEProbPar(const Data& data,
   std::vector<double> svdOrderedGT(nBuckets, 0);
   std::vector<double> svdOrderedPred(nBuckets, 0);
   
-  std::vector<double> svdOrderedAvgFreq(nBuckets, 0);
-  std::vector<double> pprOrderedAvgFreq(nBuckets, 0);
-  std::vector<double> freqOrderedAvgFreq(nBuckets, 0);
+  std::vector<double> svdOrderedAvgFreq(20, 0);
+  std::vector<double> pprOrderedAvgFreq(20, 0);
+  std::vector<double> freqOrderedAvgFreq(20, 0);
+  std::vector<double> bucketNNZ20(20, 0);
   
   std::vector<double> scores(nBuckets, 0);
   std::vector<double> bucketNNZ(nBuckets, 0);
@@ -2758,9 +2760,10 @@ void predSampUsersRMSEProbPar(const Data& data,
     std::vector<double> uSVDOrderedGT(nBuckets, 0);
     std::vector<double> uSVDOrderedPred(nBuckets, 0);
 
-    std::vector<double> uSVDOrderedAvgFreq(nBuckets, 0);
-    std::vector<double> uPPROrderedAvgFreq(nBuckets, 0);
-    std::vector<double> uFreqOrderedAvgFreq(nBuckets, 0);
+    std::vector<double> uSVDOrderedAvgFreq(20, 0);
+    std::vector<double> uPPROrderedAvgFreq(20, 0);
+    std::vector<double> uFreqOrderedAvgFreq(20, 0);
+    std::vector<double> uBucketNNZ20(20, 0);
     
     std::vector<double> uScores(nBuckets, 0);
     std::vector<double> uBucketNNZ(nBuckets, 0);
@@ -3056,7 +3059,7 @@ void predSampUsersRMSEProbPar(const Data& data,
     std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
     std::fill(uSVDOrderedAvgFreq.begin(), uSVDOrderedAvgFreq.end(), 0); 
     itemScoresFrmMap(itemSVDScoresPair, itemFreqMap, itemsScore);
-    updateBucketsArr(uSVDOrderedAvgFreq, uBucketNNZ, itemsScore, nBuckets);
+    updateBucketsArr(uSVDOrderedAvgFreq, uBucketNNZ20, itemsScore, 20);
     
     std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
     std::fill(uSVDOrderedGT.begin(), uSVDOrderedGT.end(), 0);
@@ -3087,7 +3090,7 @@ void predSampUsersRMSEProbPar(const Data& data,
     std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
     std::fill(uFreqOrderedAvgFreq.begin(), uFreqOrderedAvgFreq.end(), 0);
     itemScoresFrmMap(itemFreqScoresPair, itemFreqMap, itemsScore);
-    updateBucketsArr(uFreqOrderedAvgFreq, uBucketNNZ, itemsScore, nBuckets);
+    updateBucketsArr(uFreqOrderedAvgFreq, uBucketNNZ20, itemsScore, 20);
 
 
     if (NULL != graphMat) {
@@ -3103,7 +3106,7 @@ void predSampUsersRMSEProbPar(const Data& data,
       std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
       std::fill(uPPROrderedAvgFreq.begin(), uPPROrderedAvgFreq.end(), 0);
       itemScoresFrmMap(itemPPRScoresPair, itemFreqMap, itemsScore);
-      updateBucketsArr(uPPROrderedAvgFreq, uBucketNNZ, itemsScore, nBuckets);
+      updateBucketsArr(uPPROrderedAvgFreq, uBucketNNZ20, itemsScore, 20);
     }
     
     //get signerror
@@ -3140,6 +3143,10 @@ void predSampUsersRMSEProbPar(const Data& data,
       svdOrderedPPR[i]  += uSVDOrderedPPR[i];
       svdOrderedGT[i]  += uSVDOrderedGT[i];
       svdOrderedPred[i]  += uSVDOrderedPred[i];
+    }
+
+    for (int i = 0; i < 20; i++) {
+      bucketNNZ20[i] += uBucketNNZ20[i];
       svdOrderedAvgFreq[i] += uSVDOrderedAvgFreq[i];
       pprOrderedAvgFreq[i] += uPPROrderedAvgFreq[i];
       freqOrderedAvgFreq[i] += uFreqOrderedAvgFreq[i];
@@ -3161,9 +3168,6 @@ void predSampUsersRMSEProbPar(const Data& data,
       g_svdOrderedPPR[i]      += svdOrderedPPR[i];
       g_svdOrderedGT[i]       += svdOrderedGT[i];
       g_svdOrderedPred[i]     += svdOrderedPred[i];
-      g_svdOrderedAvgFreq[i]  += svdOrderedAvgFreq[i];
-      g_pprOrderedAvgFreq[i]  += pprOrderedAvgFreq[i];
-      g_freqOrderedAvgFreq[i] += freqOrderedAvgFreq[i];
   }
 
   for (int i = 0; i < 20; i++) {
@@ -3190,6 +3194,11 @@ void predSampUsersRMSEProbPar(const Data& data,
     g_misGTAvgTrainScoreBins[i] += misGTAvgTrainScoreBins[i];
     g_misGTPPRCountBins[i]      += misGTPPRCountBins[i];
     g_misGTPPRScoreBins[i]      += misGTPPRScoreBins[i];
+      
+    g_svdOrderedAvgFreq[i]  += svdOrderedAvgFreq[i];
+    g_pprOrderedAvgFreq[i]  += pprOrderedAvgFreq[i];
+    g_freqOrderedAvgFreq[i] += freqOrderedAvgFreq[i];
+    g_bucketNNZ20[i] += bucketNNZ20[i];
   }
 
 }
@@ -3209,9 +3218,12 @@ void predSampUsersRMSEProbPar(const Data& data,
     g_svdOrderedPPR[i] = g_svdOrderedPPR[i]/g_bucketNNZ[i];
     g_svdOrderedGT[i] = g_svdOrderedGT[i]/g_bucketNNZ[i];
     g_svdOrderedPred[i] = g_svdOrderedPred[i]/g_bucketNNZ[i];
-    g_svdOrderedAvgFreq[i] = g_svdOrderedAvgFreq[i]/g_bucketNNZ[i];
-    g_pprOrderedAvgFreq[i] = g_pprOrderedAvgFreq[i]/g_bucketNNZ[i];
-    g_freqOrderedAvgFreq[i] = g_freqOrderedAvgFreq[i]/g_bucketNNZ[i];
+  }
+
+  for (int i = 0; i < 20; i++) {
+    g_svdOrderedAvgFreq[i] = g_svdOrderedAvgFreq[i]/g_bucketNNZ20[i];
+    g_pprOrderedAvgFreq[i] = g_pprOrderedAvgFreq[i]/g_bucketNNZ20[i];
+    g_freqOrderedAvgFreq[i] = g_freqOrderedAvgFreq[i]/g_bucketNNZ20[i];
   }
 
   std::ofstream opFile;
