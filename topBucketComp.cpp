@@ -2659,12 +2659,9 @@ void predSampUsersRMSEProbPar(const Data& data,
 
   double freq_SVDTopInFreqTop = 0, freq_SVDTopNOTInFreqTop = 0;
   double rmse_SVDTopInFreqTop = 0, rmse_SVDTopNOTInFreqTop = 0;
-  double se_SVDTopInFreqTop = 0, se_SVDTopNOTInFreqTop = 0;
 
   double freq_PPRTopInFreqTop = 0, freq_PPRTopNOTInFreqTop = 0;
   double rmse_PPRTopInFreqTop = 0, rmse_PPRTopNOTInFreqTop = 0;
-  double se_PPRTopInFreqTop = 0, se_PPRTopNOTInFreqTop = 0;
-  
 
   int totalSampUsers;
   
