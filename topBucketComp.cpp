@@ -2895,8 +2895,8 @@ void predSampUsersRMSEProbPar(const Data& data,
     svdNOTinFreqPc += freqSVDDiffPc.second;
    
     freqSVDTopOvrlap += compOrderingOverlap(itemFreqScoresPair, itemSVDScoresPair, topBuckN);
-    freqTopRMSE += getSE(user, itemFreqScoresPair, origModel, fullModel, topBuckN);
-    svdTopRMSE += getSE(user, itemSVDScoresPair, origModel, fullModel, topBuckN);
+    freqTopRMSE += sqrt(getSE(user, itemFreqScoresPair, origModel, fullModel, topBuckN)/topBuckN);
+    svdTopRMSE += sqrt(getSE(user, itemSVDScoresPair, origModel, fullModel, topBuckN)/topBuckN);
     
     //get items from svd top NOT in topFreqItems
     int svdTopInFreqTop = 0;
@@ -2984,7 +2984,7 @@ void predSampUsersRMSEProbPar(const Data& data,
 
       pprFreqTopOvrlap += compOrderingOverlap(itemPPRScoresPair, itemFreqScoresPair, topBuckN);
       pprSVDTopOvrlap += compOrderingOverlap(itemPPRScoresPair, itemSVDScoresPair, topBuckN);
-      pprTopRMSE += getSE(user, itemPPRScoresPair, origModel, fullModel, topBuckN);
+      pprTopRMSE += sqrt(getSE(user, itemPPRScoresPair, origModel, fullModel, topBuckN)/topBuckN);
     
       //get items from ppr top NOT in topFreqItems
       int pprTopInFreqTop = 0;
@@ -3294,9 +3294,9 @@ void predSampUsersRMSEProbPar(const Data& data,
   opFile << "pprFreqTopOvrlap: " << pprFreqTopOvrlap/totalSampUsers << std::endl;
   opFile << "pprSVDTopOvrlap: " << pprSVDTopOvrlap/totalSampUsers << std::endl;
 
-  opFile << "freqTopRMSE: " << sqrt(freqTopRMSE/(totalSampUsers*topBuckN)) << std::endl;
-  opFile << "pprTopRMSE: " << sqrt(pprTopRMSE/(totalSampUsers*topBuckN)) << std::endl;
-  opFile << "svdTopRMSE: " << sqrt(svdTopRMSE/(totalSampUsers*topBuckN)) << std::endl;
+  opFile << "freqTopRMSE: " << (freqTopRMSE/(totalSampUsers)) << std::endl;
+  opFile << "pprTopRMSE: " << (pprTopRMSE/(totalSampUsers)) << std::endl;
+  opFile << "svdTopRMSE: " << (svdTopRMSE/(totalSampUsers)) << std::endl;
 
   opFile << "svdInPred: " << svdInPred/totalSampUsers << std::endl;
   opFile << "svdNotInPred: " << svdNotInPred/totalSampUsers << std::endl;
