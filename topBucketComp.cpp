@@ -2554,13 +2554,40 @@ void predSampUsersRMSEProbPar(const Data& data,
   std::vector<double> g_rmseFreqScores(nBuckets, 0);
   std::vector<double> g_rmsePPRScores(nBuckets, 0);
   std::vector<double> g_rmseSVDScores(nBuckets, 0);
-  std::vector<double> g_svdOrderedFreq(nBuckets, 0);
   std::vector<double> g_svdOrderedPPR(nBuckets, 0);
   std::vector<double> g_svdOrderedGT(nBuckets, 0);
   std::vector<double> g_svdOrderedPred(nBuckets, 0);
   std::vector<double> g_rmseOPTScores(nBuckets, 0);
   std::vector<double> g_scores(nBuckets, 0);
   std::vector<double> g_bucketNNZ(nBuckets, 0);
+
+  std::vector<double> g_svdOrderedAvgFreq(nBuckets, 0);
+  std::vector<double> g_pprOrderedAvgFreq(nBuckets, 0);
+  std::vector<double> g_freqOrderedAvgFreq(nBuckets, 0);
+
+  std::vector<double> g_misPredSVDCountBins(20, 0);
+  std::vector<double> g_misPredFreqCountBins(20, 0);
+  std::vector<double> g_misPredPPRCountBins(20, 0);
+ 
+  std::vector<double> g_svdScoreBins(20, 0);
+  std::vector<double> g_freqScoreBins(20, 0);
+  std::vector<double> g_pprScoreBins(20, 0);
+
+  std::vector<double> g_misGTSVDCountBins(20, 0);
+  std::vector<double> g_misGTSVDScoreBins(20, 0);
+  std::vector<double> g_misGTOrigCountBins(20, 0);
+  std::vector<double> g_misGTOrigScoreBins(20, 0);
+  
+  std::vector<double> g_misGTMFCountBins(20, 0);
+  std::vector<double> g_misGTMFScoreBins(20, 0);
+  std::vector<double> g_misGTFreqScoreBins(20, 0);
+  std::vector<double> g_misGTFreqCountBins(20, 0);
+  
+  std::vector<double> g_misGTAvgTrainScoreBins(20, 0);
+  std::vector<double> g_misGTAvgTrainCountBins(20, 0);
+  std::vector<double> g_misGTPPRCountBins(20, 0);
+  std::vector<double> g_misGTPPRScoreBins(20, 0);
+
 
   //initialize random engine
   std::mt19937 mt(seed);
@@ -2589,31 +2616,12 @@ void predSampUsersRMSEProbPar(const Data& data,
   auto itemAvgRatings = meanItemRating(trainMat);
 
   int topBuckN = 0.05*nItems;
-
   std::cout << "\ntopBuckN: " << topBuckN << std::endl;
 
-  std::vector<double> g_misPredSVDCountBins(20, 0);
-  std::vector<double> g_misPredFreqCountBins(20, 0);
-  std::vector<double> g_misPredPPRCountBins(20, 0);
- 
-  std::vector<double> g_svdScoreBins(20, 0);
-  std::vector<double> g_freqScoreBins(20, 0);
-  std::vector<double> g_pprScoreBins(20, 0);
-
-  std::vector<double> g_misGTSVDCountBins(20, 0);
-  std::vector<double> g_misGTSVDScoreBins(20, 0);
-  std::vector<double> g_misGTOrigCountBins(20, 0);
-  std::vector<double> g_misGTOrigScoreBins(20, 0);
-  
-  std::vector<double> g_misGTMFCountBins(20, 0);
-  std::vector<double> g_misGTMFScoreBins(20, 0);
-  std::vector<double> g_misGTFreqScoreBins(20, 0);
-  std::vector<double> g_misGTFreqCountBins(20, 0);
-  
-  std::vector<double> g_misGTAvgTrainScoreBins(20, 0);
-  std::vector<double> g_misGTAvgTrainCountBins(20, 0);
-  std::vector<double> g_misGTPPRCountBins(20, 0);
-  std::vector<double> g_misGTPPRScoreBins(20, 0);
+  std::unordered_set<int> topFreqItems;
+  for (int i = 0; i < topBuckN; i++) {
+    topFreqItems.insert(itemFreqScoresPair[i].first);
+  }
 
   double predOrigOverlap = 0, svdOrigOverlap = 0;
   double svdPredOverlap = 0;
@@ -2648,7 +2656,16 @@ void predSampUsersRMSEProbPar(const Data& data,
   double pprNotInPred = 0, pprInPred = 0;
   double predPPROrigOverlap = 0;
   double iterPredSVDOrigOverlap = 0;
+
+  double freq_SVDTopInFreqTop = 0, freq_SVDTopNOTInFreqTop = 0;
+  double rmse_SVDTopInFreqTop = 0, rmse_SVDTopNOTInFreqTop = 0;
+  double se_SVDTopInFreqTop = 0, se_SVDTopNOTInFreqTop = 0;
+
+  double freq_PPRTopInFreqTop = 0, freq_PPRTopNOTInFreqTop = 0;
+  double rmse_PPRTopInFreqTop = 0, rmse_PPRTopNOTInFreqTop = 0;
+  double se_PPRTopInFreqTop = 0, se_PPRTopNOTInFreqTop = 0;
   
+
   int totalSampUsers;
   
   if (NULL != graphMat) {
@@ -2716,15 +2733,18 @@ void predSampUsersRMSEProbPar(const Data& data,
   std::vector<double> rmsePPRScores(nBuckets, 0);
   std::vector<double> rmseSVDScores(nBuckets, 0);
 
-  std::vector<double> svdOrderedFreq(nBuckets, 0);
   std::vector<double> svdOrderedPPR(nBuckets, 0);
   std::vector<double> svdOrderedGT(nBuckets, 0);
   std::vector<double> svdOrderedPred(nBuckets, 0);
   
+  std::vector<double> svdOrderedAvgFreq(nBuckets, 0);
+  std::vector<double> pprOrderedAvgFreq(nBuckets, 0);
+  std::vector<double> freqOrderedAvgFreq(nBuckets, 0);
+  
   std::vector<double> scores(nBuckets, 0);
   std::vector<double> bucketNNZ(nBuckets, 0);
 
-#pragma omp for reduction(+ : freqTopRMSE, svdTopRMSE, pprTopRMSE, freqSVDTopOvrlap, pprFreqTopOvrlap, pprSVDTopOvrlap, freqNOTinSVDPc, svdNOTinFreqPc, freqNOTinPPRPc, pprNOTinFreqPc, svdNOTinPPRPc, pprNOTinSVDPc, freqOrigOverlap, predOrigOverlap, svdOrigOverlap, svdPredOverlap, pprOrigOverlap, svdNotInPred, svdInPred, svdOfPredInOrig, svdOfPredNotInOrig, svdVarOfPredInOrig, svdVarOfPredNotInOrig, svdOfMedPredInOrig, svdOfMaxPredInorig, svdOfMinPredInOrig, svdOfTopPredInOrig, svdOfBotPredInOrig, svdAboveAvgInOrig, pprOfPredInOrig, pprOfPredNotInOrig, pprNotInPred, pprInPred, predPPROrigOverlap, iterPredSVDOrigOverlap, totalSampUsers)  
+#pragma omp for reduction(+ : freqTopRMSE, svdTopRMSE, pprTopRMSE, freqSVDTopOvrlap, pprFreqTopOvrlap, pprSVDTopOvrlap, freqNOTinSVDPc, svdNOTinFreqPc, freqNOTinPPRPc, pprNOTinFreqPc, svdNOTinPPRPc, pprNOTinSVDPc, freqOrigOverlap, predOrigOverlap, svdOrigOverlap, svdPredOverlap, pprOrigOverlap, svdNotInPred, svdInPred, svdOfPredInOrig, svdOfPredNotInOrig, svdVarOfPredInOrig, svdVarOfPredNotInOrig, svdOfMedPredInOrig, svdOfMaxPredInorig, svdOfMinPredInOrig, svdOfTopPredInOrig, svdOfBotPredInOrig, svdAboveAvgInOrig, pprOfPredInOrig, pprOfPredNotInOrig, pprNotInPred, pprInPred, predPPROrigOverlap, iterPredSVDOrigOverlap, totalSampUsers, freq_SVDTopInFreqTop, freq_SVDTopNOTInFreqTop, freq_PPRTopInFreqTop, freq_PPRTopNOTInFreqTop, rmse_SVDTopInFreqTop, rmse_SVDTopNOTInFreqTop, rmse_PPRTopInFreqTop, rmse_PPRTopNOTInFreqTop)  
   for (int uInd=0; uInd < sampUsersSz; uInd++) {
     int user = sampUsersVec[uInd];
 
@@ -2736,10 +2756,15 @@ void predSampUsersRMSEProbPar(const Data& data,
     std::vector<double> uRMSEFreqScores(nBuckets, 0);
     std::vector<double> uRMSEPPRScores(nBuckets, 0);
     std::vector<double> uRMSESVDScores(nBuckets, 0);
-    std::vector<double> uSVDOrderedFreq(nBuckets, 0);
+    
     std::vector<double> uSVDOrderedPPR(nBuckets, 0);
     std::vector<double> uSVDOrderedGT(nBuckets, 0);
     std::vector<double> uSVDOrderedPred(nBuckets, 0);
+
+    std::vector<double> uSVDOrderedAvgFreq(nBuckets, 0);
+    std::vector<double> uPPROrderedAvgFreq(nBuckets, 0);
+    std::vector<double> uFreqOrderedAvgFreq(nBuckets, 0);
+    
     std::vector<double> uScores(nBuckets, 0);
     std::vector<double> uBucketNNZ(nBuckets, 0);
     std::vector<double> itemsRMSE;
@@ -2875,6 +2900,40 @@ void predSampUsersRMSEProbPar(const Data& data,
     freqSVDTopOvrlap += compOrderingOverlap(itemFreqScoresPair, itemSVDScoresPair, topBuckN);
     freqTopRMSE += getSE(user, itemFreqScoresPair, origModel, fullModel, topBuckN);
     svdTopRMSE += getSE(user, itemSVDScoresPair, origModel, fullModel, topBuckN);
+    
+    //get items from svd top NOT in topFreqItems
+    int svdTopInFreqTop = 0;
+    double freqSvdTopInFreqTop = 0;
+    double seSvdTopInFreqTop = 0;
+    
+    int svdTopNotInFreqTop = 0;
+    double freqSvdTopNotInFreqTop = 0;
+    double seSvdTopNotInFreqTop = 0;
+    
+    double score = 0;
+    for (int i = 0; i < topBuckN; i++) {
+      int item = itemSVDScoresPair[i].first;
+      if (topFreqItems.find(item) != topFreqItems.end()) {
+        //found in top
+        freqSvdTopInFreqTop += itemFreqMap[item];
+        score = origModel.estRating(user, item) - fullModel.estRating(user, item);
+        seSvdTopInFreqTop += score*score;
+        svdTopInFreqTop++; 
+      } else {
+        //not found in top
+        freqSvdTopNotInFreqTop += itemFreqMap[item];
+        score = origModel.estRating(user, item) - fullModel.estRating(user, item);
+        seSvdTopNotInFreqTop += score*score;
+        svdTopNotInFreqTop++;
+      }
+    }
+    freqSvdTopInFreqTop = freqSvdTopInFreqTop/svdTopInFreqTop;
+    freqSvdTopNotInFreqTop = freqSvdTopNotInFreqTop/svdTopNotInFreqTop;
+    //update global
+    freq_SVDTopInFreqTop += freqSvdTopInFreqTop;
+    freq_SVDTopNOTInFreqTop += freqSvdTopNotInFreqTop;
+    rmse_SVDTopInFreqTop += sqrt(seSvdTopInFreqTop/svdTopInFreqTop);
+    rmse_SVDTopNOTInFreqTop += sqrt(seSvdTopNotInFreqTop/svdTopNotInFreqTop);
 
     std::map<int, double> pprMap;
     if (NULL != graphMat) {
@@ -2929,6 +2988,44 @@ void predSampUsersRMSEProbPar(const Data& data,
       pprFreqTopOvrlap += compOrderingOverlap(itemPPRScoresPair, itemFreqScoresPair, topBuckN);
       pprSVDTopOvrlap += compOrderingOverlap(itemPPRScoresPair, itemSVDScoresPair, topBuckN);
       pprTopRMSE += getSE(user, itemPPRScoresPair, origModel, fullModel, topBuckN);
+    
+      //get items from ppr top NOT in topFreqItems
+      int pprTopInFreqTop = 0;
+      double freqPprTopInFreqTop = 0;
+      double sePprTopInFreqTop = 0;
+      
+      int pprTopNotInFreqTop = 0;
+      double freqPprTopNotInFreqTop = 0;
+      double sePprTopNotInFreqTop = 0;
+      
+      double score = 0;
+      for (int i = 0; i < topBuckN; i++) {
+        int item = itemPPRScoresPair[i].first;
+        if (topFreqItems.find(item) != topFreqItems.end()) {
+          //found in top
+          freqPprTopInFreqTop += itemFreqMap[item];
+          score = origModel.estRating(user, item) - fullModel.estRating(user, item);
+          sePprTopInFreqTop += score*score;
+          pprTopInFreqTop++; 
+        } else {
+          //not found in top
+          freqPprTopNotInFreqTop += itemFreqMap[item];
+          score = origModel.estRating(user, item) - fullModel.estRating(user, item);
+          sePprTopNotInFreqTop += score*score;
+          pprTopNotInFreqTop++;
+        }
+      }
+      if (pprTopInFreqTop > 0) {
+        freqPprTopInFreqTop = freqPprTopInFreqTop/pprTopInFreqTop;
+        freq_PPRTopInFreqTop += freqPprTopInFreqTop;
+        rmse_PPRTopInFreqTop += sqrt(sePprTopInFreqTop/pprTopInFreqTop);
+      }
+      if (pprTopNotInFreqTop > 0) {
+        freqPprTopNotInFreqTop = freqPprTopNotInFreqTop/pprTopNotInFreqTop;
+        freq_PPRTopNOTInFreqTop += freqPprTopNotInFreqTop;
+        rmse_PPRTopNOTInFreqTop += sqrt(sePprTopNotInFreqTop/pprTopNotInFreqTop);
+      }
+    
     }
     
     predOrigOverlap += compOrderingOverlap(itemOrigScoresPair, 
@@ -2942,6 +3039,7 @@ void predSampUsersRMSEProbPar(const Data& data,
 
     auto itemOptScoresPair = itemOptScores(origModel, fullModel, user, 
         data.trainMat, nItems, invalItems);
+    
     itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE,
         itemsScore, itemOptScoresPair);
     //reset user specific vec to 0
@@ -2952,25 +3050,30 @@ void predSampUsersRMSEProbPar(const Data& data,
     //get itemsRMSE and itemsScore
     itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
         itemsScore, itemSVDScoresPair);
-    
     //reset user specific vec to 0
     std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
     std::fill(uRMSESVDScores.begin(), uRMSESVDScores.end(), 0);
     updateBucketsArr(uRMSESVDScores, uBucketNNZ, itemsRMSE, nBuckets);
 
-    //get freq of svd ordered items
+    //get freq/ppr/GT/pred of svd ordered items
     std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
-    std::fill(uSVDOrderedFreq.begin(), uSVDOrderedFreq.end(), 0); 
-    std::fill(uSVDOrderedPPR.begin(), uSVDOrderedPPR.end(), 0);
-    std::fill(uSVDOrderedGT.begin(), uSVDOrderedGT.end(), 0);
-    std::fill(uSVDOrderedPred.begin(), uSVDOrderedPred.end(), 0);
+    std::fill(uSVDOrderedAvgFreq.begin(), uSVDOrderedAvgFreq.end(), 0); 
     itemScoresFrmMap(itemSVDScoresPair, itemFreqMap, itemsScore);
-    updateBucketsArr(uSVDOrderedFreq, uBucketNNZ, itemsScore, nBuckets);
+    updateBucketsArr(uSVDOrderedAvgFreq, uBucketNNZ, itemsScore, nBuckets);
+    
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uSVDOrderedGT.begin(), uSVDOrderedGT.end(), 0);
     itemScoresFrmMap(itemSVDScoresPair, itemOrigMap, itemsScore);
     updateBucketsArr(uSVDOrderedGT, uBucketNNZ, itemsScore, nBuckets);
+    
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uSVDOrderedPred.begin(), uSVDOrderedPred.end(), 0);
     itemScoresFrmMap(itemSVDScoresPair, itemPredMap, itemsScore);
     updateBucketsArr(uSVDOrderedPred, uBucketNNZ, itemsScore, nBuckets);
+
     if (NULL != graphMat) {
+      std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+      std::fill(uSVDOrderedPPR.begin(), uSVDOrderedPPR.end(), 0);
       itemScoresFrmMap(itemSVDScoresPair, pprMap, itemsScore);
       updateBucketsArr(uSVDOrderedPPR, uBucketNNZ, itemsScore, nBuckets);
     }
@@ -2978,51 +3081,50 @@ void predSampUsersRMSEProbPar(const Data& data,
     //get itemsRMSE and itemsScore
     itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
         itemsScore, itemFreqScoresPair);
-    
     //reset user specific vec to 0
     std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
     std::fill(uRMSEFreqScores.begin(), uRMSEFreqScores.end(), 0);
     updateBucketsArr(uRMSEFreqScores, uBucketNNZ, itemsRMSE, nBuckets);
 
+    //get average frequency of freq ordered items
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uFreqOrderedAvgFreq.begin(), uFreqOrderedAvgFreq.end(), 0);
+    itemScoresFrmMap(itemFreqScoresPair, itemFreqMap, itemsScore);
+    updateBucketsArr(uFreqOrderedAvgFreq, uBucketNNZ, itemsScore, nBuckets);
+
+
     if (NULL != graphMat) {
       //get itemsRMSE and itemsScore
       itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
           itemsScore, itemPPRScoresPair);
-      
       //reset user specific vec to 0
       std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
       std::fill(uRMSEPPRScores.begin(), uRMSEPPRScores.end(), 0);
       updateBucketsArr(uRMSEPPRScores, uBucketNNZ, itemsRMSE, nBuckets);
-    }
 
-    //reset user specific vec to 0
-    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
-    std::fill(uScores.begin(), uScores.end(), 0);
-    updateBucketsArr(uScores, uBucketNNZ, itemsScore, nBuckets);
- 
-    //get itemsRMSE and itemsScore
-    itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
-        itemsScore, itemOrigScoresPair);
+      //get avg freq of PPR ordered items
+      std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+      std::fill(uPPROrderedAvgFreq.begin(), uPPROrderedAvgFreq.end(), 0);
+      itemScoresFrmMap(itemPPRScoresPair, itemFreqMap, itemsScore);
+      updateBucketsArr(uPPROrderedAvgFreq, uBucketNNZ, itemsScore, nBuckets);
+    }
     
-    //reset user specific vec to 0
-    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
-    std::fill(uRMSEGTScores.begin(), uRMSEGTScores.end(), 0);
-    updateBucketsArr(uRMSEGTScores, uBucketNNZ, itemsRMSE, nBuckets);
-    
-    //reset user specific vec to 0
-    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
-    std::fill(uScores.begin(), uScores.end(), 0);
-    updateBucketsArr(uScores, uBucketNNZ, itemsScore, nBuckets);
- 
     //get signerror
     itemSignEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
         itemsScore, itemOrigScoresPair);
-    
     //reset user specific vec to 0
     std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
     std::fill(uSignEGTScores.begin(), uSignEGTScores.end(), 0);
     updateBucketsArr(uSignEGTScores, uBucketNNZ, itemsRMSE, nBuckets);
-    
+ 
+    //get itemsRMSE and itemsScore
+    itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE, 
+        itemsScore, itemOrigScoresPair);
+    //reset user specific vec to 0
+    std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
+    std::fill(uRMSEGTScores.begin(), uRMSEGTScores.end(), 0);
+    updateBucketsArr(uRMSEGTScores, uBucketNNZ, itemsRMSE, nBuckets);
+   
     //reset user specific vec to 0
     std::fill(uBucketNNZ.begin(), uBucketNNZ.end(), 0); 
     std::fill(uScores.begin(), uScores.end(), 0);
@@ -3038,28 +3140,33 @@ void predSampUsersRMSEProbPar(const Data& data,
       rmseFreqScores[i] += uRMSEFreqScores[i];
       rmsePPRScores[i]  += uRMSEPPRScores[i];
       scores[i]         += uScores[i];
-      svdOrderedFreq[i] += uSVDOrderedFreq[i];
       svdOrderedPPR[i]  += uSVDOrderedPPR[i];
       svdOrderedGT[i]  += uSVDOrderedGT[i];
       svdOrderedPred[i]  += uSVDOrderedPred[i];
+      svdOrderedAvgFreq[i] += uSVDOrderedAvgFreq[i];
+      pprOrderedAvgFreq[i] += uPPROrderedAvgFreq[i];
+      freqOrderedAvgFreq[i] += uFreqOrderedAvgFreq[i];
     }
   } //end for user
 
 #pragma omp critical
 {
   for (int i = 0; i < nBuckets; i++) {
-      g_bucketNNZ[i]      += bucketNNZ[i];
-      g_signEGTScores[i]  += signEGTScores[i];
-      g_rmseGTScores[i]   += rmseGTScores[i];
-      g_rmseOPTScores[i]  += rmseOPTScores[i];
-      g_rmseSVDScores[i]  += rmseSVDScores[i];
-      g_rmseFreqScores[i] += rmseFreqScores[i];
-      g_rmsePPRScores[i]  += rmsePPRScores[i];
-      g_scores[i]         += scores[i];
-      g_svdOrderedFreq[i] += svdOrderedFreq[i];
-      g_svdOrderedPPR[i]  += svdOrderedPPR[i];
-      g_svdOrderedGT[i]  += svdOrderedGT[i];
-      g_svdOrderedPred[i]  += svdOrderedPred[i];
+
+      g_bucketNNZ[i]          += bucketNNZ[i];
+      g_signEGTScores[i]      += signEGTScores[i];
+      g_rmseGTScores[i]       += rmseGTScores[i];
+      g_rmseOPTScores[i]      += rmseOPTScores[i];
+      g_rmseSVDScores[i]      += rmseSVDScores[i];
+      g_rmseFreqScores[i]     += rmseFreqScores[i];
+      g_rmsePPRScores[i]      += rmsePPRScores[i];
+      g_scores[i]             += scores[i];
+      g_svdOrderedPPR[i]      += svdOrderedPPR[i];
+      g_svdOrderedGT[i]       += svdOrderedGT[i];
+      g_svdOrderedPred[i]     += svdOrderedPred[i];
+      g_svdOrderedAvgFreq[i]  += svdOrderedAvgFreq[i];
+      g_pprOrderedAvgFreq[i]  += pprOrderedAvgFreq[i];
+      g_freqOrderedAvgFreq[i] += freqOrderedAvgFreq[i];
   }
 
   for (int i = 0; i < 20; i++) {
@@ -3102,10 +3209,12 @@ void predSampUsersRMSEProbPar(const Data& data,
     g_rmseFreqScores[i] = sqrt(g_rmseFreqScores[i]/g_bucketNNZ[i]);
     g_scores[i] = g_scores[i]/g_bucketNNZ[i];
     g_relRMSE.push_back(g_rmseGTScores[i]/g_scores[i]);
-    g_svdOrderedFreq[i] = g_svdOrderedFreq[i]/g_bucketNNZ[i];
     g_svdOrderedPPR[i] = g_svdOrderedPPR[i]/g_bucketNNZ[i];
     g_svdOrderedGT[i] = g_svdOrderedGT[i]/g_bucketNNZ[i];
     g_svdOrderedPred[i] = g_svdOrderedPred[i]/g_bucketNNZ[i];
+    g_svdOrderedAvgFreq[i] = g_svdOrderedAvgFreq[i]/g_bucketNNZ[i];
+    g_pprOrderedAvgFreq[i] = g_pprOrderedAvgFreq[i]/g_bucketNNZ[i];
+    g_freqOrderedAvgFreq[i] = g_freqOrderedAvgFreq[i]/g_bucketNNZ[i];
   }
 
   std::ofstream opFile;
@@ -3131,10 +3240,18 @@ void predSampUsersRMSEProbPar(const Data& data,
   writeVector(g_rmseSVDScores, opFile);
   opFile << std::endl;
 
-  opFile << "SVD ordered frequency: ";
-  writeVector(g_svdOrderedFreq, opFile);
+  opFile << "SVD ordered average frequency: ";
+  writeVector(g_svdOrderedAvgFreq, opFile);
   opFile << std::endl;
 
+  opFile << "PPR ordered average frequency: ";
+  writeVector(g_pprOrderedAvgFreq, opFile);
+  opFile << std::endl;
+  
+  opFile << "Frequency ordered average frequency: ";
+  writeVector(g_freqOrderedAvgFreq, opFile);
+  opFile << std::endl;
+  
   opFile << "SVD ordered PPR: ";
   writeVector(g_svdOrderedPPR, opFile);
   opFile << std::endl;
@@ -3211,6 +3328,16 @@ void predSampUsersRMSEProbPar(const Data& data,
   
   opFile << "iterPredSVDOrigOverlap: " 
     << iterPredSVDOrigOverlap/totalSampUsers << std::endl;
+  
+  opFile << "freq_SVDTopInFreqTop: " << freq_SVDTopInFreqTop/totalSampUsers << std::endl;
+  opFile << "freq_SVDTopNOTInFreqTop: " << freq_SVDTopNOTInFreqTop/totalSampUsers << std::endl;
+  opFile << "rmse_SVDTopInFreqTop: " << rmse_SVDTopInFreqTop/totalSampUsers << std::endl;
+  opFile << "rmse_SVDTopNOTInFreqTop: " << rmse_SVDTopNOTInFreqTop/totalSampUsers << std::endl;
+  
+  opFile << "freq_PPRTopInFreqTop: " << freq_PPRTopInFreqTop/totalSampUsers << std::endl;
+  opFile << "freq_PPRTopNOTInFreqTop: " << freq_PPRTopNOTInFreqTop/totalSampUsers << std::endl;
+  opFile << "rmse_PPRTopInFreqTop: " << rmse_PPRTopInFreqTop/totalSampUsers << std::endl;
+  opFile << "rmse_PPRTopNOTInFreqTop: " << rmse_PPRTopNOTInFreqTop/totalSampUsers << std::endl;
 
 
   int sumSVDBins = 0;
