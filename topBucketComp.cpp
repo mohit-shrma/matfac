@@ -61,6 +61,36 @@ void compMovAvg2(std::vector<double>& slidingAvgRMSEs, std::vector<double>& slid
 }
 
 
+void compMovAvg3(std::vector<double>& slidingAvgRMSEs, std::vector<double>& slidingAvgScore,
+    std::vector<double>& slidingAvgFreq, std::vector<double>& slidingAvgGt,
+    std::vector<std::pair<int, double>>& scorePairs, std::map<int, double>& itemFreqMap, 
+    int user, int size, int width, Model& origModel, Model& fullModel) {
+  int nValues = 100 - (((double)width/(double)size)*100) + 1;
+  int start, end, item;
+  for (int i = 0; i < nValues; i++) {
+    start = (i*size)/100;
+    end = start + width;
+    double diff, se = 0, score = 0, freq = 0, gt = 0;
+    int count = 0; 
+    for (int j = start; j < end && j < scorePairs.size(); j++) {
+      item = scorePairs[j].first;
+      score += scorePairs[j].second;
+      diff = origModel.estRating(user, item) - 
+        fullModel.estRating(user, item);
+      se += diff*diff;
+      freq += itemFreqMap[item];
+      gt += origModel.estRating(user, item);
+      count++;
+    }
+    if (count > 0) {
+      slidingAvgRMSEs[i] += sqrt(se/count);
+      slidingAvgScore[i] += score/count;
+      slidingAvgFreq[i] += freq/count;
+      slidingAvgGt[i] += gt/count;
+    }
+  }
+}
+
 void updateBucketsArr(std::vector<double>& bucketScores,
     std::vector<double>& bucketNNZ, std::vector<double>& arr, int nBuckets) {
     int nItems = arr.size(); 
@@ -2662,11 +2692,19 @@ void predSampUsersRMSEProbPar(const Data& data,
 
   std::vector<double> g_slidingAvgFreq(nIntervals, 0);
   std::vector<double> g_slidingAvgFreqRMSEs(nIntervals, 0);
+  std::vector<double> g_slidingAvgFreq_freqs(nIntervals, 0);
+  std::vector<double> g_slidingAvgFreq_gt(nIntervals, 0);
+
   std::vector<double> g_slidingAvgPPR(nIntervals, 0);
   std::vector<double> g_slidingAvgPPRRMSEs(nIntervals, 0);
+  std::vector<double> g_slidingAvgPPR_freqs(nIntervals, 0);
+  std::vector<double> g_slidingAvgPPR_gt(nIntervals, 0);
+
   std::vector<double> g_slidingAvgSVD(nIntervals, 0);
   std::vector<double> g_slidingAvgSVDRMSEs(nIntervals, 0);
-  
+  std::vector<double> g_slidingAvgSVD_freqs(nIntervals, 0);
+  std::vector<double> g_slidingAvgSVD_gt(nIntervals, 0);
+
   //initialize random engine
   std::mt19937 mt(seed);
   //user distribution to sample users
@@ -2819,10 +2857,19 @@ void predSampUsersRMSEProbPar(const Data& data,
 
   std::vector<double> slidingAvgFreq(nIntervals, 0);
   std::vector<double> slidingAvgFreqRMSEs(nIntervals, 0);
+  std::vector<double> slidingAvgFreq_freqs(nIntervals, 0);
+  std::vector<double> slidingAvgFreq_gt(nIntervals, 0);
+
   std::vector<double> slidingAvgPPR(nIntervals, 0);
   std::vector<double> slidingAvgPPRRMSEs(nIntervals, 0);
+  std::vector<double> slidingAvgPPR_freqs(nIntervals, 0);
+  std::vector<double> slidingAvgPPR_gt(nIntervals, 0);
+
   std::vector<double> slidingAvgSVD(nIntervals, 0);
   std::vector<double> slidingAvgSVDRMSEs(nIntervals, 0);
+  std::vector<double> slidingAvgSVD_freqs(nIntervals, 0);
+  std::vector<double> slidingAvgSVD_gt(nIntervals, 0);
+
 
 #pragma omp for reduction(+ : freqTopRMSE, svdTopRMSE, pprTopRMSE, freqSVDTopOvrlap, pprFreqTopOvrlap, pprSVDTopOvrlap, freqNOTinSVDPc, svdNOTinFreqPc, freqNOTinPPRPc, pprNOTinFreqPc, svdNOTinPPRPc, pprNOTinSVDPc, freqOrigOverlap, predOrigOverlap, svdOrigOverlap, svdPredOverlap, pprOrigOverlap, svdNotInPred, svdInPred, svdOfPredInOrig, svdOfPredNotInOrig, svdVarOfPredInOrig, svdVarOfPredNotInOrig, svdOfMedPredInOrig, svdOfMaxPredInorig, svdOfMinPredInOrig, svdOfTopPredInOrig, svdOfBotPredInOrig, svdAboveAvgInOrig, pprOfPredInOrig, pprOfPredNotInOrig, pprNotInPred, pprInPred, predPPROrigOverlap, iterPredSVDOrigOverlap, totalSampUsers, freq_SVDTopInFreqTop, freq_SVDTopNOTInFreqTop, freq_PPRTopInFreqTop, freq_PPRTopNOTInFreqTop, rmse_SVDTopInFreqTop, rmse_SVDTopNOTInFreqTop, rmse_PPRTopInFreqTop, rmse_PPRTopNOTInFreqTop)  
   for (int uInd=0; uInd < sampUsersSz; uInd++) {
@@ -2848,11 +2895,20 @@ void predSampUsersRMSEProbPar(const Data& data,
     
     std::vector<double> uSlidingAvgFreq(nIntervals, 0);
     std::vector<double> uSlidingAvgFreqRMSEs(nIntervals, 0);
+    std::vector<double> uSlidingAvgFreq_freqs(nIntervals, 0);
+    std::vector<double> uSlidingAvgFreq_gt(nIntervals, 0);
+
     std::vector<double> uSlidingAvgPPR(nIntervals, 0);
     std::vector<double> uSlidingAvgPPRRMSEs(nIntervals, 0);
+    std::vector<double> uSlidingAvgPPR_freqs(nIntervals, 0);
+    std::vector<double> uSlidingAvgPPR_gt(nIntervals, 0);
+
     std::vector<double> uSlidingAvgSVD(nIntervals, 0);
     std::vector<double> uSlidingAvgSVDRMSEs(nIntervals, 0);
-  
+    std::vector<double> uSlidingAvgSVD_freqs(nIntervals, 0);
+    std::vector<double> uSlidingAvgSVD_gt(nIntervals, 0);
+
+
     std::vector<double> uScores(nBuckets, 0);
     std::vector<double> uBucketNNZ(nBuckets, 0);
     std::vector<double> itemsRMSE;
@@ -3024,9 +3080,10 @@ void predSampUsersRMSEProbPar(const Data& data,
     rmse_SVDTopNOTInFreqTop += sqrt(seSvdTopNotInFreqTop/svdTopNotInFreqTop);
 
 
-    compMovAvg2(uSlidingAvgSVDRMSEs, uSlidingAvgSVD, itemSVDScoresPair, user, nItems, 
-        slidingWidth, origModel, fullModel);
-    compMovAvg2(uSlidingAvgFreqRMSEs, uSlidingAvgFreq, itemFreqScoresPair, user, nItems, 
+    compMovAvg3(uSlidingAvgSVDRMSEs, uSlidingAvgSVD, uSlidingAvgSVD_freqs, uSlidingAvgSVD_gt, 
+        itemSVDScoresPair, itemFreqMap, user, nItems, slidingWidth, origModel, fullModel);
+    compMovAvg3(uSlidingAvgFreqRMSEs, uSlidingAvgFreq, uSlidingAvgFreq_freqs, 
+        uSlidingAvgFreq_gt, itemFreqScoresPair, itemFreqMap, user, nItems, 
         slidingWidth, origModel, fullModel);
 
 
@@ -3121,7 +3178,8 @@ void predSampUsersRMSEProbPar(const Data& data,
         rmse_PPRTopNOTInFreqTop += sqrt(sePprTopNotInFreqTop/pprTopNotInFreqTop);
       }
     
-      compMovAvg2(uSlidingAvgPPRRMSEs, uSlidingAvgPPR, itemPPRScoresPair, user, nItems, 
+      compMovAvg3(uSlidingAvgPPRRMSEs, uSlidingAvgPPR, uSlidingAvgPPR_freqs, 
+          uSlidingAvgPPR_gt, itemPPRScoresPair, itemFreqMap, user, nItems, 
           slidingWidth, origModel, fullModel);
     }
     
@@ -3252,10 +3310,18 @@ void predSampUsersRMSEProbPar(const Data& data,
     for (int i = 0; i < nIntervals; i++) {
       slidingAvgFreq[i]      += uSlidingAvgFreq[i];
       slidingAvgFreqRMSEs[i] += uSlidingAvgFreqRMSEs[i];
+      slidingAvgFreq_freqs[i]+= uSlidingAvgFreq_freqs[i];
+      slidingAvgFreq_gt[i]   += uSlidingAvgFreq_gt[i];
+
       slidingAvgSVD[i]       += uSlidingAvgSVD[i];
       slidingAvgSVDRMSEs[i]  += uSlidingAvgSVDRMSEs[i];
+      slidingAvgSVD_freqs[i] += uSlidingAvgSVD_freqs[i];
+      slidingAvgSVD_gt[i]    += uSlidingAvgSVD_gt[i];
+      
       slidingAvgPPR[i]       += uSlidingAvgPPR[i];
       slidingAvgPPRRMSEs[i]  += uSlidingAvgPPRRMSEs[i];
+      slidingAvgPPR_freqs[i] += uSlidingAvgPPR_freqs[i];
+      slidingAvgPPR_gt[i]    += uSlidingAvgPPR_gt[i];
     }
 
   } //end for user
@@ -3309,12 +3375,20 @@ void predSampUsersRMSEProbPar(const Data& data,
   }
 
   for (int i = 0; i < nIntervals; i++) {
-    g_slidingAvgFreq[i]      += slidingAvgFreq[i];
-    g_slidingAvgFreqRMSEs[i] += slidingAvgFreqRMSEs[i];
-    g_slidingAvgSVD[i]       += slidingAvgSVD[i];
-    g_slidingAvgSVDRMSEs[i]  += slidingAvgSVDRMSEs[i];
-    g_slidingAvgPPR[i]       += slidingAvgPPR[i];
-    g_slidingAvgPPRRMSEs[i]  += slidingAvgPPRRMSEs[i];
+      g_slidingAvgFreq[i]      += slidingAvgFreq[i];
+      g_slidingAvgFreqRMSEs[i] += slidingAvgFreqRMSEs[i];
+      g_slidingAvgFreq_freqs[i]+= slidingAvgFreq_freqs[i];
+      g_slidingAvgFreq_gt[i]   += slidingAvgFreq_gt[i];
+
+      g_slidingAvgSVD[i]       += slidingAvgSVD[i];
+      g_slidingAvgSVDRMSEs[i]  += slidingAvgSVDRMSEs[i];
+      g_slidingAvgSVD_freqs[i] += slidingAvgSVD_freqs[i];
+      g_slidingAvgSVD_gt[i]    += slidingAvgSVD_gt[i];
+      
+      g_slidingAvgPPR[i]       += slidingAvgPPR[i];
+      g_slidingAvgPPRRMSEs[i]  += slidingAvgPPRRMSEs[i];
+      g_slidingAvgPPR_freqs[i] += slidingAvgPPR_freqs[i];
+      g_slidingAvgPPR_gt[i]    += slidingAvgPPR_gt[i];
   }
 }
 
@@ -3351,10 +3425,18 @@ void predSampUsersRMSEProbPar(const Data& data,
   for (int i = 0; i < nIntervals; i++) {
     g_slidingAvgFreq[i]      /= totalSampUsers;
     g_slidingAvgFreqRMSEs[i] /= totalSampUsers;
+    g_slidingAvgFreq_freqs[i]/= totalSampUsers;
+    g_slidingAvgFreq_gt[i]   /= totalSampUsers;
+
     g_slidingAvgSVD[i]       /= totalSampUsers;
     g_slidingAvgSVDRMSEs[i]  /= totalSampUsers;
+    g_slidingAvgSVD_freqs[i] /= totalSampUsers;
+    g_slidingAvgSVD_gt[i]    /= totalSampUsers;
+
     g_slidingAvgPPR[i]       /= totalSampUsers;
     g_slidingAvgPPRRMSEs[i]  /= totalSampUsers;
+    g_slidingAvgPPR_freqs[i] /= totalSampUsers;
+    g_slidingAvgPPR_gt[i]    /= totalSampUsers;
   }
 
   opFile << "Sliding avg freq: ";
@@ -3365,12 +3447,29 @@ void predSampUsersRMSEProbPar(const Data& data,
   writeVector(g_slidingAvgFreqRMSEs, opFile);
   opFile << std::endl;
 
+  opFile << "Sliding avg freq freq: ";
+  writeVector(g_slidingAvgFreq_freqs, opFile);
+  opFile << std::endl;
+  
+  opFile << "Sliding avg freq Gt: ";
+  writeVector(g_slidingAvgFreq_gt, opFile);
+  opFile << std::endl;
+  
+  
   opFile << "Sliding avg svd: ";
   writeVector(g_slidingAvgSVD, opFile);
   opFile << std::endl;
   
   opFile << "Sliding avg svd RMSEs: ";
   writeVector(g_slidingAvgSVDRMSEs, opFile);
+  opFile << std::endl;
+  
+  opFile << "Sliding avg svd freqs: ";
+  writeVector(g_slidingAvgSVD_freqs, opFile);
+  opFile << std::endl;
+  
+  opFile << "Sliding avg svd gt: ";
+  writeVector(g_slidingAvgSVD_gt, opFile);
   opFile << std::endl;
 
   opFile << "Sliding avg PPR: ";
@@ -3379,6 +3478,14 @@ void predSampUsersRMSEProbPar(const Data& data,
   
   opFile << "Sliding avg PPR RMSEs: ";
   writeVector(g_slidingAvgPPRRMSEs, opFile);
+  opFile << std::endl;
+  
+  opFile << "Sliding avg PPR freqs: ";
+  writeVector(g_slidingAvgPPR_freqs, opFile);
+  opFile << std::endl;
+  
+  opFile << "Sliding avg PPR gt: ";
+  writeVector(g_slidingAvgPPR_gt, opFile);
   opFile << std::endl;
   
   opFile << "GT sign error buckets: ";
