@@ -477,6 +477,22 @@ std::pair<std::vector<double>, std::vector<double>> getRowColFreq(gk_csr_t *mat)
 }
 
 
+std::vector<double> getColFreq(gk_csr_t *mat, 
+    std::unordered_set<int> sampUsers) {
+  
+  std::vector<double> colFreq(mat->ncols, 0);
+
+  for (auto&& u: sampUsers) {
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      int item = mat->rowind[ii];
+      colFreq[item] += 1;
+    }
+  }
+  
+  return colFreq;
+}
+
+
 std::vector<std::pair<int, int>> getUIPairs(gk_csr_t *mat, 
     std::unordered_set<int>& invalidUsers, 
     std::unordered_set<int>& invalidItems) {

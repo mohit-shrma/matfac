@@ -62,5 +62,7 @@ std::vector<std::vector<std::tuple<int,int,float>>> getRandUIRatings(
 double avgPairs(std::vector<std::pair<int, double>> pairs);
 bool compMat(gk_csr_t *mat1, gk_csr_t *mat2);
 std::vector<double> meanItemRating(gk_csr_t *mat);
+std::vector<double> getColFreq(gk_csr_t *mat, 
+    std::unordered_set<int> sampUsers);
 #endif
 
