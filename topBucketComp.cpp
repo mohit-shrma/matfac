@@ -1,6 +1,27 @@
 #include "topBucketComp.h"
 
 
+void writeItemFreqSE(int user, std::vector<std::pair<int, double>>& scorePairs, 
+    std::map<int, double> itemFreqMap, Model& origModel, Model& fullModel, 
+    std::ofstream& itemOpFile, std::ofstream& freqOpFile, std::ofstream& seOpFile) {
+  int item;
+  double score, freq, diff, se;
+  for (auto&& scorePair: scorePairs) {
+    item = scorePair.first;
+    score = scorePair.second;
+    freq = itemFreqMap[item];
+    diff = origModel.estRating(user, item) - fullModel.estRating(user, item);
+    se = diff*diff;
+    itemOpFile << item << ",";
+    freqOpFile << freq << ",";
+    seOpFile << se << ",";
+  }
+  itemOpFile << std::endl;
+  freqOpFile << std::endl;
+  seOpFile << std::endl;
+}
+
+
 void compMovAvg(std::vector<double>& slidingAvgRMSEs, std::vector<double>& slidingAvgScore,
     std::vector<std::pair<int, double>>& scorePairs, int user, int size, 
     int width, Model& origModel, Model& fullModel) {
@@ -2815,8 +2836,38 @@ void predSampUsersRMSEProbPar(const Data& data,
   
   std::cout << "nItemsPerBuck: " << nItemsPerBuck << std::endl;
 
-#pragma omp parallel
+  std::ofstream uSVD_ItemFile;
+  std::ofstream uSVD_FreqFile;
+  std::ofstream uSVD_SEFile;
+
+  std::ofstream uPPR_ItemFile;
+  std::ofstream uPPR_FreqFile;
+  std::ofstream uPPR_SEFile;
+  
+  std::ofstream uFreq_ItemFile;
+  std::ofstream uFreq_FreqFile;
+  std::ofstream uFreq_SEFile;
+  
+  if (NULL != graphMat) {
+    uSVD_ItemFile.open(prefix + "svdItem.txt");
+    uSVD_FreqFile.open(prefix + "svdFreq.txt");
+    uSVD_SEFile.open(prefix + "svdSE.txt");
+
+    uPPR_ItemFile.open(prefix + "pprItem.txt");
+    uPPR_FreqFile.open(prefix + "pprFreq.txt");
+    uPPR_SEFile.open(prefix + "pprSE.txt");
+
+    uFreq_ItemFile.open(prefix + "freqItem.txt");
+    uFreq_FreqFile.open(prefix + "freqFreq.txt");
+    uFreq_SEFile.open(prefix + "freqSE.txt");
+  }
+
+
+#pragma omp parallel num_threads(1)
 {
+  
+  int nThreads = omp_get_num_threads();
+
   std::vector<double> misPredSVDCountBins(20, 0);
   std::vector<double> misPredFreqCountBins(20, 0);
   std::vector<double> misPredPPRCountBins(20, 0);
@@ -2870,8 +2921,7 @@ void predSampUsersRMSEProbPar(const Data& data,
   std::vector<double> slidingAvgSVDRMSEs(nIntervals, 0);
   std::vector<double> slidingAvgSVD_freqs(nIntervals, 0);
   std::vector<double> slidingAvgSVD_gt(nIntervals, 0);
-
-
+  
 #pragma omp for reduction(+ : freqTopRMSE, svdTopRMSE, pprTopRMSE, freqSVDTopOvrlap, pprFreqTopOvrlap, pprSVDTopOvrlap, freqNOTinSVDPc, svdNOTinFreqPc, freqNOTinPPRPc, pprNOTinFreqPc, svdNOTinPPRPc, pprNOTinSVDPc, freqOrigOverlap, predOrigOverlap, svdOrigOverlap, svdPredOverlap, pprOrigOverlap, svdNotInPred, svdInPred, svdOfPredInOrig, svdOfPredNotInOrig, svdVarOfPredInOrig, svdVarOfPredNotInOrig, svdOfMedPredInOrig, svdOfMaxPredInorig, svdOfMinPredInOrig, svdOfTopPredInOrig, svdOfBotPredInOrig, svdAboveAvgInOrig, pprOfPredInOrig, pprOfPredNotInOrig, pprNotInPred, pprInPred, predPPROrigOverlap, iterPredSVDOrigOverlap, totalSampUsers, freq_SVDTopInFreqTop, freq_SVDTopNOTInFreqTop, freq_PPRTopInFreqTop, freq_PPRTopNOTInFreqTop, rmse_SVDTopInFreqTop, rmse_SVDTopNOTInFreqTop, rmse_PPRTopInFreqTop, rmse_PPRTopNOTInFreqTop)  
   for (int uInd=0; uInd < sampUsersSz; uInd++) {
     int user = sampUsersVec[uInd];
@@ -3086,7 +3136,7 @@ void predSampUsersRMSEProbPar(const Data& data,
     compMovAvg3(uSlidingAvgFreqRMSEs, uSlidingAvgFreq, uSlidingAvgFreq_freqs, 
         uSlidingAvgFreq_gt, itemFreqScoresPair, itemFreqMap, user, nItems, 
         slidingWidth, origModel, fullModel);
-
+    
 
     std::map<int, double> pprMap;
     if (NULL != graphMat) {
@@ -3182,6 +3232,14 @@ void predSampUsersRMSEProbPar(const Data& data,
       compMovAvg3(uSlidingAvgPPRRMSEs, uSlidingAvgPPR, uSlidingAvgPPR_freqs, 
           uSlidingAvgPPR_gt, itemPPRScoresPair, itemFreqMap, user, nItems, 
           slidingWidth, origModel, fullModel);
+      if (1 == nThreads) {
+        writeItemFreqSE(user, itemPPRScoresPair, itemFreqMap, origModel, fullModel, 
+          uPPR_ItemFile, uPPR_FreqFile, uPPR_SEFile);
+        writeItemFreqSE(user, itemSVDScoresPair, itemFreqMap, origModel, fullModel, 
+          uSVD_ItemFile, uSVD_FreqFile, uSVD_SEFile);
+        writeItemFreqSE(user, itemFreqScoresPair, itemFreqMap, origModel, fullModel, 
+          uFreq_ItemFile, uFreq_FreqFile, uFreq_SEFile);
+      }
     }
     
     predOrigOverlap += compOrderingOverlap(itemOrigScoresPair, 
@@ -3419,6 +3477,18 @@ void predSampUsersRMSEProbPar(const Data& data,
   std::ofstream opFile;
   if (NULL != graphMat) {
     opFile.open(prefix + "samp.txt");
+
+    uSVD_ItemFile.close();
+    uSVD_FreqFile.close();
+    uSVD_SEFile.close();
+
+    uPPR_ItemFile.close();
+    uPPR_FreqFile.close();
+    uPPR_SEFile.close();
+
+    uFreq_ItemFile.close();
+    uFreq_FreqFile.close();
+    uFreq_SEFile.close();
   } else {
     opFile.open(prefix + ".txt");
   }

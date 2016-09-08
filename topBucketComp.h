@@ -12,6 +12,8 @@
 #include <cstdlib>
 #include <fstream>
 
+#include <omp.h>
+
 void writeTopBuckRMSEs(Model& origModel, Model& fullModel, Model& svdModel, 
     gk_csr_t* graphMat, gk_csr_t* trainMat,
     float lambda, int max_niter, std::unordered_set<int>& invalUsers, 
