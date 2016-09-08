@@ -2712,6 +2712,42 @@ void predSampUsersRMSEProbPar(const Data& data,
 
   std::unordered_set<int> sampUsers;
 
+  int totalSampUsers = 0;
+  
+  if (NULL != graphMat) {
+    while (sampUsers.size() < nSampUsers) {
+      int user = uDist(mt);
+      auto search = sampUsers.find(user);
+      if (search != sampUsers.end()) {
+        //already sampled user
+        continue;
+      }
+      //skip if user is invalid
+      search = invalUsers.find(user);
+      if (search != invalUsers.end()) {
+        //found n skip
+        continue;
+      }
+      //insert the sampled user
+      sampUsers.insert(user);
+    } 
+  } else {
+    for (int user = 0; user < nUsers; user++) {
+      //skip if user is invalid
+      auto search = invalUsers.find(user);
+      if (search != invalUsers.end()) {
+        //found n skip
+        continue;
+      }
+      //insert the sampled user
+      sampUsers.insert(user);
+    } 
+  }
+  
+  int sampUsersSz = sampUsers.size();
+  std::vector<int> sampUsersVec = std::vector<int>(sampUsers.begin(), 
+      sampUsers.end());
+
   auto avgTrainRating = meanRating(trainMat);
   
   int predLowcount = 0, predHighcount = 0;
@@ -2719,7 +2755,8 @@ void predSampUsersRMSEProbPar(const Data& data,
   
   auto rowColFreq = getRowColFreq(trainMat);
   auto userFreq = rowColFreq.first;
-  auto itemFreq = rowColFreq.second;
+  //auto itemFreq = rowColFreq.second;
+  auto itemFreq = getColFreq(trainMat, sampUsers);
   std::map<int, double> itemFreqMap;
   std::vector<std::pair<int, double>> itemFreqScoresPair;
   for (int i = 0; i < itemFreq.size(); i++) {
@@ -2775,42 +2812,6 @@ void predSampUsersRMSEProbPar(const Data& data,
 
   double freq_PPRTopInFreqTop = 0, freq_PPRTopNOTInFreqTop = 0;
   double rmse_PPRTopInFreqTop = 0, rmse_PPRTopNOTInFreqTop = 0;
-
-  int totalSampUsers;
-  
-  if (NULL != graphMat) {
-    while (sampUsers.size() < nSampUsers) {
-      int user = uDist(mt);
-      auto search = sampUsers.find(user);
-      if (search != sampUsers.end()) {
-        //already sampled user
-        continue;
-      }
-      //skip if user is invalid
-      search = invalUsers.find(user);
-      if (search != invalUsers.end()) {
-        //found n skip
-        continue;
-      }
-      //insert the sampled user
-      sampUsers.insert(user);
-    } 
-  } else {
-    for (int user = 0; user < nUsers; user++) {
-      //skip if user is invalid
-      auto search = invalUsers.find(user);
-      if (search != invalUsers.end()) {
-        //found n skip
-        continue;
-      }
-      //insert the sampled user
-      sampUsers.insert(user);
-    } 
-  }
-  
-  int sampUsersSz = sampUsers.size();
-  std::vector<int> sampUsersVec = std::vector<int>(sampUsers.begin(), 
-      sampUsers.end());
   
   std::cout << "nItemsPerBuck: " << nItemsPerBuck << std::endl;
 
