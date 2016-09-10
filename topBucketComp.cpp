@@ -411,12 +411,14 @@ std::vector<std::pair<int, double>> itemSVDScores(Model& svdModel, int user,
 
   std::vector<std::pair<int, double>> itemScores;
   
+  /*
   //asuuming matrix is sorted get training items
   std::vector<int> trainItems;
   for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
     int item = mat->rowind[ii];
     trainItems.push_back(item);
   }
+  */
 
   //get pr scores of items
   for (int item = 0; item < nItems; item++) {
@@ -426,12 +428,12 @@ std::vector<std::pair<int, double>> itemSVDScores(Model& svdModel, int user,
       //found, invalid, skip
       continue;
     }
-    
+    /*
     //skip if found in train items
     if (std::binary_search(trainItems.begin(), trainItems.end(), item)) {
       continue;
     }
-    
+    */   
     itemScores.push_back(std::make_pair(item, svdModel.estRating(user, item)));
   }
   
@@ -476,12 +478,14 @@ std::vector<std::pair<int, double>> itemPredScores(
 
   std::vector<std::pair<int, double>> itemScores;
   
+  /*
   //asuuming matrix is sorted get training items
   std::vector<int> trainItems;
   for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
     int item = mat->rowind[ii];
     trainItems.push_back(item);
   }
+  */
 
   //get scores of items
   for (int item = 0; item < nItems; item++) {
@@ -492,11 +496,13 @@ std::vector<std::pair<int, double>> itemPredScores(
       continue;
     }
     
+    /*
     //skip if found in train items
     if (std::binary_search(trainItems.begin(), trainItems.end(), item)) {
       continue;
     }
-    
+    */
+
     auto predRating = fullModel.estRating(user, item);
     itemScores.push_back(std::make_pair(item, predRating));
   }
@@ -514,12 +520,14 @@ std::vector<std::pair<int, double>> itemOrigScores(
 
   std::vector<std::pair<int, double>> itemScores;
   
+  /*
   //asuuming matrix is sorted get training items
   std::vector<int> trainItems;
   for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
     int item = mat->rowind[ii];
     trainItems.push_back(item);
   }
+  */
 
   //get scores of items
   for (int item = 0; item < nItems; item++) {
@@ -530,10 +538,12 @@ std::vector<std::pair<int, double>> itemOrigScores(
       continue;
     }
     
+    /*
     //skip if found in train items
     if (std::binary_search(trainItems.begin(), trainItems.end(), item)) {
       continue;
     }
+    */
     
     auto origRating = origModel.estRating(user, item);
     itemScores.push_back(std::make_pair(item, origRating));
@@ -553,12 +563,14 @@ std::vector<std::pair<int, double>> itemFreqScores(
 
   std::vector<std::pair<int, double>> itemScores;
   
+  /*
   //asuuming matrix is sorted get training items
   std::vector<int> trainItems;
   for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
     int item = mat->rowind[ii];
     trainItems.push_back(item);
   }
+  */
 
   //get scores of items
   for (int item = 0; item < nItems; item++) {
@@ -569,11 +581,13 @@ std::vector<std::pair<int, double>> itemFreqScores(
       continue;
     }
     
+    /*
     //skip if found in train items
     if (std::binary_search(trainItems.begin(), trainItems.end(), item)) {
       continue;
     }
-    
+    */
+
     itemScores.push_back(std::make_pair(item, itemFreq[item]));
   }
   
@@ -2853,7 +2867,8 @@ void predSampUsersRMSEProbPar(const Data& data,
   }
 
 
-#pragma omp parallel num_threads(1)
+//#pragma omp parallel num_threads(1)
+#pragma omp parallel 
 {
   
   int nThreads = omp_get_num_threads();
@@ -2973,6 +2988,8 @@ void predSampUsersRMSEProbPar(const Data& data,
         uInvalItems);
     auto itemFreqScoresPair = itemFreqScores(fullModel, origModel, itemFreq, 
         user, trainMat, nItems, uInvalItems);
+    auto itemOptScoresPair = itemOptScores(origModel, fullModel, user, 
+        data.trainMat, nItems, uInvalItems);
 
     std::unordered_set<int> topFreqItems;
     for (int i = 0; i < topBuckN; i++) {
@@ -3256,8 +3273,6 @@ void predSampUsersRMSEProbPar(const Data& data,
     svdPredOverlap += compOrderingOverlap(itemSVDScoresPair,
         itemPredScoresPair, topBuckN);
 
-    auto itemOptScoresPair = itemOptScores(origModel, fullModel, user, 
-        data.trainMat, nItems, invalItems);
     
     itemRMSEsOrdByItemScores(user, filtItems, fullModel, origModel, itemsRMSE,
         itemsScore, itemOptScoresPair);
@@ -3386,6 +3401,10 @@ void predSampUsersRMSEProbPar(const Data& data,
       slidingAvgPPRRMSEs[i]  += uSlidingAvgPPRRMSEs[i];
       slidingAvgPPR_freqs[i] += uSlidingAvgPPR_freqs[i];
       slidingAvgPPR_gt[i]    += uSlidingAvgPPR_gt[i];
+    }
+    
+    if (1 == nThreads && uInd%1000 == 0) {
+      std::cout << "Done... " << uInd << std::endl; 
     }
 
   } //end for user
