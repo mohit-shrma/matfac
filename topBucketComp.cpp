@@ -426,12 +426,12 @@ std::vector<std::pair<int, double>> itemSVDScores(Model& svdModel, int user,
       //found, invalid, skip
       continue;
     }
-    /*
+    
     //skip if found in train items
     if (std::binary_search(trainItems.begin(), trainItems.end(), item)) {
       continue;
     }
-    */
+    
     itemScores.push_back(std::make_pair(item, svdModel.estRating(user, item)));
   }
   
@@ -574,8 +574,6 @@ std::vector<std::pair<int, double>> itemFreqScores(
       continue;
     }
     
-    auto predRating = fullModel.estRating(user, item);
-    auto origRating = origModel.estRating(user, item);
     itemScores.push_back(std::make_pair(item, itemFreq[item]));
   }
   
@@ -2779,20 +2777,12 @@ void predSampUsersRMSEProbPar(const Data& data,
   //auto itemFreq = rowColFreq.second;
   auto itemFreq = getColFreq(trainMat, sampUsers);
   std::map<int, double> itemFreqMap;
-  std::vector<std::pair<int, double>> itemFreqScoresPair;
   for (int i = 0; i < itemFreq.size(); i++) {
-    itemFreqScoresPair.push_back(std::make_pair(i, itemFreq[i]));
     itemFreqMap[i] = itemFreq[i];
   }
   //sort item frequency in decreasing order
-  std::sort(itemFreqScoresPair.begin(), itemFreqScoresPair.end(), descComp);
   
   auto itemAvgRatings = meanItemRating(trainMat);
-
-  std::unordered_set<int> topFreqItems;
-  for (int i = 0; i < topBuckN; i++) {
-    topFreqItems.insert(itemFreqScoresPair[i].first);
-  }
 
   double predOrigOverlap = 0, svdOrigOverlap = 0;
   double svdPredOverlap = 0;
@@ -2964,16 +2954,31 @@ void predSampUsersRMSEProbPar(const Data& data,
     std::vector<double> uBucketNNZ(nBuckets, 0);
     std::vector<double> itemsRMSE;
     std::vector<double> itemsScore;
+    
+    std::unordered_set<int> uInvalItems;
+    getRatedItems(trainMat, user, uInvalItems);
+    //add items rated by the user
+    for (auto&& item: invalItems) {
+      uInvalItems.insert(item);
+    }
 
     //get item scores ordered by predicted scores in decreasing order
     //auto headItems = getHeadItems(trainMat, 0.2);
 
     auto itemPredScoresPair = itemPredScores(fullModel, user, trainMat, 
-        nItems, invalItems);
+        nItems, uInvalItems);
     auto itemOrigScoresPair = itemOrigScores(origModel, user, trainMat, 
-        nItems, invalItems);
+        nItems, uInvalItems);
     auto itemSVDScoresPair = itemSVDScores(svdModel, user, trainMat, nItems, 
-        invalItems);
+        uInvalItems);
+    auto itemFreqScoresPair = itemFreqScores(fullModel, origModel, itemFreq, 
+        user, trainMat, nItems, uInvalItems);
+
+    std::unordered_set<int> topFreqItems;
+    for (int i = 0; i < topBuckN; i++) {
+      topFreqItems.insert(itemFreqScoresPair[i].first);
+    }
+
     std::map<int, double> itemOrigMap;
     for (auto&& itemScorePair: itemOrigScoresPair) {
       itemOrigMap[itemScorePair.first] = itemScorePair.second;
@@ -3141,7 +3146,7 @@ void predSampUsersRMSEProbPar(const Data& data,
     std::map<int, double> pprMap;
     if (NULL != graphMat) {
       itemPPRScoresPair = itemGraphItemScores(user, graphMat, trainMat, 
-        0.01, nUsers, nItems, invalItems, false);
+        0.01, nUsers, nItems, uInvalItems, false);
       for (auto&& itemScore: itemPPRScoresPair) {
         if (isnan(itemScore.second)) {
           std::cerr << "Found NaN: " << itemScore.first << " " 

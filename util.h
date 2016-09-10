@@ -64,5 +64,6 @@ bool compMat(gk_csr_t *mat1, gk_csr_t *mat2);
 std::vector<double> meanItemRating(gk_csr_t *mat);
 std::vector<double> getColFreq(gk_csr_t *mat, 
     std::unordered_set<int> sampUsers);
+void getRatedItems(gk_csr_t* mat, int user, std::unordered_set<int>& ratedItems);
 #endif
 

@@ -460,6 +460,14 @@ void getInvalidUsersItems(gk_csr_t *mat,
 }
 
 
+void getRatedItems(gk_csr_t* mat, int user, std::unordered_set<int>& ratedItems) {
+  for (int ii = mat->rowptr[user]; ii < mat->rowptr[user+1]; ii++) {
+    int item = mat->rowind[ii];
+    ratedItems.insert(item);
+  }
+}
+
+
 std::pair<std::vector<double>, std::vector<double>> getRowColFreq(gk_csr_t *mat) {
   
   std::vector<double> rowFreq(mat->nrows, 0);
