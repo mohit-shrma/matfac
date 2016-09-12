@@ -1821,8 +1821,8 @@ int main(int argc , char* argv[]) {
   //writeItemSimMatNonSymm(data.trainMat, 
   //    "ratings_26779x26779_25.syn.trainItems.nonsym.metis");
  
-  std::string graphFName = params.prefix + std::string(".train.jacSim.metis");
-  writeItemJaccSimMat(data.trainMat, graphFName.c_str());
+  //std::string graphFName = params.prefix + std::string(".train.jacSim.metis");
+  //writeItemJaccSimMat(data.trainMat, graphFName.c_str());
   
   //writeItemJaccSimFrmCorat(data.trainMat, data.graphMat, 
   //    "ratings_26779x26779_25.syn.trainItems.jacSim2.metis");
@@ -1872,10 +1872,10 @@ int main(int argc , char* argv[]) {
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
   std::cout << std::endl << "**** Model parameters ****" << std::endl;
   mfModel.display();
-     
+  */ 
 
   computeSampTopNFrmFullModel(data, params);  
-  */
+  
 
   //testTailLocRec(data, params);
   //testTailRec(data, params);
