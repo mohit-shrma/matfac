@@ -2711,6 +2711,8 @@ void predSampUsersRMSEProbPar(const Data& data,
   std::vector<double> g_misGTAvgTrainCountBins(20, 0);
   std::vector<double> g_misGTPPRCountBins(20, 0);
   std::vector<double> g_misGTPPRScoreBins(20, 0);
+  std::vector<double> g_misGTItemNormBins(20, 0);
+  std::vector<double> g_misGTItemNormCountBins(20, 0);
 
   int topBuckN = 0.05*nItems;
   std::cout << "\ntopBuckN: " << topBuckN << std::endl;
@@ -2795,7 +2797,12 @@ void predSampUsersRMSEProbPar(const Data& data,
     itemFreqMap[i] = itemFreq[i];
   }
   //sort item frequency in decreasing order
-  
+ 
+  std::vector<double> itemNorm;
+  for (int item = 0; item < nItems; item++) {
+    itemNorm.push_back(normVec(fullModel.iFac[item]));
+  }
+
   auto itemAvgRatings = meanItemRating(trainMat);
 
   double predOrigOverlap = 0, svdOrigOverlap = 0;
@@ -2892,6 +2899,8 @@ void predSampUsersRMSEProbPar(const Data& data,
   std::vector<double> misGTAvgTrainCountBins(20, 0);
   std::vector<double> misGTPPRCountBins(20, 0);
   std::vector<double> misGTPPRScoreBins(20, 0);
+  std::vector<double> misGTItemNormBins(20, 0);
+  std::vector<double> misGTItemNormCountBins(20, 0);
   
   std::vector<double> signEGTScores(nBuckets, 0);
   std::vector<double> rmseGTScores(nBuckets, 0);
@@ -3089,6 +3098,9 @@ void predSampUsersRMSEProbPar(const Data& data,
         itemOrigTopN, topBuckN, itemFreq, user);
 
     updateMisPredFreqBins(misGTAvgTrainCountBins, misGTAvgTrainScoreBins, 
+        itemPredScoresPair, itemOrigTopN, topBuckN, itemAvgRatings, user);
+    
+    updateMisPredFreqBins(misGTItemNormCountBins, misGTItemNormBins, 
         itemPredScoresPair, itemOrigTopN, topBuckN, itemAvgRatings, user);
     
     updateMisPredBins(misGTOrigCountBins, misGTOrigScoreBins, itemPredScoresPair,
@@ -3450,6 +3462,8 @@ void predSampUsersRMSEProbPar(const Data& data,
     g_misGTAvgTrainScoreBins[i] += misGTAvgTrainScoreBins[i];
     g_misGTPPRCountBins[i]      += misGTPPRCountBins[i];
     g_misGTPPRScoreBins[i]      += misGTPPRScoreBins[i];
+    g_misGTItemNormBins[i]      += misGTItemNormBins[i];
+    g_misGTItemNormCountBins[i] += misGTItemNormCountBins[i];
       
     g_svdOrderedAvgFreq[i]  += svdOrderedAvgFreq[i];
     g_pprOrderedAvgFreq[i]  += pprOrderedAvgFreq[i];
@@ -3760,6 +3774,12 @@ void predSampUsersRMSEProbPar(const Data& data,
   opFile << "MisGT avg Freq: ";
   for (int i =0; i < 20; i++) {
     opFile << g_misGTFreqScoreBins[i]/g_misGTFreqCountBins[i] << ",";
+  }
+  opFile << std::endl;
+
+  opFile << "MisGT avg Norm: ";
+  for (int i = 0; i < 20; i++) {
+    opFile << g_misGTItemNormBins[i]/g_misGTItemNormCountBins[i] << ",";
   }
   opFile << std::endl;
 
