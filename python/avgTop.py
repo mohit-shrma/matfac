@@ -49,7 +49,7 @@ def getAvgMetric(ipFileList):
   metricDic = {}
   for ipFName in ipFileList:
     updateMetricDic(ipFName, metricDic)
-
+  print 'No. of files: ', len(ipFileList)
   for k, v in metricDic.iteritems():
     if isinstance(v[0], types.FloatType):
       print k+':', v[0]/v[1]
