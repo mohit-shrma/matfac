@@ -298,7 +298,7 @@ void ModelMF::hogTrain(const Data &data, Model &bestModel,
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
   std::cout << "\nsvd duration: " << durationSVD.count();
 
-  int iter, bestIter; 
+  int iter, bestIter = -1; 
   double bestObj, prevObj;
   double bestValRMSE, prevValRMSE;
 
@@ -315,6 +315,7 @@ void ModelMF::hogTrain(const Data &data, Model &bestModel,
 
   //std::cout << "\nNNZ = " << nnz;
   prevObj = objective(data);
+  bestObj = prevObj;
   std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " << RMSE(data.trainMat);
 
 

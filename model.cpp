@@ -439,39 +439,31 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
   bool ret = false;
   double currObj = objective(data, invalidUsers, invalidItems);
 
-  if (iter > 0) {
-    
-    if (currObj < bestObj) {
-      bestModel = *this;
-      bestObj = currObj;
-      bestIter = iter;
-    }
+  if (currObj < bestObj) {
+    bestModel = *this;
+    bestObj = currObj;
+    bestIter = iter;
+  }
 
-    if (iter - bestIter >= 100) {
-      //half the learning rate
-      if (learnRate > 1e-5) {
-        learnRate = learnRate/2;
-      }
-    }
-
-    if (iter - bestIter >= 500) {
-      //can't go lower than best objective after 500 iterations
-      printf("\nNOT CONVERGED: bestIter:%d bestObj: %.10e"
-          " currIter:%d currObj: %.10e", bestIter, bestObj, iter, currObj);
-      ret = true;
-    }
-    
-    if (fabs(prevObj - currObj) < EPS) {
-      //convergence
-      printf("\nConverged in iteration: %d prevObj: %.10e currObj: %.10e", iter,
-              prevObj, currObj); 
-      ret = true;
+  if (iter - bestIter >= 100) {
+    //half the learning rate
+    if (learnRate > 1e-5) {
+      learnRate = learnRate/2;
     }
   }
 
-  if (iter == 0) {
-    bestObj = currObj;
-    bestIter = iter;
+  if (iter - bestIter >= 500) {
+    //can't go lower than best objective after 500 iterations
+    printf("\nNOT CONVERGED: bestIter:%d bestObj: %.10e"
+        " currIter:%d currObj: %.10e", bestIter, bestObj, iter, currObj);
+    ret = true;
+  }
+  
+  if (fabs(prevObj - currObj) < EPS) {
+    //convergence
+    printf("\nConverged in iteration: %d prevObj: %.10e currObj: %.10e", iter,
+            prevObj, currObj); 
+    ret = true;
   }
 
   prevObj = currObj;
