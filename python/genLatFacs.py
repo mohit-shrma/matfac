@@ -12,7 +12,7 @@ def genFacs(nUsers, nItems, dim, nFacs = 10):
     np.savetxt(iFacName, iFac)
 
 
-def genScaledFacs(nUsers, nItems, dim, scale = 10, nFacs = 10):
+def genScaledFacs(nUsers, nItems, dim, scale = 80000, nFacs = 5):
   for i in range(nFacs):
     A = np.random.rand(nUsers, dim)
     B = np.random.rand(nItems, dim)
@@ -21,6 +21,13 @@ def genScaledFacs(nUsers, nItems, dim, scale = 10, nFacs = 10):
     S = np.identity(dim)*np.sqrt(scale)
     uFac = np.dot(ua, S)
     iFac = np.dot(ub, S)
+    print 'uFac Norm: ', np.linalg.norm(uFac)
+    print 'iFac Norm: ', np.linalg.norm(iFac)
+    X = np.dot(uFac[np.random.randint(nUsers, size=100), :],
+        iFac[np.random.randint(nItems, size=100), :].T)
+    print 'avg: ', np.average(X)
+    print 'min: ', np.min(X)
+    print 'max: ', np.max(X)
     uFacName = 'uFac_' + str(nUsers) + '_' + str(dim) + '_' + str(i) + '.txt'
     iFacName = 'iFac_' + str(nItems) + '_' + str(dim) + '_' + str(i) + '.txt'
     np.savetxt(uFacName, uFac)
@@ -31,9 +38,10 @@ def main():
   nUsers   = int(sys.argv[1])
   nItems   = int(sys.argv[2])
   dim      = int(sys.argv[3])
+  scale    = int(sys.argv[4])
   randSeed = 1
   np.random.seed(randSeed)
-  genScaledFacs(nUsers, nItems, dim)
+  genScaledFacs(nUsers, nItems, dim, scale)
 
 
 if __name__ == '__main__':
