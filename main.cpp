@@ -7,11 +7,14 @@
 #include "util.h"
 #include "datastruct.h"
 #include "modelMF.h"
+#include "modelMFWt.h"
+#include "modelMFFreq.h"
 #include "modelMFBias.h"
 #include "modelMFLoc.h"
 #include "confCompute.h"
 #include "topBucketComp.h"
 #include "longTail.h"
+#include "analyzeModels.h"
 
 Params parse_cmd_line(int argc, char *argv[]) {
   
@@ -1731,62 +1734,6 @@ void computeHeadTailRMSE(Data& data, Params& params) {
 }
 
 
-void analyzeAccuracy(Data& data, Params& params) {
-  
-  ModelMF fullModel(params, params.seed);
-  fullModel.loadFacs(params.prefix);
-  
-  ModelMF origModel(params, params.origUFacFile, params.origIFacFile, 
-      params.seed);
- 
-  int nUsers = data.trainMat->nrows;
-  int nItems = data.trainMat->ncols;
-  auto rowColFreq = getRowColFreq(data.trainMat);
-  auto userFreq = rowColFreq.first;
-  auto itemFreq = rowColFreq.second;
-  double epsilon = 0.025;
-
-  std::vector<double> itemAccuPreds(nItems, 0); 
-  std::vector<double> itemSecFreq(nItems, 0);
-
-  for (int u = 0; u < nUsers; u++) {
-    std::vector<bool> ratedItems(nItems, false);
-    for (int ii = data.trainMat->rowptr[u]; ii < data.trainMat->rowptr[u+1]; 
-        ii++) {
-      ratedItems[data.trainMat->rowind[ii]] = true;
-    }
-#pragma omp parallel for
-    for (int item = 0; item < nItems; item++) {
-      if (ratedItems[item]) {
-        continue;
-      }
-      double r_ui = origModel.estRating(u, item);
-      double r_ui_est = fullModel.estRating(u, item);
-      if (fabs(r_ui - r_ui_est) <= epsilon) {
-        itemAccuPreds[item] += 1;
-      }
-    }
-  }
-
-  for (int u = 0; u < nUsers; u++) {
-    for (int ii = data.trainMat->rowptr[u]; ii < data.trainMat->rowptr[u+1]; 
-        ii++) {
-      int item = data.trainMat->rowind[ii];
-      itemSecFreq[item] += userFreq[u];
-    }
-  }
-
-
-  std::ofstream opFile("itemFreqAccu.txt"); 
-  for (int item = 0; item < nItems; item++) {
-    opFile << item << "\t" << itemFreq[item] << "\t" << itemSecFreq[item] 
-      << "\t" << itemAccuPreds[item] << std::endl;
-  }
-  opFile.close();
-}
-
-
-
 int main(int argc , char* argv[]) {
  
   /* 
@@ -1899,10 +1846,10 @@ int main(int argc , char* argv[]) {
   }
   */
   
-  /*  
+  /*    
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
-  svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
+  //svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
   //initialize MF model with last learned model if any
   mfModel.loadFacs(params.prefix);
 
@@ -1928,7 +1875,8 @@ int main(int argc , char* argv[]) {
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
   std::cout << std::endl << "**** Model parameters ****" << std::endl;
   mfModel.display();
-  */ 
+  */    
+
   //computeSampTopNFrmFullModel(data, params);  
   
   //testTailLocRec(data, params);
@@ -1936,7 +1884,9 @@ int main(int argc , char* argv[]) {
   //testRec(data, params);
   //computeHeadTailRMSE(data, params);
   
-  analyzeAccuracy(data, params);
+  //analyzeAccuracy(data, params);
+  //compJaccSimAccu(data, params);
+  meanAndVarSameGroundAllUsers(data, params);
 
   return 0;
 }
