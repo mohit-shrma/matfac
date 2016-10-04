@@ -23,8 +23,8 @@ def genScaledFacs(nUsers, nItems, dim, scale = 80000, nFacs = 5):
     iFac = np.dot(ub, S)
     print 'uFac Norm: ', np.linalg.norm(uFac)
     print 'iFac Norm: ', np.linalg.norm(iFac)
-    X = np.dot(uFac[np.random.randint(nUsers, size=100), :],
-        iFac[np.random.randint(nItems, size=100), :].T)
+    X = np.dot(uFac[np.random.randint(nUsers, size=500), :],
+        iFac[np.random.randint(nItems, size=500), :].T)
     print 'avg: ', np.average(X)
     print 'min: ', np.min(X)
     print 'max: ', np.max(X)
