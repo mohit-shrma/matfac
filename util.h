@@ -65,5 +65,11 @@ std::vector<double> meanItemRating(gk_csr_t *mat);
 std::vector<double> getColFreq(gk_csr_t *mat, 
     std::unordered_set<int> sampUsers);
 void getRatedItems(gk_csr_t* mat, int user, std::unordered_set<int>& ratedItems);
+std::vector<std::pair<double, double>> trainUsersMeanVar(gk_csr_t* mat);
+std::vector<std::pair<double, double>> trainItemsMeanVar(gk_csr_t* mat);
+int setIntersect(std::unordered_set<int>& a, std::unordered_set<int>& b);
+int setUnion(std::unordered_set<int>& a, std::unordered_set<int>& b);
+float pearsonCorr(std::vector<float>& x, std::vector<float>& y, float xMean, 
+    float yMean);
 #endif
 

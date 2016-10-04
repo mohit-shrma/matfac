@@ -27,8 +27,8 @@ std::unordered_set<int> getHeadItems(gk_csr_t *mat, float pc) {
     headItems.insert(itemFreqPairs[i].first);
   }
   
-  std::cout << "\nHead ratings: " << headRatings << " nRatings: " << nRatings 
-    << std::endl;
+  //std::cout << "\nHead ratings: " << headRatings << " nRatings: " << nRatings 
+  //  << std::endl;
 
   return headItems;
 }
@@ -59,8 +59,8 @@ std::unordered_set<int> getHeadUsers(gk_csr_t *mat, float pc) {
     headUsers.insert(userFreqPairs[i].first);
   }
   
-  std::cout << "\nHead ratings: " << headRatings << " nRatings: " << nRatings 
-    << std::endl;
+  //std::cout << "\nHead ratings: " << headRatings << " nRatings: " << nRatings 
+  //  << std::endl;
 
   return headUsers;
 }
@@ -150,6 +150,80 @@ std::pair<double, double> getMeanVar(std::vector<std::vector<double>> uFac,
   var = var/((nItems*nUsers) - 1);
 
   return std::make_pair(mean, var);
+}
+
+
+std::vector<std::pair<double, double>> trainItemsMeanVar(gk_csr_t* mat) {
+  
+  std::vector<std::pair<double, double>> meanVar;
+  for (int item = 0; item < mat->ncols; item++) {
+    meanVar.push_back(std::make_pair(0,0));
+  }
+
+#pragma omp parallel for
+  for (int item = 0; item < mat->ncols; item++) {
+    
+    double itemMean = 0;
+    double itemVar = 0;
+    double nRatings = mat->colptr[item+1] - mat->colptr[item]; 
+
+    for (int uu = mat->colptr[item]; uu < mat->colptr[item+1]; uu++) {
+      int user = mat->colind[uu];
+      float rating = mat->colval[uu];
+      itemMean += rating;
+    }
+    itemMean = itemMean/nRatings;
+
+    for (int uu = mat->colptr[item]; uu < mat->colptr[item+1]; uu++) {
+      int user = mat->colind[uu];
+      float rating = mat->colval[uu];
+      float diff = rating - itemMean;
+      itemVar += diff*diff;  
+    }
+    //itemVar = itemVar/(nRatings - 1); //unbiased
+    itemVar = itemVar/(nRatings);
+    
+    meanVar[item] = std::make_pair(itemMean, itemVar);
+  }
+  
+  return meanVar;
+}
+
+
+std::vector<std::pair<double, double>> trainUsersMeanVar(gk_csr_t* mat) {
+  
+  std::vector<std::pair<double, double>> meanVar;
+  for (int u = 0; u < mat->nrows; u++) {
+    meanVar.push_back(std::make_pair(0,0));
+  }
+
+#pragma omp parallel for
+  for (int u = 0; u < mat->nrows; u++) {
+    
+    double uMean = 0;
+    double uVar = 0;
+    double nRatings = mat->rowptr[u+1] - mat->rowptr[u]; 
+
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      int item = mat->rowind[ii];
+      float rating = mat->rowval[ii];
+      uMean += rating;
+    }
+    uMean = uMean/nRatings;
+
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      int item = mat->rowind[ii];
+      float rating = mat->rowval[ii];
+      float diff = rating - uMean;
+      uVar += diff*diff;  
+    }
+    //uVar = uVar/(nRatings - 1); //unbiased
+    uVar = uVar/(nRatings);
+    
+    meanVar[u] = std::make_pair(uMean, uVar);
+  }
+  
+  return meanVar;
 }
 
 
@@ -541,6 +615,7 @@ std::vector<std::tuple<int, int, float>> getUIRatings(gk_csr_t* mat) {
   return uiRatings;
 }
 
+
 std::vector<std::vector<std::tuple<int,int,float>>> getRandUIRatings(
     gk_csr_t* mat, int nBlocks, int seed) {
 
@@ -877,5 +952,50 @@ bool compMat(gk_csr_t *mat1, gk_csr_t *mat2) {
 
   return true;
 }
+
+
+int setIntersect(std::unordered_set<int>& a, std::unordered_set<int>& b) {
+  int intersectCount = 0;
+  for (auto&& i : a) {
+    if (b.count(i) > 0) {
+      intersectCount++;
+    }
+  }
+  return intersectCount;
+}
+
+
+int setUnion(std::unordered_set<int>& a, std::unordered_set<int>& b) {
+  int unionCount = a.size();
+  for (auto&& i: b) {
+    if (a.count(i) > 0) {
+      continue;
+    }
+    unionCount++;
+  }
+  return unionCount;
+}
+
+
+float pearsonCorr(std::vector<float>& x, std::vector<float>& y, float xMean, 
+    float yMean) {
+  
+  float num = 0, denomX = 0, denomY = 0;
+  float xDiff = 0, yDiff = 0;
+
+  for (int i = 0; i < x.size(); i++) {
+    xDiff = x[i] - xMean;
+    yDiff = y[i] - yMean;
+    num += xDiff*yDiff;
+    denomX += xDiff*xDiff;
+    denomY += yDiff*yDiff;
+  }
+  denomX = sqrt(denomX);
+  denomY = sqrt(denomY);
+  
+  float corr = num/(denomX*denomY);
+  return corr;
+}
+
 
 
