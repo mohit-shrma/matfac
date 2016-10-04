@@ -157,19 +157,20 @@ void ModelMF::train(const Data &data, Model &bestModel,
   std::vector<std::vector<double>> iGradsAcc (nItems, 
       std::vector<double>(facDim,0)); 
 
+  std::vector<std::unordered_set<int>> uISet(nUsers);
+  genStats(trainMat, uISet, std::to_string(trainSeed));
+  getInvalidUsersItems(trainMat, uISet, invalidUsers, invalidItems);
+ 
   //std::cout << "\nNNZ = " << nnz;
-  prevObj = objective(data);
-  std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " << RMSE(data.trainMat);
+  prevObj = objective(data, invalidUsers, invalidItems);
+  std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " 
+    << RMSE(data.trainMat, invalidUsers, invalidItems);
 
 
   std::chrono::time_point<std::chrono::system_clock> start, end;
   std::chrono::duration<double> duration;
   
-  std::vector<std::unordered_set<int>> uISet(nUsers);
-  genStats(trainMat, uISet, std::to_string(trainSeed));
-  getInvalidUsersItems(trainMat, uISet, invalidUsers, invalidItems);
-  
-  std::cout << "\nModelMF::train trainSeed: " << trainSeed 
+ std::cout << "\nModelMF::train trainSeed: " << trainSeed 
     << " invalidUsers: " << invalidUsers.size()
     << " invalidItems: " << invalidItems.size() << std::endl;
   
