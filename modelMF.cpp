@@ -313,20 +313,21 @@ void ModelMF::hogTrain(const Data &data, Model &bestModel,
   std::vector<std::vector<double>> iGradsAcc (nItems, 
       std::vector<double>(facDim,0)); 
 
-  //std::cout << "\nNNZ = " << nnz;
-  prevObj = objective(data);
-  bestObj = prevObj;
-  std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " << RMSE(data.trainMat);
-
-
-  std::chrono::time_point<std::chrono::system_clock> start, end;
-  std::chrono::duration<double> duration;
-  
   std::vector<std::unordered_set<int>> uISet(nUsers);
   genStats(trainMat, uISet, std::to_string(trainSeed));
   getInvalidUsersItems(trainMat, uISet, invalidUsers, invalidItems);
   
-  std::cout << "\nModelMF::train trainSeed: " << trainSeed 
+  //std::cout << "\nNNZ = " << nnz;
+  prevObj = objective(data, invalidUsers, invalidItems);
+  bestObj = prevObj;
+  std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " << RMSE(data.trainMat, 
+      invalidUsers, invalidItems);
+
+  std::chrono::time_point<std::chrono::system_clock> start, end;
+  std::chrono::duration<double> duration;
+  
+  
+  std::cout << "\nModelMF::hogTrain trainSeed: " << trainSeed 
     << " invalidUsers: " << invalidUsers.size()
     << " invalidItems: " << invalidItems.size() << std::endl;
   
@@ -387,7 +388,7 @@ void ModelMF::hogTrain(const Data &data, Model &bestModel,
       }
 
       if (iter % 50 == 0) {
-        std::cout << "ModelMF::train trainSeed: " << trainSeed
+        std::cout << "ModelMF::hogTrain trainSeed: " << trainSeed
                   << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
                   << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)
                   << " Val RMSE: " << prevValRMSE
