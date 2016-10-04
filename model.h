@@ -136,5 +136,10 @@ class Model {
     void updateMatWRatings(gk_csr_t *mat);
     double fullLowRankErr(const Data& data, 
         std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems);
+    double fullLowRankErr(const Data& data, 
+        std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems,
+        Model& origModel);
+    std::vector<std::pair<double, double>> itemsMeanVar(gk_csr_t* mat);
+    std::vector<std::pair<double, double>> usersMeanVar(gk_csr_t* mat);
 };
 #endif

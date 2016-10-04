@@ -779,7 +779,7 @@ double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
   }
   iRegErr = iRegErr*iReg;
 
-  obj = rmse + uRegErr + iRegErr;
+  obj = rmse;// + uRegErr + iRegErr;
     
   //std::cout <<"\nrmse: " << std::scientific << rmse << " uReg: " << uRegErr << " iReg: " << iRegErr ; 
 
@@ -897,6 +897,36 @@ double Model::fullLowRankErr(const Data& data,
       }
       r_ui_est = estRating(u, item);
       r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      diff = r_ui_orig - r_ui_est;
+      rmse += diff*diff;
+    }
+  }
+  rmse = sqrt(rmse/((nUsers-invalidUsers.size())*(nItems-invalidItems.size())));
+  return rmse;
+}
+
+
+double Model::fullLowRankErr(const Data& data, 
+    std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems,
+    Model& origModel) {
+  double rmse;
+  rmse = 0;
+#pragma omp parallel for reduction(+ : rmse) 
+  for (int u = 0; u < nUsers; u++) {
+    //skip if invalid user
+    if (invalidUsers.find(u) != invalidUsers.end()) {
+      continue;
+    }
+    
+    double r_ui_est, r_ui_orig, diff;
+
+    for (int item = 0; item < nItems; item++) {
+      //skip if invalid item
+      if (invalidItems.find(item) != invalidItems.end()) {
+        continue;
+      }
+      r_ui_est = estRating(u, item);
+      r_ui_orig = origModel.estRating(u, item);
       diff = r_ui_orig - r_ui_est;
       rmse += diff*diff;
     }
@@ -1045,6 +1075,80 @@ void Model::updateMatWRatings(gk_csr_t *mat) {
     }
   }
 
+}
+
+
+std::vector<std::pair<double, double>> Model::itemsMeanVar(gk_csr_t* mat) {
+  
+  std::vector<std::pair<double, double>> meanVar;
+  for (int item = 0; item < mat->ncols; item++) { 
+    meanVar.push_back(std::make_pair(0,0));
+  }
+
+#pragma omp parallel for
+  for (int item = 0; item < mat->ncols; item++) { 
+    
+    double itemMean = 0;
+    double itemVar = 0;
+    double nRatings = mat->colptr[item+1] - mat->colptr[item]; 
+
+    for (int uu = mat->colptr[item]; uu < mat->colptr[item+1]; uu++) {
+      int user = mat->colind[uu];
+      float rating = estRating(user, item);
+      itemMean += rating;
+    }
+    itemMean = itemMean/nRatings;
+
+    for (int uu = mat->colptr[item]; uu < mat->colptr[item+1]; uu++) {
+      int user = mat->colind[uu];
+      float rating = estRating(user, item);
+      float diff = rating - itemMean;
+      itemVar += diff*diff;  
+    }
+    //itemVar = itemVar/(nRatings - 1); //unbiased
+    itemVar = itemVar/(nRatings);
+    
+    meanVar[item] = std::make_pair(itemMean, itemVar);
+  }
+  
+  return meanVar;
+}
+
+
+std::vector<std::pair<double, double>> Model::usersMeanVar(gk_csr_t* mat) {
+  
+  std::vector<std::pair<double, double>> meanVar;
+  for (int u = 0; u < mat->nrows; u++) {
+    meanVar.push_back(std::make_pair(0,0));
+  }
+
+#pragma omp parallel for
+  for (int u = 0; u < mat->nrows; u++) {
+    
+    double uMean = 0;
+    double uVar = 0;
+    double nRatings = mat->rowptr[u+1] - mat->rowptr[u]; 
+
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      int item = mat->rowind[ii];
+      float rating = estRating(u, item);
+      uMean += rating;
+    }
+    uMean = uMean/nRatings;
+
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      int item = mat->rowind[ii];
+      float rating = estRating(u, item);
+      float diff = rating - uMean;
+      uVar += diff*diff;  
+    }
+    //uVar = uVar/(nRatings - 1); //unbiased
+    uVar = uVar/(nRatings);
+    
+    meanVar[u] = std::make_pair(uMean, uVar);
+  }
+  
+  return meanVar;
 }
 
 
