@@ -137,7 +137,7 @@ void ModelMF::train(const Data &data, Model &bestModel,
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
   std::cout << "\nsvd duration: " << durationSVD.count();
 
-  int u, item, iter, bestIter; 
+  int u, item, iter, bestIter = -1; 
   float itemRat;
   double diff, r_ui_est;
   double bestObj, prevObj;
@@ -163,6 +163,7 @@ void ModelMF::train(const Data &data, Model &bestModel,
  
   //std::cout << "\nNNZ = " << nnz;
   prevObj = objective(data, invalidUsers, invalidItems);
+  bestObj = prevObj;
   std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " 
     << RMSE(data.trainMat, invalidUsers, invalidItems);
 
