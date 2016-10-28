@@ -64,6 +64,12 @@ void predSampUsersRMSEProbPar(const Data& data, int nUsers, int nItems,
     std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
     std::unordered_set<int>& filtItems, 
     int nSampUsers, int seed, std::string prefix);
+void predSampUsersRMSEFreqPar(const Data& data, 
+    int nUsers, int nItems, 
+    Model& origModel, Model& fullModel, 
+    std::unordered_set<int>& invalUsers, std::unordered_set<int>& invalItems, 
+    std::unordered_set<int>& filtItems, 
+    int nSampUsers, int seed, std::string prefix);
 std::pair<double, double> compOrderingOverlapBScores(
     std::vector<std::pair<int, double>> itemPairsA,
     std::vector<std::pair<int, double>> itemPairsB, int sizeA);
