@@ -71,14 +71,14 @@ void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols,
       }
       assert(j == ncols);
       i++;
-    }
+     }
     inFile.close();
   } else {
     std::cout << "\nCan't open file: " << fileName;
-  }
+   }
   
-}
-
+} 
+ 
 
 void writeMat(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
               const char* opFileName) {
@@ -96,6 +96,36 @@ void writeMat(std::vector<std::vector<double>>& mat, int nrows, int ncols,
   }
 
 }
+
+
+void writeMatBin(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
+    const char *opFileName) {
+  std::ofstream opFile(opFileName, std::ios::binary);
+  if (opFile.is_open()) {
+    for (int i = 0; i < nrows; i++) {
+      for (int j = 0; j < ncols; j++) {
+        double val = mat[i][j];
+        opFile.write((char*)& val, sizeof(double));
+      }
+    }
+    opFile.close();
+  }
+}
+
+
+void readMatBin(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
+    const char *opFileName) {
+  std::ifstream ipFile(opFileName, std::ios::binary);
+  if (ipFile.is_open()) {
+    for (int i = 0; i < nrows; i++) {
+      for (int j = 0; j < ncols; j++) {
+        ipFile.read((char*)& mat[i][j], sizeof(double));
+      }
+    }
+    ipFile.close();
+  }
+}
+
 
 std::vector<int> readVector(const char *ipFileName) {
   std::vector<int> vec;

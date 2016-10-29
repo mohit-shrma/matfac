@@ -1,6 +1,5 @@
 #include <iostream>
 #include <vector>
-#include <omp.h>
 
 /* Parameters */
 #define M 6
@@ -10,7 +9,7 @@
 #define LDVT N
 
 
-std::vector<double> vadd(std::vector<double> a, std::vector<double>b) {
+std::vector<double> vadd(std::vector<double> a, std::vector<double> b) {
   std::vector<double> c(a.size(), 0);
   for (int i = 0; i < a.size(); i++) {
     c[i] = a[i] + b[i];
@@ -18,22 +17,29 @@ std::vector<double> vadd(std::vector<double> a, std::vector<double>b) {
   return c;
 }
 
+void vaddInPlace(std::vector<double>& a, std::vector<double>& b) {
+  for (int i = 0; i < a.size(); i++) {
+    a[i] += b[i];
+   }
+ }
+
 #pragma omp declare reduction(vecAdd: std::vector<double>: omp_out=vadd(omp_out,omp_in)) initializer(omp_priv=std::vector<double>(10, 0))
 
 void customRedTest() {
 
   std::vector<double> m(10, 0);
   std::vector<double> n(10, 1);
-
-#pragma omp parallel for reduction(vecAdd: m)
-  for (int i = 0; i < 20; i++) {
-    m = vadd(m, n); 
+  int k = 0;
+#pragma omp parallel for reduction(+: k), reduction(vecAdd: m)
+  for (int i = 0; i < 50; i++) {
+    vaddInPlace(m, n); 
+    k++;
   }
   
   for (auto&& v: m) {
     std::cout << v << ",";
   }
-  std::cout << std::endl;
+  std::cout << "k = " << k << std::endl;
 }
 
 

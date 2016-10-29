@@ -7,8 +7,6 @@
 #include "util.h"
 #include "datastruct.h"
 #include "modelMF.h"
-#include "modelMFWt.h"
-#include "modelMFFreq.h"
 #include "modelMFBias.h"
 #include "modelMFLoc.h"
 #include "confCompute.h"
@@ -489,6 +487,25 @@ void computeSampBucksFrmFullModel(Data& data, Params& params) {
 }
 
 
+void convertToBin(Data& data, Params& params) {
+  std::unordered_set<int> invalidUsers, invalidItems; 
+  std::cout << "\nCreating full model...";
+  ModelMF fullModel(params, params.seed);
+  fullModel.loadFacs(params.prefix);
+  std::cout << "\nTrain RMSE: " << fullModel.RMSE(data.trainMat, invalidUsers, invalidItems);
+  std::cout << "\nTest RMSE: " << fullModel.RMSE(data.testMat, invalidUsers, invalidItems);
+  std::cout << "\nVal RMSE: " << fullModel.RMSE(data.valMat, invalidUsers, invalidItems);
+  std::cout << "\nFull RMSE: " << fullModel.fullLowRankErr(data, invalidUsers, invalidItems);
+  fullModel.saveBinFacs(params.prefix);
+  fullModel.loadBinFacs(params.prefix);
+  std::cout << "\nTrain RMSE: " << fullModel.RMSE(data.trainMat, invalidUsers, invalidItems);
+  std::cout << "\nTest RMSE: " << fullModel.RMSE(data.testMat, invalidUsers, invalidItems);
+  std::cout << "\nVal RMSE: " << fullModel.RMSE(data.valMat, invalidUsers, invalidItems);
+  std::cout << "\nFull RMSE: " << fullModel.fullLowRankErr(data, invalidUsers, invalidItems);
+  std::cout << std::endl;
+}
+
+
 void computeSampTopNFrmFullModel(Data& data, Params& params) {
   
   std::cout << "\nCreating full model...";
@@ -700,8 +717,11 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   prefix = std::string(params.prefix) + "_top_";
   
   std::vector<double> alphas = {0.0001, 0.001, 0.01, 0.1, 0.5, 1, 10, 100};
-  predSampUsersRMSEProbPar(data, nUsers, nItems, origModel, fullModel,
-    svdModel, invalidUsers, invalidItems, filtItems, 5000, params.seed, 
+  //predSampUsersRMSEProbPar(data, nUsers, nItems, origModel, fullModel,
+  //  svdModel, invalidUsers, invalidItems, filtItems, 5000, params.seed, 
+  //  prefix);
+  predSampUsersRMSEFreqPar(data, nUsers, nItems, origModel, fullModel,
+    invalidUsers, invalidItems, filtItems, 5000, params.seed, 
     prefix);
     
 }
@@ -1752,7 +1772,8 @@ int main(int argc , char* argv[]) {
   std::srand(params.seed);
 
   Data data (params);
-
+  
+  /*
   std::cout << "\nCreating original model..." << std::endl;
   ModelMF origModel(params, params.origUFacFile, params.origIFacFile, 
       params.seed);
@@ -1762,7 +1783,7 @@ int main(int argc , char* argv[]) {
   gk_csr_CreateIndex(data.testMat, GK_CSR_COL);
   origModel.updateMatWRatings(data.valMat);
   gk_csr_CreateIndex(data.valMat, GK_CSR_COL);
-  
+  */
   
   /*
   auto meanVar = getMeanVar(data.origUFac, data.origIFac, data.origFacDim, 
@@ -1846,10 +1867,10 @@ int main(int argc , char* argv[]) {
   }
   */
   
-  /*    
+  /*
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
-  //svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
+  svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
   //initialize MF model with last learned model if any
   mfModel.loadFacs(params.prefix);
 
@@ -1858,7 +1879,7 @@ int main(int argc , char* argv[]) {
 
   ModelMF bestModel(mfModel);
   std::cout << "\nStarting model train...";
-  mfModel.hogTrain(data, bestModel, invalidUsers, invalidItems);
+  mfModel.train(data, bestModel, invalidUsers, invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
       invalidItems);
   std::cout << "\nValidation RMSE: " << bestModel.RMSE(data.valMat, invalidUsers, 
@@ -1875,7 +1896,7 @@ int main(int argc , char* argv[]) {
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
   std::cout << std::endl << "**** Model parameters ****" << std::endl;
   mfModel.display();
-  */    
+  */ 
 
   //computeSampTopNFrmFullModel(data, params);  
   
@@ -1886,7 +1907,8 @@ int main(int argc , char* argv[]) {
   
   //analyzeAccuracy(data, params);
   //compJaccSimAccu(data, params);
-  meanAndVarSameGroundAllUsers(data, params);
+  //meanAndVarSameGroundAllUsers(data, params);
+  convertToBin(data, params);
 
   return 0;
 }

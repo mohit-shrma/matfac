@@ -141,5 +141,7 @@ class Model {
         Model& origModel);
     std::vector<std::pair<double, double>> itemsMeanVar(gk_csr_t* mat);
     std::vector<std::pair<double, double>> usersMeanVar(gk_csr_t* mat);
+    void saveBinFacs(std::string prefix);
+    void loadBinFacs(std::string prefix);
 };
 #endif

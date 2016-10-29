@@ -112,6 +112,37 @@ void Model::loadFacs(std::string prefix) {
 }
 
 
+void Model::saveBinFacs(std::string prefix) {
+  std::string modelSign = modelSignature();
+  //save user latent factors
+  std::string uFacName = prefix + "_uFac_" + modelSign + ".binmat";
+  writeMatBin(uFac, nUsers, facDim, uFacName.c_str());
+  
+  //save item latent factors
+  std::string iFacName = prefix + "_iFac_" + modelSign +  ".binmat";
+  writeMatBin(iFac, nItems, facDim, iFacName.c_str());
+}
+
+
+void Model::loadBinFacs(std::string prefix) {
+  std::string modelSign = modelSignature();
+  //read user latent factors
+  std::string uFacName = prefix + "_uFac_" + modelSign + ".binmat";
+  //load if file exists
+  if (isFileExist(uFacName.c_str())) {
+    std::cout << "Loading user factors: " << uFacName << std::endl;
+    readMatBin(uFac, nUsers, facDim, uFacName.c_str());
+  }
+
+  //read item latent factors
+  std::string iFacName = prefix + "_iFac_" + modelSign +  ".binmat";
+  if (isFileExist(iFacName.c_str())) { 
+    std::cout << "Loading item factors: " << iFacName << std::endl;
+    readMatBin(iFac, nItems, facDim, iFacName.c_str());
+  }
+}
+
+
 void Model::load(const char* uFacName, const char* iFacName, const char* uBFName,
     const char* iBFName, const char*gBFName) {
   //read user latent factors
