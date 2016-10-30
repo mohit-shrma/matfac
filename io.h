@@ -16,7 +16,11 @@
 void dispVector(std::vector<double>& vec); 
 void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
     const char *fileName);
+void readMat(Eigen::MatrixXf& mat, int nrows, int ncols, 
+    const char *fileName);
 void writeMat(std::vector<std::vector<double>>& mat, int nrows, int ncols,
+              const char* opFileName);
+void writeMat(Eigen::MatrixXf& mat, int nrows, int ncols,
               const char* opFileName);
 void writeCSRWSparsityStructure(gk_csr_t *mat, const char *opFileName, 
     std::vector<std::vector<double>> uFac, 
@@ -77,4 +81,7 @@ void writeMatBin(std::vector<std::vector<double>>& mat, int nrows, int ncols,
     const char *opFileName);
 void readMatBin(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
     const char *opFileName);
+Eigen::VectorXf readEigVector(const char *ipFileName) ;
+
+
 #endif

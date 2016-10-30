@@ -78,9 +78,62 @@ void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols,
    }
   
 } 
+
+
+void readMat(Eigen::MatrixXf& mat, int nrows, int ncols, 
+    const char *fileName) {
  
+  std::cout << "\nReading ... " << fileName << std::endl;
+
+  std::string line, token;
+  std::string delimiter = " ";
+  std::ifstream inFile (fileName);
+  int i, j; 
+  size_t pos;
+
+  if (inFile.is_open()) {
+    i = 0;
+    while (getline(inFile, line) && i < nrows) {
+      j = 0;
+      //split the line
+      while((pos = line.find(delimiter)) != std::string::npos) {
+        token = line.substr(0, pos);
+        mat[i][j++] = std::stod(token);
+        line.erase(0, pos + delimiter.length());
+      }
+      if (line.length() > 0) {
+        mat[i][j++] = std::stod(line);
+      }
+      assert(j == ncols);
+      i++;
+     }
+    inFile.close();
+  } else {
+    std::cout << "\nCan't open file: " << fileName;
+   }
+  
+} 
+
 
 void writeMat(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
+              const char* opFileName) {
+  int i, j;
+  std::ofstream opFile (opFileName);
+  
+  if (opFile.is_open()) {
+    for (i = 0; i < nrows; i++) { 
+      for (j = 0; j < ncols; j++) {
+        opFile << mat[i][j] << " ";
+      }
+      opFile << std::endl;
+    }
+    opFile.close();
+  }
+
+}
+
+
+void writeMat(Eigen::MatrixXf& mat, int nrows, int ncols, 
               const char* opFileName) {
   int i, j;
   std::ofstream opFile (opFileName);
@@ -113,7 +166,36 @@ void writeMatBin(std::vector<std::vector<double>>& mat, int nrows, int ncols,
 }
 
 
+void writeMatBin(Eigen::MatrixXf& mat, int nrows, int ncols, 
+    const char *opFileName) {
+  std::ofstream opFile(opFileName, std::ios::binary);
+  if (opFile.is_open()) {
+    for (int i = 0; i < nrows; i++) {
+      for (int j = 0; j < ncols; j++) {
+        double val = mat[i][j];
+        opFile.write((char*)& val, sizeof(double));
+      }
+    }
+    opFile.close();
+  }
+}
+
+
 void readMatBin(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
+    const char *opFileName) {
+  std::ifstream ipFile(opFileName, std::ios::binary);
+  if (ipFile.is_open()) {
+    for (int i = 0; i < nrows; i++) {
+      for (int j = 0; j < ncols; j++) {
+        ipFile.read((char*)& mat[i][j], sizeof(double));
+      }
+    }
+    ipFile.close();
+  }
+}
+
+
+void readMatBin(Eigen::MatrixXf& mat, int nrows, int ncols, 
     const char *opFileName) {
   std::ifstream ipFile(opFileName, std::ios::binary);
   if (ipFile.is_open()) {
@@ -165,6 +247,29 @@ std::vector<double> readDVector(const char *ipFileName) {
 }
 
 
+Eigen::VectorXf readEigVector(const char *ipFileName) {
+  std::vector<double> vec;
+  std::ifstream ipFile(ipFileName);
+  std::string line; 
+  if (ipFile.is_open ()) {
+    while(getline(ipFile, line)) {
+      if (line.length( ) > 0) {
+        vec.push_back(std::stod(line));
+      }
+    }
+    ipFile.close();
+  } else {
+    std::cerr <<  "\nCan't open file: " << ipFileName;
+    exit(0);
+  }
+  Eigen::VectorXf evec(vec.size());
+  for (int i = 0; i < vec.size(); i++) {
+    evec(i) = vec[i];
+  }
+  return evec;
+}
+
+
 void writeVector(std::vector<double>& vec, const char *opFileName) {
   std::ofstream opFile(opFileName);
   if (opFile.is_open()) {
@@ -175,6 +280,15 @@ void writeVector(std::vector<double>& vec, const char *opFileName) {
   }
 }
 
+void writeVector(Eigen::VectorXf& vec, const char *opFileName) {
+  std::ofstream opFile(opFileName);
+  if (opFile.is_open()) {
+    for (int i = 0; i < vec.size(); i++) {
+      opFile << vec[i] << std::endl;    
+    }
+    opFile.close();
+  }
+}
 
 void writeVector(std::vector<double>& vec, std::ofstream& opFile) {
   if (opFile.is_open()) {

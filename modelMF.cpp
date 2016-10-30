@@ -1,117 +1,6 @@
 #include "modelMF.h"
 
 
-void ModelMF::updateAdaptiveFac(std::vector<double> &fac, std::vector<double> &grad,
-    std::vector<double> &gradAcc) {
-  for (int i = 0; i < facDim; i++) {
-    gradAcc[i] = gradAcc[i]*rhoRMS + (1.0-rhoRMS)*grad[i]*grad[i];
-    fac[i] -= (learnRate/sqrt(gradAcc[i]+0.0000001)) * grad[i];
-  }
-}
-
-
-void ModelMF::computeUGrad(int user, int item, float r_ui, 
-        std::vector<double> &uGrad) {
-  //estimate and actual rating difference
-  double diff = r_ui - dotProd(uFac[user], iFac[item], facDim);
-
-  for (int i = 0; i < facDim; i++) {
-    uGrad[i] = -2.0*diff*iFac[item][i] + 2.0*uReg*uFac[user][i];
-  }
-
-}
-
-
-void ModelMF::computeIGrad(int user, int item, float r_ui, 
-        std::vector<double> &iGrad) {
-  //estimate and actual rating difference
-  double diff = r_ui - dotProd(uFac[user], iFac[item], facDim);
-
-  for (int i = 0; i < facDim; i++) {
-    iGrad[i] = -2.0*diff*uFac[user][i] + 2.0*iReg*iFac[item][i];
-  }
-
-}
-
-
-void ModelMF::gradCheck(int u, int item, float r_ui) {
-  int i;
-  std::vector<double> grad (facDim, 0);
-  std::vector<double> tempFac (facDim, 0);
-  double lossRight, lossLeft, gradE;
-
-  double r_ui_est = estRating(u, item);
-  double diff = r_ui - r_ui_est;
-  
-  //gradient w.r.t. u
-  for (i = 0; i < facDim; i++) {
-    grad[i] = -2.0*diff*iFac[item][i]; 
-  }
-  
-  //perturb user with +E and compute loss
-  tempFac = uFac[u];
-  for(auto& v: tempFac) {
-    v = v + 0.0001; 
-  }
-  r_ui_est = dotProd(tempFac, iFac[item], facDim);
-  lossRight = (r_ui - r_ui_est)*(r_ui - r_ui_est);
-  
-  //perturb user with -E and compute loss
-  tempFac = uFac[u];
-  for(auto& v: tempFac) {
-    v = v - 0.0001; 
-  }
-  r_ui_est = dotProd(tempFac, iFac[item], facDim);
-  lossLeft = (r_ui - r_ui_est)*(r_ui - r_ui_est);
-
-  //compute gradient and E dotprod
-  gradE = 0;
-  for (auto v: grad) {
-    gradE += 2.0*v*0.0001;
-  }
-  
-  if (fabs(lossRight - lossLeft - gradE) > 0.0001) {
-    printf("\nu: %d lr: %f ll: %f diff: %f div: %f lDiff:%f gradE:%f",
-        u, lossRight, lossLeft, lossRight - lossLeft -gradE,
-        (lossRight-lossLeft)/gradE, lossRight-lossLeft, gradE); 
-  }
-  
-  //gradient w.r.t. item
-  for (i = 0; i < facDim; i++) {
-    grad[i] = -2.0*diff*uFac[u][i]; 
-  }
-  
-  //perturb item with +E and compute loss
-  tempFac = iFac[item];
-  for(auto& v: tempFac) {
-    v = v + 0.0001; 
-  }
-  r_ui_est = dotProd(tempFac, uFac[u], facDim);
-  lossRight = (r_ui - r_ui_est)*(r_ui - r_ui_est);
-  
-  //perturb user with -E and compute loss
-  tempFac = iFac[item];
-  for(auto& v: tempFac) {
-    v = v - 0.0001; 
-  }
-  r_ui_est = dotProd(tempFac, uFac[u], facDim);
-  lossLeft = (r_ui - r_ui_est)*(r_ui - r_ui_est);
-
-  //compute gradient and E dotprod
-  gradE = 0;
-  for (auto v: grad) {
-    gradE += 2.0*v*0.0001;
-  }
-  
-  if (fabs(lossRight - lossLeft - gradE) > 0.0001) {
-    printf("\nitem: %d lr: %f ll: %f diff: %f div: %f lDiff:%f gradE:%f",
-        item, lossRight, lossLeft, lossRight - lossLeft -gradE,
-        (lossRight-lossLeft)/gradE, lossRight-lossLeft, gradE); 
-  }
-
-}
-
-
 void ModelMF::train(const Data &data, Model &bestModel, 
     std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems) {
@@ -144,18 +33,6 @@ void ModelMF::train(const Data &data, Model &bestModel,
   double bestValRMSE, prevValRMSE;
 
   gk_csr_t *trainMat = data.trainMat;
-
-  //array to hold user and item gradients
-  std::vector<double> uGrad (facDim, 0);
-  std::vector<double> iGrad (facDim, 0);
- 
-  //vector to hold user gradient accumulation
-  std::vector<std::vector<double>> uGradsAcc (nUsers, 
-      std::vector<double>(facDim,0)); 
-
-  //vector to hold item gradient accumulation
-  std::vector<std::vector<double>> iGradsAcc (nItems, 
-      std::vector<double>(facDim,0)); 
 
   std::vector<std::unordered_set<int>> uISet(nUsers);
   genStats(trainMat, uISet, std::to_string(trainSeed));
@@ -201,8 +78,9 @@ void ModelMF::train(const Data &data, Model &bestModel,
       
       //std::cout << "\nGradCheck u: " << u << " item: " << item;
       //gradCheck(u, item, itemRat);
-      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      r_ui_est = uFac.row(u).dot(iFac.row(item));
       diff = itemRat - r_ui_est;
+
 
       //compute user gradient
       //computeUGrad(u, item, itemRat, uGrad);
@@ -609,151 +487,6 @@ void ModelMF::hogTrain(const Data &data, Model &bestModel,
 
   std::cout << "\nBest model validation RMSE: " << bestModel.RMSE(data.valMat, 
       invalidUsers, invalidItems);
-}
-
-
-void ModelMF::hogAdapTrain(const Data &data, Model &bestModel, 
-    std::unordered_set<int>& invalidUsers,
-    std::unordered_set<int>& invalidItems) {
-
-  //copy passed known factors
-  //uFac = data.origUFac;
-  //iFac = data.origIFac;
-  
-  std::cout << "\nModelMF::hogAdapTrain trainSeed: " << trainSeed;
-  
-  int nnz = data.trainNNZ;
-  
-  std::cout << "\nObj b4 svd: " << objective(data) 
-    << " Train RMSE: " << RMSE(data.trainMat) 
-    << " Train nnz: " << nnz << std::endl;
-  
-  std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
-  startSVD = std::chrono::system_clock::now();
-  //initialization with svd of the passed matrix
-  //svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac, false); 
-  
-  endSVD = std::chrono::system_clock::now();
-  std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
-  std::cout << "\nsvd duration: " << durationSVD.count();
-
-  int iter, bestIter; 
-  double bestObj, prevObj;
-  double bestValRMSE, prevValRMSE;
-
-  gk_csr_t *trainMat = data.trainMat;
-
- 
-  //vector to hold user gradient accumulation
-  std::vector<std::vector<double>> uGradsAcc (nUsers, 
-      std::vector<double>(facDim,0)); 
-
-  //vector to hold item gradient accumulation
-  std::vector<std::vector<double>> iGradsAcc (nItems, 
-      std::vector<double>(facDim,0)); 
-
-  //std::cout << "\nNNZ = " << nnz;
-  prevObj = objective(data);
-  std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " << RMSE(data.trainMat);
-
-
-  std::chrono::time_point<std::chrono::system_clock> start, end;
-  std::chrono::duration<double> duration;
-  
-  std::vector<std::unordered_set<int>> uISet(nUsers);
-  genStats(trainMat, uISet, std::to_string(trainSeed));
-  getInvalidUsersItems(trainMat, uISet, invalidUsers, invalidItems);
-  
-  std::cout << "\nModelMF::train trainSeed: " << trainSeed 
-    << " invalidUsers: " << invalidUsers.size()
-    << " invalidItems: " << invalidItems.size() << std::endl;
-  
-  //random engine
-  std::mt19937 mt(trainSeed);
-  //get user-item ratings from training data
-  auto uiRatings = getUIRatings(trainMat, invalidUsers, invalidItems);
-  //index to above uiRatings pair
-  std::vector<size_t> uiRatingInds(uiRatings.size());
-  std::iota(uiRatingInds.begin(), uiRatingInds.end(), 0);
-
-
-  std::cout << "\nTrain NNZ after removing invalid users and items: " 
-    << uiRatings.size() << std::endl;
-  std::cout << "\nrhoRMS: " << rhoRMS << std::endl;
-  double subIterDuration = 0;
-  for (iter = 0; iter < maxIter; iter++) {  
-    
-    //shuffle the user item rating indexes
-    std::shuffle(uiRatingInds.begin(), uiRatingInds.end(), mt);
-
-    start = std::chrono::system_clock::now();
-    const int indsSz = uiRatingInds.size();
-#pragma omp parallel for
-    for (int k = 0; k < indsSz; k++) {
-      auto ind = uiRatingInds[k];
-      //get user, item and rating
-      int u       = std::get<0>(uiRatings[ind]);
-      int item    = std::get<1>(uiRatings[ind]);
-      float itemRat = std::get<2>(uiRatings[ind]);
-      
-      double r_ui_est = dotProd(uFac[u], iFac[item], facDim);
-      double diff = itemRat - r_ui_est;
-      
-      double gradi = 0;
-      //update user
-      for (int i = 0; i < facDim; i++) {
-        gradi = -2.0*diff*iFac[item][i] + 2.0*uReg*uFac[u][i]; 
-        uGradsAcc[u][i] = uGradsAcc[u][i]*rhoRMS + (1.0 - rhoRMS)*gradi*gradi;
-        uFac[u][i] -= (learnRate/sqrt(uGradsAcc[u][i] + 1e-6))*gradi;
-      }
-
-      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
-      diff = itemRat - r_ui_est;
-    
-      //update item
-      for (int i = 0; i < facDim; i++) {
-        gradi = -2.0*diff*uFac[u][i] + 2.0*iReg*iFac[item][i];
-        iGradsAcc[item][i] = iGradsAcc[item][i]*rhoRMS + (1.0 - rhoRMS)*gradi*gradi;
-        iFac[item][i] -= (learnRate/sqrt(iGradsAcc[item][i] + 1e-6))*gradi;
-      }
-    }
-    end = std::chrono::system_clock::now();  
-   
-    duration =  end - start;
-    subIterDuration = duration.count();
-
-    //check objective
-    if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
-      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
-            invalidUsers, invalidItems)) {
-        break; 
-      }
-
-      if (iter % 50 == 0) {
-        std::cout << "ModelMF::train trainSeed: " << trainSeed
-                  << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
-                  << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)
-                  << " Val RMSE: " << prevValRMSE
-                  << " sub duration: " << subIterDuration
-                  << std::endl;
-      }
-
-      if (iter % 500 == 0 || iter == maxIter - 1) {
-        std::string modelFName = std::string(data.prefix);
-        bestModel.saveFacs(modelFName);
-      }
-
-    }
-     
-  }
-      
-  //save best model found till now
-  std::string modelFName = std::string(data.prefix);
-  bestModel.saveFacs(modelFName);
-
-  std::cout << "\nBest model validation RMSE: " << bestModel.RMSE(data.valMat, 
-      invalidUsers, invalidItems);
-
 }
 
 
