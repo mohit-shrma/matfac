@@ -14,6 +14,9 @@
 #include "const.h"
 #include "GKlib.h"
 #include "datastruct.h"
+#include <Eigen/Dense>
+#include <Eigen/Cholesky>
+#include <Eigen/LU>
 
 class Model { 
 

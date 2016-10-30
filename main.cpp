@@ -1754,6 +1754,19 @@ void computeHeadTailRMSE(Data& data, Params& params) {
 }
 
 
+void transformBinData(Data& data, Params& params) {
+  std::cout << "\nCreating original model to transform binary ratings..." << std::endl;
+  ModelMF origModel(params, params.origUFacFile, params.origIFacFile, 
+      params.seed);
+  origModel.updateMatWRatings(data.trainMat);
+  gk_csr_CreateIndex(data.trainMat, GK_CSR_COL);
+  origModel.updateMatWRatings(data.testMat);
+  gk_csr_CreateIndex(data.testMat, GK_CSR_COL);
+  origModel.updateMatWRatings(data.valMat);
+  gk_csr_CreateIndex(data.valMat, GK_CSR_COL);
+}
+
+
 int main(int argc , char* argv[]) {
  
   /* 
@@ -1773,19 +1786,7 @@ int main(int argc , char* argv[]) {
 
   Data data (params);
   
-  /*
-  std::cout << "\nCreating original model..." << std::endl;
-  ModelMF origModel(params, params.origUFacFile, params.origIFacFile, 
-      params.seed);
-  origModel.updateMatWRatings(data.trainMat);
-  gk_csr_CreateIndex(data.trainMat, GK_CSR_COL);
-  origModel.updateMatWRatings(data.testMat);
-  gk_csr_CreateIndex(data.testMat, GK_CSR_COL);
-  origModel.updateMatWRatings(data.valMat);
-  gk_csr_CreateIndex(data.valMat, GK_CSR_COL);
-  */
-  
-  /*
+   /*
   auto meanVar = getMeanVar(data.origUFac, data.origIFac, data.origFacDim, 
       data.nUsers, data.nItems);
 
@@ -1851,10 +1852,7 @@ int main(int argc , char* argv[]) {
   //writeItemJaccSimFrmCorat(data.trainMat, data.graphMat, 
   //    "ratings_26779x26779_25.syn.trainItems.jacSim2.metis");
   //writeCoRatings(data.trainMat, "y_u2_i34_100Kx50K.train.coRatings");
-  
-  std::cout << "ifUISorted: " << checkIfUISorted(data.trainMat) << std::endl ;
-
-  //ModelMF mfModel(params, params.initUFacFile, 
+   //ModelMF mfModel(params, params.initUFacFile, 
   //    params.initIFacFile, params.seed);
  
   /* 
@@ -1867,12 +1865,18 @@ int main(int argc , char* argv[]) {
   }
   */
   
-  /*
+    
+  std::cout << "ifUISorted: " << checkIfUISorted(data.trainMat) << std::endl ;
+  
+  if (!GK_CSR_IS_VAL) {
+    transformBinData(data, params);
+  }
+
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
   svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
   //initialize MF model with last learned model if any
-  mfModel.loadFacs(params.prefix);
+  //mfModel.loadFacs(params.prefix);
 
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
@@ -1896,7 +1900,7 @@ int main(int argc , char* argv[]) {
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
   std::cout << std::endl << "**** Model parameters ****" << std::endl;
   mfModel.display();
-  */ 
+   
 
   //computeSampTopNFrmFullModel(data, params);  
   
@@ -1908,7 +1912,7 @@ int main(int argc , char* argv[]) {
   //analyzeAccuracy(data, params);
   //compJaccSimAccu(data, params);
   //meanAndVarSameGroundAllUsers(data, params);
-  convertToBin(data, params);
+  //convertToBin(data, params);
 
   return 0;
 }
