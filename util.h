@@ -71,5 +71,6 @@ int setIntersect(std::unordered_set<int>& a, std::unordered_set<int>& b);
 int setUnion(std::unordered_set<int>& a, std::unordered_set<int>& b);
 float pearsonCorr(std::vector<float>& x, std::vector<float>& y, float xMean, 
     float yMean);
+int getMaxItemInd(gk_csr_t* mat);
 #endif
 

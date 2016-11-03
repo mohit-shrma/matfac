@@ -160,13 +160,20 @@ void ModelMF::train(const Data &data, Model &bestModel,
   std::vector<std::unordered_set<int>> uISet(nUsers);
   genStats(trainMat, uISet, std::to_string(trainSeed));
   getInvalidUsersItems(trainMat, uISet, invalidUsers, invalidItems);
- 
+  for (int u = trainMat->nrows; u < data.nUsers; u++) {
+    invalidUsers.insert(u);
+  }
+  for (int item = trainMat->ncols; item < data.nItems; item++) {
+    invalidItems.insert(item);
+  }
+
   //std::cout << "\nNNZ = " << nnz;
   prevObj = objective(data, invalidUsers, invalidItems);
   bestObj = prevObj;
+  bestValRMSE = prevValRMSE = RMSE(data.valMat, invalidUsers, invalidItems);
   std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " 
-    << RMSE(data.trainMat, invalidUsers, invalidItems);
-
+    << RMSE(data.trainMat, invalidUsers, invalidItems) << " Val RMSE: " 
+    << bestValRMSE;
 
   std::chrono::time_point<std::chrono::system_clock> start, end;
   std::chrono::duration<double> duration;
@@ -242,12 +249,17 @@ void ModelMF::train(const Data &data, Model &bestModel,
 
     //check objective
     if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
+      /*
+      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
+            bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
+        break; 
+      }
+      */
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
             invalidUsers, invalidItems)) {
         break; 
       }
-
-      if (iter % 50 == 0) {
+      if (iter % 100 == 0) {
         std::cout << "ModelMF::train trainSeed: " << trainSeed
                   << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
                   << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)
@@ -273,7 +285,6 @@ void ModelMF::train(const Data &data, Model &bestModel,
       invalidUsers, invalidItems);
 
 }
-
 
 
 void ModelMF::trainALS(const Data &data, Model &bestModel, 
@@ -331,7 +342,6 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
   std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " 
     << RMSE(data.trainMat, invalidUsers, invalidItems);
 
-
   std::chrono::time_point<std::chrono::system_clock> start, end;
   std::chrono::duration<double> duration;
   
@@ -355,17 +365,23 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
 
     start = std::chrono::system_clock::now();
 
+
+#pragma omp parallel
+{
+
+    Eigen::MatrixXf YTY = Eigen::MatrixXf::Zero(facDim, facDim);
+    Eigen::VectorXf b = Eigen::VectorXf::Zero(facDim);
+
     //update users
-#pragma omp parallel for
+#pragma omp for
     for (int u = 0; u < nUsers; u++) {
       
       //skip if invalid
       if (invalidUsers.count(u) > 0) {
         continue;
       } 
-      
-      Eigen::MatrixXf YTY = Eigen::MatrixXf::Zero(facDim, facDim);
-      Eigen::VectorXf b = Eigen::VectorXf::Zero(facDim);
+      YTY.fill(0);
+      b.fill(0);
       for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
         int item = trainMat->rowind[ii];
         float rating = trainMat->rowval[ii];
@@ -394,14 +410,15 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
     } 
 
     //update items
-#pragma omp parallel for
+#pragma omp for
     for (int item = 0; item < nItems; item++) {
       //skip if invalid
       if (invalidItems.count(item) > 0) {
         continue;
       }
-      Eigen::MatrixXf YTY = Eigen::MatrixXf::Zero(facDim, facDim);
-      Eigen::VectorXf b = Eigen::VectorXf::Zero(facDim);
+     
+      YTY.fill(0);
+      b.fill(0);
       
       for (int uu = trainMat->colptr[item]; uu < trainMat->colptr[item+1]; uu++) {
         int user = trainMat->colind[uu];
@@ -431,6 +448,7 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
 
     } 
 
+}
     end = std::chrono::system_clock::now();  
    
     duration =  end - start;
@@ -438,12 +456,19 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
 
     //check objective
     if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
+      /*
+      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
+            bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
+        break; 
+      }
+      */
+      
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
             invalidUsers, invalidItems)) {
         break; 
       }
-
-      if (iter % 50 == 0) {
+      
+      if (iter % 500 == 0) {
         std::cout << "ModelMF::trainALS trainSeed: " << trainSeed
                   << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
                   << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)
@@ -585,7 +610,7 @@ void ModelMF::hogTrain(const Data &data, Model &bestModel,
         break; 
       }
 
-      if (iter % 50 == 0) {
+      if (iter % 500 == 0) {
         std::cout << "ModelMF::hogTrain trainSeed: " << trainSeed
                   << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
                   << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)

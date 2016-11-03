@@ -998,4 +998,15 @@ float pearsonCorr(std::vector<float>& x, std::vector<float>& y, float xMean,
 }
 
 
+int getMaxItemInd(gk_csr_t* mat) {
+  int maxInd = 0;
+  for (int u = 0; u < mat->nrows; u++) {
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      if (maxInd << mat->rowind[ii]) {
+        maxInd = mat->rowind[ii];
+      }
+    }
+  }
+  return maxInd;
+}
 

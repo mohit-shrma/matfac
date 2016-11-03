@@ -583,17 +583,26 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   int nItems = data.trainMat->ncols;
     
   //get filtered items corresponding to head items
-  std::unordered_set<int> filtItems;
+  std::unordered_set<int> filtItems, notFiltItems;
   //auto headItems = getHeadItems(data.trainMat, 0.2); 
   //filtItems = headItems;
 
-  //add top 100 frequent items to filtItems
+  //add top 5% frequent items to filtItems
   for (auto&& pair: itemFreqPairs) {
-    filtItems.insert(pair.first);
-    if (filtItems.size() == 100) {
-      break;
+    if (filtItems.size() <= 0.5*itemFreqPairs.size() ) {
+      filtItems.insert(pair.first);
+    } else {
+      notFiltItems.insert(pair.first);
     }
   }
+  
+  auto countNRMSE = bestModel.RMSE(data.testMat, filtItems, invalidUsers, invalidItems);
+  std::cout << "Freq Items test count: " << countNRMSE.first 
+    << " RMSE: " << countNRMSE.second << std::endl;
+
+  countNRMSE = bestModel.RMSE(data.testMat, notFiltItems, invalidUsers, invalidItems);
+  std::cout << "Non-Freq Items test count: " << countNRMSE.first 
+    << " RMSE: " << countNRMSE.second << std::endl;
 
 
   /*
@@ -720,9 +729,9 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   //predSampUsersRMSEProbPar(data, nUsers, nItems, origModel, fullModel,
   //  svdModel, invalidUsers, invalidItems, filtItems, 5000, params.seed, 
   //  prefix);
-  predSampUsersRMSEFreqPar(data, nUsers, nItems, origModel, fullModel,
-    invalidUsers, invalidItems, filtItems, 5000, params.seed, 
-    prefix);
+  //predSampUsersRMSEFreqPar(data, nUsers, nItems, origModel, fullModel,
+  //  invalidUsers, invalidItems, filtItems, 5000, params.seed, 
+  //  prefix);
     
 }
 
@@ -1768,7 +1777,14 @@ void transformBinData(Data& data, Params& params) {
 
 
 int main(int argc , char* argv[]) {
- 
+
+  /*
+  //partition the given matrix into train test val
+  gk_csr_t *mat = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, 1, 0);
+  writeTrainTestValMat(mat, argv[2], argv[3], argv[4], 0.1, 0.1, atoi(argv[5]));  
+  return 0;
+  */
+
   /* 
   gk_csr_t *mat1 = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, 1, 0);
   gk_csr_t *mat2 = gk_csr_Read(argv[2], GK_CSR_FMT_CSR, GK_CSR_IS_VAL, 0);
@@ -1783,7 +1799,6 @@ int main(int argc , char* argv[]) {
   
   //initialize seed
   std::srand(params.seed);
-
   Data data (params);
   
    /*
@@ -1797,7 +1812,7 @@ int main(int argc , char* argv[]) {
   //auto headItems = getHeadItems(data.trainMat, 0.1);
   //writeTailTestMat(data.testMat, "nf_480189x17772.tail.test.5.csr", headItems);
   
-  /*  
+  /*   
   std::string matPre = params.prefix;//"each_61265x1623_10";
   std::string suff = ".syn.ind.csr"; 
   
@@ -1829,8 +1844,8 @@ int main(int argc , char* argv[]) {
       (matPre + ".val" + suff).c_str(),
       0.1, 0.1, params.seed);
   }
+  exit(0); 
   */
-
   //writeBlkDiagJoinedCSR("", "", "");
 
   //computeConfScoresFrmModel(data, params);
@@ -1868,15 +1883,17 @@ int main(int argc , char* argv[]) {
     
   std::cout << "ifUISorted: " << checkIfUISorted(data.trainMat) << std::endl ;
   
+  
   if (!GK_CSR_IS_VAL) {
     transformBinData(data, params);
   }
 
+  /*
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
   svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
   //initialize MF model with last learned model if any
-  //mfModel.loadFacs(params.prefix);
+  mfModel.loadFacs(params.prefix);
 
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
@@ -1900,9 +1917,9 @@ int main(int argc , char* argv[]) {
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
   std::cout << std::endl << "**** Model parameters ****" << std::endl;
   mfModel.display();
-   
+  */
 
-  //computeSampTopNFrmFullModel(data, params);  
+  computeSampTopNFrmFullModel(data, params);  
   
   //testTailLocRec(data, params);
   //testTailRec(data, params);

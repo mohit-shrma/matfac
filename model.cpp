@@ -232,6 +232,45 @@ double Model::RMSE(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
 }
 
 
+std::pair<int, double> Model::RMSE(gk_csr_t *mat, std::unordered_set<int>& filtItems,
+    std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems) {
+  int u, i, ii, nnz;
+  float r_ui;
+  double r_ui_est, diff, rmse;
+  
+  nnz = 0;
+  rmse = 0;
+  for (u = 0; u < nUsers; u++) {
+    //skip if invalid user
+    auto search = invalidUsers.find(u);
+    if (search != invalidUsers.end()) {
+      //found and skip
+      continue;
+    }
+    for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      i = mat->rowind[ii];
+      //skip if invalid item
+      search = invalidItems.find(i);
+      if (search != invalidItems.end() || i >= nItems) {
+        //found and skip
+        continue;
+      }
+      if (filtItems.count(i) == 0) {
+        continue;
+      }
+      r_ui = mat->rowval[ii];
+      r_ui_est = estRating(u, i);
+      diff = r_ui - r_ui_est;
+      rmse += diff*diff;
+      nnz++;
+    }
+  }
+  rmse = sqrt(rmse/nnz);
+  
+  return std::make_pair(nnz, rmse);
+}
+
+
 double Model::RMSE(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems, Model& origModel) {
   int u, ii, item, nnz;
@@ -483,7 +522,7 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
     }
   }
 
-  if (iter - bestIter >= 500) {
+  if (iter - bestIter >= CHANCE_ITER) {
     //can't go lower than best objective after 500 iterations
     printf("\nNOT CONVERGED: bestIter:%d bestObj: %.10e"
         " currIter:%d currObj: %.10e", bestIter, bestObj, iter, currObj);
@@ -568,42 +607,42 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
     exit(0);
   }
 
-  if (iter > 0) {
     
-    if (currValRMSE < bestValRMSE) {
-      bestModel = *this;
-      bestValRMSE = currValRMSE;
-      bestIter = iter;
-    }
-
-    if (iter - bestIter >= 50) {
-      //can't improve validation RMSE after 500 iterations
-      printf("\nNOT CONVERGED: bestIter:%d bestObj: %.10e bestValRMSE: %.10e"
-          " currIter:%d currObj: %.10e currValRMSE: %.10e", 
-          bestIter, bestObj, bestValRMSE, iter, currObj, currValRMSE);
-      ret = true;
-    }
-    
-    if (fabs(prevObj - currObj) < EPS) {
-      //convergence
-      printf("\nConverged in iteration: %d prevObj: %.10e currObj: %.10e"
-          " bestValRMSE: %.10e", iter, prevObj, currObj, bestValRMSE); 
-      ret = true;
-    }
-
-    if (fabs(prevValRMSE - currValRMSE) < 0.0001) {
-      printf("\nvalidation RMSE in iteration: %d prev: %.10e curr: %.10e" 
-          " bestValRMSE: %.10e", iter, prevValRMSE, currValRMSE, bestValRMSE); 
-      ret = true;
-    }
-
-  }
-
-  if (iter == 0) {
-    bestObj = currObj;
+  if (currValRMSE < bestValRMSE) {
+    bestModel = *this;
     bestValRMSE = currValRMSE;
     bestIter = iter;
   }
+
+  if (iter - bestIter >= 100) {
+    //half the learning rate
+    if (learnRate > 1e-5) {
+      learnRate = learnRate/2;
+    }
+  }
+
+  if (iter - bestIter >= CHANCE_ITER) {
+    //can't improve validation RMSE after 500 iterations
+    printf("\nNOT CONVERGED: bestIter:%d bestObj: %.10e bestValRMSE: %.10e"
+        " currIter:%d currObj: %.10e currValRMSE: %.10e", 
+        bestIter, bestObj, bestValRMSE, iter, currObj, currValRMSE);
+    ret = true;
+  }
+  
+  if (fabs(prevObj - currObj) < EPS) {
+    //convergence
+    printf("\nConverged in iteration: %d prevObj: %.10e currObj: %.10e"
+        " bestValRMSE: %.10e", iter, prevObj, currObj, bestValRMSE); 
+    ret = true;
+  }
+
+  /*
+  if (fabs(prevValRMSE - currValRMSE) < 0.0001) {
+    printf("\nvalidation RMSE in iteration: %d prev: %.10e curr: %.10e" 
+        " bestValRMSE: %.10e", iter, prevValRMSE, currValRMSE, bestValRMSE); 
+    ret = true;
+  }
+  */
 
   prevObj = currObj;
   prevValRMSE = currValRMSE;
