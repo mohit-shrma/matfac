@@ -63,7 +63,7 @@ void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols,
       //split the line
       while((pos = line.find(delimiter)) != std::string::npos) {
         token = line.substr(0, pos);
-        mat[i][j++] = std::stod(token);
+        mat[i][j++] = std::stold(token);
         line.erase(0, pos + delimiter.length());
       }
       if (line.length() > 0) {

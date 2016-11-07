@@ -197,35 +197,38 @@ double Model::RMSE(gk_csr_t *mat) {
 
 double Model::RMSE(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems) {
-  int u, i, ii, nnz;
-  float r_ui;
-  double r_ui_est, diff, rmse;
+  int nnz;
+  double r_ui, r_ui_est, diff, rmse;
 
   nnz = 0;
   rmse = 0;
-  for (u = 0; u < nUsers; u++) {
+
+#pragma omp parallel for reduction(+:rmse, nnz) private(r_ui, r_ui_est, diff)
+  for (int u = 0; u < nUsers; u++) {
+    
     //skip if invalid user
-    auto search = invalidUsers.find(u);
-    if (search != invalidUsers.end()) {
+    if (invalidUsers.count(u) > 0) {
       //found and skip
       continue;
     }
-    for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
-      i = mat->rowind[ii];
+
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      
+      int item = mat->rowind[ii];
       //skip if invalid item
-      search = invalidItems.find(i);
-      if (search != invalidItems.end() || i >= nItems) {
+      if (invalidItems.count(item) > 0 || item >= nItems) {
         //found and skip
         continue;
       }
       
-      r_ui = mat->rowval[ii];
-      r_ui_est = estRating(u, i);
-      diff = r_ui - r_ui_est;
-      rmse += diff*diff;
+      r_ui     = mat->rowval[ii];
+      r_ui_est = estRating(u, item);
+      diff     = r_ui - r_ui_est;
+      rmse     += diff*diff;
       nnz++;
     }
   }
+
   rmse = sqrt(rmse/nnz);
   
   return rmse;
@@ -234,37 +237,47 @@ double Model::RMSE(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
 
 std::pair<int, double> Model::RMSE(gk_csr_t *mat, std::unordered_set<int>& filtItems,
     std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems) {
-  int u, i, ii, nnz;
-  float r_ui;
-  double r_ui_est, diff, rmse;
+  
+  int nnz;
+  double r_ui, r_ui_est, diff, rmse;
   
   nnz = 0;
   rmse = 0;
-  for (u = 0; u < nUsers; u++) {
+
+#pragma omp parallel for reduction(+:rmse, nnz) private(r_ui, r_ui_est, diff)
+  for (int u = 0; u < nUsers; u++) {
+    
     //skip if invalid user
-    auto search = invalidUsers.find(u);
-    if (search != invalidUsers.end()) {
+    if (invalidUsers.count(u) > 0) {
       //found and skip
       continue;
     }
-    for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
-      i = mat->rowind[ii];
+
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      
+      int item = mat->rowind[ii];
+      
       //skip if invalid item
-      search = invalidItems.find(i);
-      if (search != invalidItems.end() || i >= nItems) {
+      if (invalidItems.count(item) > 0 || item >= nItems) {
         //found and skip
         continue;
       }
-      if (filtItems.count(i) == 0) {
+
+      if (filtItems.count(item) == 0) {
+        //filtered item not found, skip
         continue;
       }
-      r_ui = mat->rowval[ii];
-      r_ui_est = estRating(u, i);
-      diff = r_ui - r_ui_est;
-      rmse += diff*diff;
+
+      r_ui     = mat->rowval[ii];
+      r_ui_est = estRating(u, item);
+      diff     = r_ui - r_ui_est;
+      rmse     += diff*diff;
       nnz++;
+
     }
+
   }
+ 
   rmse = sqrt(rmse/nnz);
   
   return std::make_pair(nnz, rmse);
@@ -606,7 +619,20 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
     std::cerr << "\nNo validation data" << std::endl;
     exit(0);
   }
-
+  
+  //nan check
+  if (currObj != currObj || currValRMSE != currValRMSE) {
+    std::cout << "Found nan " << std::endl;
+    //half learning rate
+    if (learnRate > 1e-5) {
+      //replace current model by best model
+      *this = bestModel;
+      learnRate = learnRate/2;
+      return false;
+    } else {
+      return true;
+    };
+  }
     
   if (currValRMSE < bestValRMSE) {
     bestModel = *this;

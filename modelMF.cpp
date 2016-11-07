@@ -137,7 +137,7 @@ void ModelMF::train(const Data &data, Model &bestModel,
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
   std::cout << "\nsvd duration: " << durationSVD.count();
 
-  int u, item, iter, bestIter = -1; 
+  int u, item, iter, bestIter = -1, i; 
   float itemRat;
   double diff, r_ui_est;
   double bestObj, prevObj;
@@ -185,7 +185,7 @@ void ModelMF::train(const Data &data, Model &bestModel,
   //random engine
   std::mt19937 mt(trainSeed);
   //get user-item ratings from training data
-  auto uiRatings = getUIRatings(trainMat, invalidUsers, invalidItems);
+  const auto uiRatings = getUIRatings(trainMat, invalidUsers, invalidItems);
   //index to above uiRatings pair
   std::vector<size_t> uiRatingInds(uiRatings.size());
   std::iota(uiRatingInds.begin(), uiRatingInds.end(), 0);
@@ -200,45 +200,30 @@ void ModelMF::train(const Data &data, Model &bestModel,
     std::shuffle(uiRatingInds.begin(), uiRatingInds.end(), mt);
 
     start = std::chrono::system_clock::now();
-    for (auto&& ind: uiRatingInds) {
+    for (const auto& ind: uiRatingInds) {
       //get user, item and rating
       u       = std::get<0>(uiRatings[ind]);
       item    = std::get<1>(uiRatings[ind]);
       itemRat = std::get<2>(uiRatings[ind]);
       
-      //std::cout << "\nGradCheck u: " << u << " item: " << item;
-      //gradCheck(u, item, itemRat);
-      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      //r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      r_ui_est = 0;
+      for (i = 0; i < facDim; i++) {
+        r_ui_est += uFac[u][i]*iFac[item][i];
+      }
       diff = itemRat - r_ui_est;
-
-      //compute user gradient
-      //computeUGrad(u, item, itemRat, uGrad);
        
-      for (int i = 0; i < facDim; i++) {
-        uGrad[i] = -2.0*diff*iFac[item][i] + 2.0*uReg*uFac[u][i];
-      }
-
       //update user
-      //updateAdaptiveFac(uFac[u], uGrad, uGradsAcc[u]); 
-      //updateFac(uFac[u], uGrad); 
-      for (int i = 0; i < facDim; i++) {
-        uFac[u][i] -= learnRate * uGrad[i];
+      for (i = 0; i < facDim; i++) {
+        uFac[u][i] -= learnRate * (-2.0*diff*iFac[item][i] + 2.0*uReg*uFac[u][i]);
       }
-
-      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
-      diff = itemRat - r_ui_est;
-    
-      //compute item gradient
-      //computeIGrad(u, item, itemRat, iGrad);
-      for (int i = 0; i < facDim; i++) {
-        iGrad[i] = -2.0*diff*uFac[u][i] + 2.0*iReg*iFac[item][i];
-      }
+          
+      //r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      //diff = itemRat - r_ui_est;
 
       //update item
-      //updateAdaptiveFac(iFac[item], iGrad, iGradsAcc[item]);
-      //updateFac(iFac[item], iGrad);
-      for (int i = 0; i < facDim; i++) {
-        iFac[item][i] -= learnRate * iGrad[i];
+      for (i = 0; i < facDim; i++) {
+        iFac[item][i] -= learnRate * (-2.0*diff*uFac[u][i] + 2.0*iReg*iFac[item][i]);
       }
 
     }
@@ -249,16 +234,19 @@ void ModelMF::train(const Data &data, Model &bestModel,
 
     //check objective
     if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
-      /*
+      
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
             bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
         break; 
       }
-      */
+      
+      /*
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
             invalidUsers, invalidItems)) {
         break; 
       }
+      */
+
       if (iter % 100 == 0) {
         std::cout << "ModelMF::train trainSeed: " << trainSeed
                   << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
@@ -372,9 +360,12 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
     Eigen::MatrixXf YTY = Eigen::MatrixXf::Zero(facDim, facDim);
     Eigen::VectorXf b = Eigen::VectorXf::Zero(facDim);
 
+    int u, user, item, uu, ii, j, k;
+    float rating;
+    
     //update users
 #pragma omp for
-    for (int u = 0; u < nUsers; u++) {
+    for (u = 0; u < nUsers; u++) {
       
       //skip if invalid
       if (invalidUsers.count(u) > 0) {
@@ -382,13 +373,15 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
       } 
       YTY.fill(0);
       b.fill(0);
-      for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
-        int item = trainMat->rowind[ii];
-        float rating = trainMat->rowval[ii];
+
+      
+      for (ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+        item = trainMat->rowind[ii];
+        rating = trainMat->rowval[ii];
         if (rating > 0) {
           //update YTY
-          for (int j = 0; j < facDim; j++) {
-            for (int k = 0; k < facDim; k++) {
+          for (j = 0; j < facDim; j++) {
+            for (k = 0; k < facDim; k++) {
               YTY(j, k) += iFac[item][j]*iFac[item][k];
             }
             b(j) += rating*iFac[item][j];
@@ -397,21 +390,21 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
       }
       
       //add u reg
-      for (int j = 0; j < facDim; j++) {
+      for (j = 0; j < facDim; j++) {
         YTY(j,j) += uReg;
       }
       
       //solve YTY * u = b
       Eigen::VectorXf ufac =  YTY.ldlt().solve(b); 
       //Eigen::VectorXf ufac =  YTY.lu().solve(b); 
-      for (int j = 0; j < facDim; j++) {
+      for (j = 0; j < facDim; j++) {
         uFac[u][j] = ufac[j];
       } 
     } 
 
     //update items
 #pragma omp for
-    for (int item = 0; item < nItems; item++) {
+    for (item = 0; item < nItems; item++) {
       //skip if invalid
       if (invalidItems.count(item) > 0) {
         continue;
@@ -420,13 +413,13 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
       YTY.fill(0);
       b.fill(0);
       
-      for (int uu = trainMat->colptr[item]; uu < trainMat->colptr[item+1]; uu++) {
-        int user = trainMat->colind[uu];
-        float rating = trainMat->colval[uu];
+      for (uu = trainMat->colptr[item]; uu < trainMat->colptr[item+1]; uu++) {
+        user = trainMat->colind[uu];
+        rating = trainMat->colval[uu];
         if (rating > 0) {
           //update YTY
-          for (int j = 0; j < facDim; j++) {
-            for (int k = 0; k < facDim; k++) {
+          for (j = 0; j < facDim; j++) {
+            for (k = 0; k < facDim; k++) {
               YTY(j, k) += uFac[user][j]*uFac[user][k];
             }
             b(j) += rating*uFac[user][j];
@@ -435,14 +428,14 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
       }
       
       //add item reg
-      for (int j = 0; j < facDim; j++) {
+      for (j = 0; j < facDim; j++) {
         YTY(j, j) += iReg;
       }
       
       //solve YTY * v = b
       Eigen::VectorXf ifac =  YTY.ldlt().solve(b); 
       //Eigen::VectorXf ifac =  YTY.lu().solve(b); 
-      for (int j = 0; j < facDim; j++) {
+      for (j = 0; j < facDim; j++) {
         iFac[item][j] = ifac[j];
       } 
 
@@ -543,8 +536,10 @@ void ModelMF::hogTrain(const Data &data, Model &bestModel,
   //std::cout << "\nNNZ = " << nnz;
   prevObj = objective(data, invalidUsers, invalidItems);
   bestObj = prevObj;
-  std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " << RMSE(data.trainMat, 
-      invalidUsers, invalidItems);
+  bestValRMSE = prevValRMSE = RMSE(data.valMat, invalidUsers, invalidItems);
+  std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " 
+    << RMSE(data.trainMat, invalidUsers, invalidItems) << " Val RMSE: " 
+    << bestValRMSE;
 
   std::chrono::time_point<std::chrono::system_clock> start, end;
   std::chrono::duration<double> duration;
@@ -565,33 +560,38 @@ void ModelMF::hogTrain(const Data &data, Model &bestModel,
 
   std::cout << "\nTrain NNZ after removing invalid users and items: " 
     << uiRatings.size() << std::endl;
+  
   double subIterDuration = 0;
+  const int indsSz = uiRatingInds.size();
+  
   for (iter = 0; iter < maxIter; iter++) {  
     
     //shuffle the user item rating indexes
     std::shuffle(uiRatingInds.begin(), uiRatingInds.end(), mt);
 
     start = std::chrono::system_clock::now();
-    const int indsSz = uiRatingInds.size();
 #pragma omp parallel for
     for (int k = 0; k < indsSz; k++) {
-      auto ind = uiRatingInds[k];
+      //auto ind = uiRatingInds[k];
       //get user, item and rating
-      int u       = std::get<0>(uiRatings[ind]);
-      int item    = std::get<1>(uiRatings[ind]);
-      float itemRat = std::get<2>(uiRatings[ind]);
+      const int u       = std::get<0>(uiRatings[uiRatingInds[k]]);
+      const int item    = std::get<1>(uiRatings[uiRatingInds[k]]);
+      const float itemRat = std::get<2>(uiRatings[uiRatingInds[k]]);
       
-      double r_ui_est = dotProd(uFac[u], iFac[item], facDim);
-      double diff = itemRat - r_ui_est;
+      //double r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      double r_ui_est = 0;
+      for (int i = 0; i < facDim; i++) {
+        r_ui_est += uFac[u][i]*iFac[item][i];
+      }
+      const double diff = itemRat - r_ui_est;
 
       //update user
       for (int i = 0; i < facDim; i++) {
         uFac[u][i] -= learnRate*(-2.0*diff*iFac[item][i] + 2.0*uReg*uFac[u][i]);
       }
 
-
-      r_ui_est = dotProd(uFac[u], iFac[item], facDim);
-      diff = itemRat - r_ui_est;
+      //r_ui_est = dotProd(uFac[u], iFac[item], facDim);
+      //diff = itemRat - r_ui_est;
     
       //update item
       for (int i = 0; i < facDim; i++) {
@@ -605,12 +605,20 @@ void ModelMF::hogTrain(const Data &data, Model &bestModel,
 
     //check objective
     if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
+      
+      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
+            bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
+        break; 
+      }
+      
+      /*
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
             invalidUsers, invalidItems)) {
         break; 
       }
+      */
 
-      if (iter % 500 == 0) {
+      if (iter % 100 == 0) {
         std::cout << "ModelMF::hogTrain trainSeed: " << trainSeed
                   << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
                   << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)
@@ -619,7 +627,7 @@ void ModelMF::hogTrain(const Data &data, Model &bestModel,
                   << std::endl;
       }
 
-      if (iter % 500 == 0 || iter == maxIter - 1) {
+      if (iter % 100 == 0 || iter == maxIter - 1) {
         std::string modelFName = std::string(data.prefix);
         bestModel.saveFacs(modelFName);
       }

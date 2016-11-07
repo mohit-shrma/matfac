@@ -166,7 +166,11 @@ std::vector<std::pair<double, double>> trainItemsMeanVar(gk_csr_t* mat) {
     double itemMean = 0;
     double itemVar = 0;
     double nRatings = mat->colptr[item+1] - mat->colptr[item]; 
-
+    
+    if (nRatings == 0) {
+      continue;
+    }
+      
     for (int uu = mat->colptr[item]; uu < mat->colptr[item+1]; uu++) {
       int user = mat->colind[uu];
       float rating = mat->colval[uu];
