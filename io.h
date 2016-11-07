@@ -12,6 +12,7 @@
 #include "GKlib.h"
 #include "util.h"
 #include "const.h"
+#include <Eigen/Dense>
 
 void dispVector(std::vector<double>& vec); 
 void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
