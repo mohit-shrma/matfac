@@ -1263,7 +1263,9 @@ Model::Model(const Params& params) {
   trainSeed = -1;
 
   std::default_random_engine generator (params.seed);
-  std::uniform_real_distribution<double> dist (0.0, 1.0);
+  float lb = 0.0, ub = 1.0;
+  std::uniform_real_distribution<double> dist (lb, ub);
+  std::cout << "lb = " << lb << " ub = " << ub << std::endl;
 
   //init user latent factors
   uFac.assign(nUsers, std::vector<double>(facDim, 0));

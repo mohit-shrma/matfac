@@ -24,7 +24,7 @@ Data::Data(const Params& params) {
       trainMat = NULL;
       if (NULL != params.trainMatFile) {
         std::cout << "\nReading partial train matrix 0-indexed... " 
-          << params.trainMatFile;
+          << params.trainMatFile << std::endl;
         trainMat = gk_csr_Read(params.trainMatFile, GK_CSR_FMT_CSR, GK_CSR_IS_VAL, 0);
         //trainMat = gk_csr_Read(params.trainMatFile, GK_CSR_FMT_CSR, 1, 0);
         gk_csr_CreateIndex(trainMat, GK_CSR_COL);

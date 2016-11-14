@@ -530,7 +530,15 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   auto rowColFreq = getRowColFreq(data.trainMat);
   auto userFreq = rowColFreq.first;
   auto itemFreq = rowColFreq.second;
-  
+ 
+  auto usersMeanStd = meanStdDev(userFreq);
+  auto itemsMeanStd = meanStdDev(itemFreq);
+
+  std::cout << "user freq mean: " << usersMeanStd.first << " std: " 
+    << usersMeanStd.second << std::endl;
+  std::cout << "item freq mean: " << itemsMeanStd.first << " std: " 
+    << itemsMeanStd.second << std::endl;
+
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
   std::string modelSign = fullModel.modelSignature();
@@ -584,9 +592,6 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
     
   //get filtered items corresponding to head items
   //auto headItems = getHeadItems(data.trainMat, 0.2); 
-  //filtItems = headItems;
-
-  //add top 5% frequent items to filtItems
 
   
   std::vector<float> freqPcs = {1.0, 5.0, 10, 25, 50};
@@ -682,6 +687,8 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
     }
 
   }
+  
+  std::unordered_set<int> filtItems;  
   /*
   //add filtItems to invalItems
   for (auto&& item: filtItems) {
@@ -806,9 +813,9 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   //predSampUsersRMSEProbPar(data, nUsers, nItems, origModel, fullModel,
   //  svdModel, invalidUsers, invalidItems, filtItems, 5000, params.seed, 
   //  prefix);
-  //predSampUsersRMSEFreqPar(data, nUsers, nItems, origModel, fullModel,
-  //  invalidUsers, invalidItems, filtItems, 5000, params.seed, 
-  //  prefix);
+  predSampUsersRMSEFreqPar(data, nUsers, nItems, origModel, fullModel,
+    invalidUsers, invalidItems, filtItems, 5000, params.seed, 
+    prefix);
     
 }
 
@@ -1869,6 +1876,25 @@ int main(int argc , char* argv[]) {
   return 0;
   */
 
+  /*
+  gk_csr_t *mat = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, 0, 0);
+  int nnz = getNNZ(mat);
+  
+  auto rowColFreq = getRowColFreq(mat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+ 
+  auto usersMeanStd = meanStdDev(userFreq);
+  auto itemsMeanStd = meanStdDev(itemFreq);
+  
+  std::cout << "nnz: " << nnz << std::endl;
+  std::cout << "user freq mean: " << usersMeanStd.first << " std: " 
+    << usersMeanStd.second << std::endl;
+  std::cout << "item freq mean: " << itemsMeanStd.first << " std: " 
+    << itemsMeanStd.second << std::endl;
+  return 0;
+  */
+
   //get passed parameters
   Params params = parse_cmd_line(argc, argv);
   params.display();
@@ -1953,7 +1979,6 @@ int main(int argc , char* argv[]) {
   if (!GK_CSR_IS_VAL) {
     transformBinData(data, params);
   }
-
    
   /* 
   
@@ -1964,7 +1989,9 @@ int main(int argc , char* argv[]) {
   if (!(ans.compare("yes") == 0 || ans.compare("y") == 0)) {
     return 0;
   }
-  
+  */
+
+  /*
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
   svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
@@ -1976,7 +2003,7 @@ int main(int argc , char* argv[]) {
   
   ModelMF bestModel(mfModel);
   std::cout << "\nStarting model train...";
-  mfModel.hogTrain(data, bestModel, invalidUsers, invalidItems);
+  mfModel.train(data, bestModel, invalidUsers, invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
       invalidItems);
   std::cout << "\nValidation RMSE: " << bestModel.RMSE(data.valMat, invalidUsers, 
@@ -1993,7 +2020,7 @@ int main(int argc , char* argv[]) {
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
   std::cout << std::endl << "**** Model parameters ****" << std::endl;
   mfModel.display();
-  */ 
+  */   
 
   computeSampTopNFrmFullModel(data, params);  
   

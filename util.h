@@ -27,6 +27,7 @@ double dotProd(const std::vector<double> &a, const std::vector<double> &b, int s
   return prod;
 }
 double stddev(std::vector<double> v);
+std::pair<double, double> meanStdDev(std::vector<double> v);
 
 void genStats(gk_csr_t *mat, 
     std::vector<std::unordered_set<int>> uISetIgnore, std::string opPrefix);

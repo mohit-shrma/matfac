@@ -271,6 +271,26 @@ bool isInsideBlock(int u, int item, int uStart, int uEnd, int iStart,
 }
 
 
+std::pair<double, double> meanStdDev(std::vector<double> v) {
+  
+  double sum = 0;
+  for (int i = 0; i < v.size(); i++) {
+    sum += v[i];
+  }
+  double mean = sum / v.size();
+  
+  double sq_sum = 0;
+  //subtract mean, compute square sum
+  for (int i = 0; i < v.size(); i++) {
+    sq_sum += (v[i] - mean)*(v[i] - mean);
+  }
+
+  double stdev = sqrt(sq_sum / v.size());
+  return std::make_pair(mean, stdev);
+}
+
+
+
 //compute standard deviation in vector
 double stddev(std::vector<double> v) {
   
