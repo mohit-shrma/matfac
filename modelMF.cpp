@@ -234,18 +234,17 @@ void ModelMF::train(const Data &data, Model &bestModel,
 
     //check objective
     if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
-      
+      /*
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
             bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
         break; 
       }
+      */ 
       
-      /*
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
             invalidUsers, invalidItems)) {
         break; 
       }
-      */
 
       if (iter % 100 == 0) {
         std::cout << "ModelMF::train trainSeed: " << trainSeed
@@ -486,6 +485,249 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
   std::cout << "\nBest model validation RMSE: " << bestModel.RMSE(data.valMat, 
       invalidUsers, invalidItems);
 
+}
+
+
+void ModelMF::trainCCDPP(const Data &data, Model &bestModel, 
+    std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems) {
+
+  //copy passed known factors
+  //uFac = data.origUFac;
+  //iFac = data.origIFac;
+  
+  std::cout << "\nModelMF::trainCCDPP trainSeed: " << trainSeed;
+  
+  int nnz = data.trainNNZ;
+  
+  std::cout << "\nObj b4 svd: " << objective(data) 
+    << " Train RMSE: " << RMSE(data.trainMat) 
+    << " Train nnz: " << nnz << std::endl;
+  
+  std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
+  startSVD = std::chrono::system_clock::now();
+  //initialization with svd of the passed matrix
+  //svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac, false); 
+  
+  endSVD = std::chrono::system_clock::now();
+  std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
+  std::cout << "\nsvd duration: " << durationSVD.count();
+
+  int u, item, iter, bestIter = -1; 
+  float itemRat;
+  double diff, r_ui_est;
+  double bestObj, prevObj;
+  double bestValRMSE, prevValRMSE;
+
+  gk_csr_t *trainMat = data.trainMat;
+
+  //array to hold user and item gradients
+  std::vector<double> uGrad (facDim, 0);
+  std::vector<double> iGrad (facDim, 0);
+ 
+  //vector to hold user gradient accumulation
+  std::vector<std::vector<double>> uGradsAcc (nUsers, 
+      std::vector<double>(facDim,0)); 
+
+  //vector to hold item gradient accumulation
+  std::vector<std::vector<double>> iGradsAcc (nItems, 
+      std::vector<double>(facDim,0)); 
+
+  std::vector<std::unordered_set<int>> uISet(nUsers);
+  genStats(trainMat, uISet, std::to_string(trainSeed));
+  getInvalidUsersItems(trainMat, uISet, invalidUsers, invalidItems);
+ 
+  //std::cout << "\nNNZ = " << nnz;
+  prevObj = objective(data, invalidUsers, invalidItems);
+  bestObj = prevObj;
+  std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " 
+    << RMSE(data.trainMat, invalidUsers, invalidItems);
+
+  std::chrono::time_point<std::chrono::system_clock> start, end;
+  std::chrono::duration<double> duration;
+  
+ std::cout << "\nModelMF::trainCCDPP trainSeed: " << trainSeed 
+    << " invalidUsers: " << invalidUsers.size()
+    << " invalidItems: " << invalidItems.size() << std::endl;
+  
+  //random engine
+  std::mt19937 mt(trainSeed);
+  //get user-item ratings from training data
+  auto uiRatings = getUIRatings(trainMat, invalidUsers, invalidItems);
+  //index to above uiRatings pair
+  std::vector<size_t> uiRatingInds(uiRatings.size());
+  std::iota(uiRatingInds.begin(), uiRatingInds.end(), 0);
+
+  //residual mat
+  gk_csr_t *res = gk_csr_Dup(trainMat);
+
+  std::cout << "\nTrain NNZ after removing invalid users and items: " 
+    << uiRatings.size() << std::endl;
+  double subIterDuration = 0;
+  
+  //fill uFac as 0
+#pragma omp parallel for
+  for (int u = 0; u < nUsers; u++) {
+    for (int k = 0; k < facDim; k++) {
+      uFac[u][k] = 0;
+    }
+  }
+
+
+  for (iter = 0; iter < maxIter; iter++) { 
+
+    start = std::chrono::system_clock::now();
+   
+    double rankFunDec = 0, funDecMax = 0;
+
+    for (int t = 0; t < facDim; t++) {
+      const int k = t;
+      std::vector<double> u_k(nUsers, 0), v_k(nItems, 0);  
+      
+      for (int u = 0; u < nUsers; u++) {
+        u_k[u] = uFac[u][k];
+      }
+
+      for (int item = 0; item < nItems; item++) {
+        v_k[item] = iFac[item][k];
+      }
+      
+      double innerFunDecCur = 0, innerFunDecMax = 0;
+      
+      for (int subIter = 0; subIter < 1000; subIter++) {
+        
+        innerFunDecCur = 0;      
+
+        //update u
+#pragma omp parallel for reduction(+: innerFunDecCur)
+        for (int u = 0; u < nUsers; u++) {
+          if (invalidUsers.count(u) > 0) {
+            continue;
+          }
+          double num = 0, denom = uReg, newV;
+          for (int ii = res->rowptr[u]; ii < res->rowptr[u+1]; ii++) {
+            int item = res->rowind[ii];
+            num += res->rowval[ii] * v_k[item];
+            denom += v_k[item]*v_k[item];
+          }
+          newV = num/denom;
+          innerFunDecCur += denom*(u_k[u] - newV)*(u_k[u] - newV);
+          u_k[u] = newV;
+        }
+
+        //update v
+#pragma omp parallel for reduction(+: innerFunDecCur)
+        for (int item = 0; item < nItems; item++) {
+          if (invalidItems.count(item) > 0) {
+            continue;
+          }
+          double num = 0, denom = iReg, newV;
+          for (int uu = res->colptr[item]; uu < res->colptr[item+1]; uu++) {
+            int u = res->colind[uu];
+            num += res->colval[uu] * u_k[u];
+            denom += u_k[u]*u_k[u];
+          }
+          newV = num/denom;
+          innerFunDecCur += denom*(v_k[item] - newV)*(v_k[item] - newV);
+          v_k[item] = newV;
+        }
+
+        if (innerFunDecCur < funDecMax*EPS) {
+          break;
+        }
+
+        rankFunDec += innerFunDecCur;
+        if (innerFunDecCur > innerFunDecMax) {
+          innerFunDecMax = innerFunDecCur;
+        }
+
+        // the fundec of the first inner iter of the first rank of the first
+        // outer iteration could be too large!!
+        if (!(iter == 0 && k == 0 && subIter == 0)) {
+          if (innerFunDecCur > funDecMax) {
+            funDecMax = innerFunDecCur;
+          }
+        }
+
+      }
+        //update residual res
+#pragma omp parallel for
+        for (int u = 0; u < nUsers; u++) {
+          for (int ii = res->rowptr[u]; ii < res->rowptr[u+1]; ii++) {
+            int item = res->rowind[ii];
+            res->rowval[ii] += uFac[u][k]*iFac[item][k] - u_k[u]*v_k[item]; 
+          }
+        }
+        
+        //update residual res^T
+#pragma omp parallel for
+        for (int item = 0; item < nItems; item++) {
+          for (int uu = res->colptr[item]; uu < res->colptr[item+1]; uu++) {
+            int u = res->colind[uu];
+            res->colval[uu] += uFac[u][k]*iFac[item][k] - u_k[u]*v_k[item]; 
+          }
+        } 
+      
+       //update factors
+#pragma omp parallel for 
+        for (int u = 0; u < nUsers; u++) {
+          uFac[u][k] = u_k[u];
+        }
+
+#pragma omp parallel for
+        for (int item = 0; item < nItems; item++) {
+          iFac[item][k] = v_k[item];
+        }
+
+    }
+
+
+    end = std::chrono::system_clock::now();  
+   
+    duration =  end - start;
+    subIterDuration = duration.count();
+
+    //check objective
+    if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
+      
+      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
+            bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
+        break; 
+      }
+      
+     
+      /*
+      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
+            invalidUsers, invalidItems)) {
+        break; 
+      }
+      */
+      if (iter % 1 == 0) {
+        std::cout << "ModelMF::trainCCDPP trainSeed: " << trainSeed
+                  << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
+                  << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)
+                  << " Val RMSE: " << prevValRMSE
+                  << " subIterDuration: " << subIterDuration
+                  << std::endl;
+      }
+
+      if (iter % 500 == 0 || iter == maxIter - 1) {
+        std::string modelFName = std::string(data.prefix);
+        bestModel.saveFacs(modelFName);
+      }
+
+    }
+     
+  }
+      
+  //save best model found till now
+  std::string modelFName = std::string(data.prefix);
+  bestModel.saveFacs(modelFName);
+
+  std::cout << "\nBest model validation RMSE: " << bestModel.RMSE(data.valMat, 
+      invalidUsers, invalidItems);
+  
+  gk_csr_Free(&res);
 }
 
 

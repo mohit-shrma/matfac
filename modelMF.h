@@ -29,6 +29,9 @@ class ModelMF : public Model {
     virtual void trainALS(const Data& data, Model& bestModel,
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems) ;
+    void trainCCDPP(const Data& data, Model& bestModel,
+        std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems) ;
     void hogTrain(const Data& data, Model& bestModel,
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems) ;
