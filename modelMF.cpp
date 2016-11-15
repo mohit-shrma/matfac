@@ -246,7 +246,7 @@ void ModelMF::train(const Data &data, Model &bestModel,
         break; 
       }
 
-      if (iter % 100 == 0) {
+      if (iter % DISP_ITER == 0) {
         std::cout << "ModelMF::train trainSeed: " << trainSeed
                   << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
                   << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)
@@ -255,7 +255,7 @@ void ModelMF::train(const Data &data, Model &bestModel,
                   << std::endl;
       }
 
-      if (iter % 500 == 0 || iter == maxIter - 1) {
+      if (iter % DISP_ITER == 0 || iter == maxIter - 1) {
         std::string modelFName = std::string(data.prefix);
         bestModel.saveFacs(modelFName);
       }
@@ -460,7 +460,7 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
         break; 
       }
       
-      if (iter % 500 == 0) {
+      if (iter % DISP_ITER == 0) {
         std::cout << "ModelMF::trainALS trainSeed: " << trainSeed
                   << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
                   << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)
@@ -469,7 +469,7 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
                   << std::endl;
       }
 
-      if (iter % 500 == 0 || iter == maxIter - 1) {
+      if (iter % DISP_ITER == 0 || iter == maxIter - 1) {
         std::string modelFName = std::string(data.prefix);
         bestModel.saveFacs(modelFName);
       }
@@ -594,7 +594,7 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
       
       double innerFunDecCur = 0, innerFunDecMax = 0;
       
-      for (int subIter = 0; subIter < 1000; subIter++) {
+      for (int subIter = 0; subIter < 5; subIter++) {
         
         innerFunDecCur = 0;      
 
@@ -702,7 +702,7 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
         break; 
       }
       */
-      if (iter % 1 == 0) {
+      if (iter % DISP_ITER == 0) {
         std::cout << "ModelMF::trainCCDPP trainSeed: " << trainSeed
                   << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
                   << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)
@@ -711,7 +711,7 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
                   << std::endl;
       }
 
-      if (iter % 500 == 0 || iter == maxIter - 1) {
+      if (iter % DISP_ITER == 0 || iter == maxIter - 1) {
         std::string modelFName = std::string(data.prefix);
         bestModel.saveFacs(modelFName);
       }
@@ -860,7 +860,7 @@ void ModelMF::hogTrain(const Data &data, Model &bestModel,
       }
       */
 
-      if (iter % 100 == 0) {
+      if (iter % DISP_ITER == 0) {
         std::cout << "ModelMF::hogTrain trainSeed: " << trainSeed
                   << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
                   << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)
@@ -869,7 +869,7 @@ void ModelMF::hogTrain(const Data &data, Model &bestModel,
                   << std::endl;
       }
 
-      if (iter % 100 == 0 || iter == maxIter - 1) {
+      if (iter % DISP_ITER == 0 || iter == maxIter - 1) {
         std::string modelFName = std::string(data.prefix);
         bestModel.saveFacs(modelFName);
       }

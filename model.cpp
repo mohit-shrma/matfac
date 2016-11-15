@@ -963,7 +963,7 @@ double Model::fullLowRankErr(const Data& data) {
   for (int u = 0; u < nUsers; u++) {
     for (int item = 0; item < nItems; item++) {
       r_ui_est = estRating(u, item);
-      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.facDim);
       diff = r_ui_orig - r_ui_est;
       rmse += diff*diff;
     }
@@ -992,7 +992,7 @@ double Model::fullLowRankErr(const Data& data,
         continue;
       }
       r_ui_est = estRating(u, item);
-      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.facDim);
       diff = r_ui_orig - r_ui_est;
       rmse += diff*diff;
     }
@@ -1039,7 +1039,7 @@ double Model::subMatKnownRankErr(const Data& data, int uStart, int uEnd,
   for (int u = uStart; u <= uEnd; u++) {
     for (int item = iStart; item <= iEnd; item++) {
       r_ui_est = estRating(u, item);
-      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.facDim);
       diff = r_ui_orig - r_ui_est;
       rmse += diff*diff;
     }
@@ -1069,7 +1069,7 @@ double Model::subMatKnownRankNonObsErr(const Data& data, int uStart, int uEnd,
         continue;
       }
       r_ui_est = estRating(u, item);
-      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.facDim);
       diff = r_ui_orig - r_ui_est;
       seKnown += diff*diff;
       nnzKnown++;
@@ -1079,7 +1079,7 @@ double Model::subMatKnownRankNonObsErr(const Data& data, int uStart, int uEnd,
   for (u = uStart; u < uEnd; u++) {
     for (item = iStart; item < iEnd; item++) {
       r_ui_est = estRating(u, item);
-      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.facDim);
       diff = r_ui_orig - r_ui_est;
       seUnknown += diff*diff;
     }
@@ -1122,7 +1122,7 @@ double Model::subMatKnownRankNonObsErrWSet(const Data& data, int uStart, int uEn
         continue;
       }
       r_ui_est = estRating(u, item);
-      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.facDim);
       diff = r_ui_orig - r_ui_est;
       seKnown += diff*diff;
       nnzKnown++;
@@ -1142,7 +1142,7 @@ double Model::subMatKnownRankNonObsErrWSet(const Data& data, int uStart, int uEn
         continue;
       }
       r_ui_est = estRating(u, item);
-      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.facDim);
       diff = r_ui_orig - r_ui_est;
       seUnknown += diff*diff;
       nnzUnknown++;
@@ -1263,7 +1263,7 @@ Model::Model(const Params& params) {
   trainSeed = -1;
 
   std::default_random_engine generator (params.seed);
-  float lb = 0.0, ub = 1.0;
+  float lb = -0.01, ub = 0.01;
   std::uniform_real_distribution<double> dist (lb, ub);
   std::cout << "lb = " << lb << " ub = " << ub << std::endl;
 

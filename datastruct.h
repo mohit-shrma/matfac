@@ -16,60 +16,54 @@ class Params {
     int nItems;
     int facDim;
     int maxIter;
-    int origFacDim;
     int svdFacDim;
-    int gluSz;
     int seed;
     float uReg;
     float iReg;
     float learnRate;
     float rhoRMS;
     float alpha;
-    char *trainMatFile;
-    char *testMatFile;
-    char *valMatFile;
-    char *graphMatFile;
-    char *origUFacFile;
-    char *origIFacFile;
-    char *initUFacFile;
-    char *initIFacFile;
-    char *prefix;
+    const char *trainMatFile;
+    const char *testMatFile;
+    const char *valMatFile;
+    const char *graphMatFile;
+    const char *origUFacFile;
+    const char *origIFacFile;
+    const char *initUFacFile;
+    const char *initIFacFile;
+    const char *prefix;
 
-    Params(int p_nUsers, int p_nItems, int p_facDim, int p_maxIter, 
-        int p_origFacDim, int p_svdFacDim, int p_seed,
-        float p_uReg, float p_iReg,  float p_learnRate, float p_rhoRMS, 
-        float p_alpha,
-        char *p_trainMatFile, char *p_testMatFile, char *p_valMatFile,
-        char *p_graphMatFile,
-        char *p_origUFacFile, 
-        char *p_origIFacFile, char *p_initUFacFile, char *p_initIFacFile,
-        char *p_prefix)
-      : nUsers(p_nUsers), nItems(p_nItems), facDim(p_facDim), maxIter(p_maxIter),
-      origFacDim(p_origFacDim), svdFacDim(p_svdFacDim), seed(p_seed),
-      uReg(p_uReg), iReg(p_iReg), learnRate(p_learnRate), rhoRMS(p_rhoRMS), 
-      alpha(p_alpha),
-      trainMatFile(p_trainMatFile), testMatFile(p_testMatFile), 
-      valMatFile(p_valMatFile), graphMatFile(p_graphMatFile),
-      origUFacFile(p_origUFacFile), origIFacFile(p_origIFacFile), 
-      initUFacFile(p_initUFacFile), initIFacFile(p_initIFacFile),
-      prefix(p_prefix){}
+    Params(int facDim, int maxIter, int svdFacDim, int seed,
+        float uReg, float iReg,  float learnRate, float rhoRMS, 
+        float alpha, std::string trainMatFile, std::string testMatFile, std::string valMatFile,
+        std::string graphMatFile, std::string origUFacFile, std::string origIFacFile, 
+        std::string initUFacFile, std::string initIFacFile, std::string prefix)
+      : nUsers(-1), nItems(-1), facDim(facDim), maxIter(maxIter), svdFacDim(svdFacDim), seed(seed),
+      uReg(uReg), iReg(iReg), learnRate(learnRate), rhoRMS(rhoRMS), 
+      alpha(alpha), trainMatFile(trainMatFile.c_str()), testMatFile(testMatFile.c_str()), 
+      valMatFile(valMatFile.c_str()), 
+      graphMatFile(graphMatFile.empty()?NULL:graphMatFile.c_str()),
+      origUFacFile(origUFacFile.empty()?NULL:origUFacFile.c_str()), 
+      origIFacFile(origIFacFile.empty()?NULL:origIFacFile.c_str()), 
+      initUFacFile(initUFacFile.empty()?NULL:initUFacFile.c_str()), 
+      initIFacFile(initIFacFile.empty()?NULL:initIFacFile.c_str()),
+      prefix(prefix.c_str()){}
 
     void display() {
       std::cout << "*** PARAMETERS ***" << std::endl;
       std::cout << "nUsers: " << nUsers << " nItems: " << nItems << std::endl;
-      std::cout << "facDim: " << facDim << " origFacDim: " << origFacDim 
-        << " svdFacDim: " << svdFacDim << std::endl;
+      std::cout << "facDim: " << facDim << " svdFacDim: " << svdFacDim << std::endl;
       std::cout << "maxIter: " << maxIter << std::endl;
       std::cout << "uReg: " << uReg << " iReg: " << iReg << std::endl;
       std::cout << "learnRate: " << learnRate << std::endl;
       std::cout << "trainMat: " << trainMatFile << std::endl;
       std::cout << "testMat: " << testMatFile << std::endl;
       std::cout << "valMat: " << valMatFile << std::endl;
-      std::cout << "graphMat: " << graphMatFile << std::endl;
-      std::cout << "origUFac: " << origUFacFile << std::endl;
-      std::cout << "origIFac: " << origIFacFile << std::endl;
-      std::cout << "initUFac: " << initUFacFile << std::endl;
-      std::cout << "initIFac: " << initIFacFile << std::endl;
+      std::cout << "graphMat: " << (NULL != graphMatFile? graphMatFile : " ") << std::endl;
+      std::cout << "origUFac: " << (NULL != origUFacFile? origUFacFile : " ") << std::endl;
+      std::cout << "origIFac: " << (NULL != origIFacFile? origIFacFile : " ") << std::endl;
+      std::cout << "initUFac: " << (NULL != initUFacFile? initUFacFile : " ") << std::endl;
+      std::cout << "initIFac: " << (NULL != initIFacFile? initIFacFile : " ") << std::endl;
     }
 }; 
 
@@ -77,7 +71,7 @@ class Params {
  class Data {
 
   public:
-    char *prefix;
+    const char *prefix;
 
     gk_csr_t *trainMat;
     gk_csr_t *testMat;
@@ -87,7 +81,7 @@ class Params {
     std::vector<std::vector<double>> origUFac;
     std::vector<std::vector<double>> origIFac;
     
-    int origFacDim;
+    int facDim;
     int trainNNZ;
     int nUsers;
     int nItems;
@@ -114,7 +108,6 @@ class Params {
       testMat    = p_testMat;
       nUsers     = trainMat->nrows;
       nItems     = trainMat->ncols;
-      origFacDim = 0;
     }
     
     Data(const Params& params); 
