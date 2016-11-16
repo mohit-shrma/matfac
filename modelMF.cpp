@@ -234,17 +234,18 @@ void ModelMF::train(const Data &data, Model &bestModel,
 
     //check objective
     if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
-      /*
+      
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
             bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
         break; 
       }
-      */ 
-      
+       
+      /* 
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
             invalidUsers, invalidItems)) {
         break; 
       }
+      */
 
       if (iter % DISP_ITER == 0) {
         std::cout << "ModelMF::train trainSeed: " << trainSeed
@@ -448,17 +449,18 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
 
     //check objective
     if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
-      /*
+      
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
             bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
         break; 
       }
-      */
       
+      /*
       if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
             invalidUsers, invalidItems)) {
         break; 
       }
+      */
       
       if (iter % DISP_ITER == 0) {
         std::cout << "ModelMF::trainALS trainSeed: " << trainSeed
@@ -618,7 +620,7 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
         //update v
 #pragma omp parallel for reduction(+: innerFunDecCur)
         for (int item = 0; item < nItems; item++) {
-          if (invalidItems.count(item) > 0) {
+          if (invalidItems.count(item) > 0 || item >= res->ncols) {
             continue;
           }
           double num = 0, denom = iReg, newV;
@@ -662,6 +664,7 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
         //update residual res^T
 #pragma omp parallel for
         for (int item = 0; item < nItems; item++) {
+          if (item >= res->ncols) {continue;}
           for (int uu = res->colptr[item]; uu < res->colptr[item+1]; uu++) {
             int u = res->colind[uu];
             res->colval[uu] += uFac[u][k]*iFac[item][k] - u_k[u]*v_k[item]; 
