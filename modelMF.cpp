@@ -256,7 +256,7 @@ void ModelMF::train(const Data &data, Model &bestModel,
                   << std::endl;
       }
 
-      if (iter % DISP_ITER == 0 || iter == maxIter - 1) {
+      if (iter % SAVE_ITER == 0 || iter == maxIter - 1) {
         std::string modelFName = std::string(data.prefix);
         bestModel.saveFacs(modelFName);
       }
@@ -327,6 +327,7 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
   //std::cout << "\nNNZ = " << nnz;
   prevObj = objective(data, invalidUsers, invalidItems);
   bestObj = prevObj;
+  bestValRMSE = prevValRMSE = RMSE(data.valMat, invalidUsers, invalidItems);
   std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " 
     << RMSE(data.trainMat, invalidUsers, invalidItems);
 
@@ -471,7 +472,7 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
                   << std::endl;
       }
 
-      if (iter % DISP_ITER == 0 || iter == maxIter - 1) {
+      if (iter % SAVE_ITER == 0 || iter == maxIter - 1) {
         std::string modelFName = std::string(data.prefix);
         bestModel.saveFacs(modelFName);
       }
@@ -542,6 +543,7 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
   //std::cout << "\nNNZ = " << nnz;
   prevObj = objective(data, invalidUsers, invalidItems);
   bestObj = prevObj;
+  bestValRMSE = prevValRMSE = RMSE(data.valMat, invalidUsers, invalidItems);
   std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " 
     << RMSE(data.trainMat, invalidUsers, invalidItems);
 
@@ -635,7 +637,7 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
         }
 
         if (innerFunDecCur < funDecMax*EPS) {
-          break;
+          //break;
         }
 
         rankFunDec += innerFunDecCur;
@@ -714,7 +716,7 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
                   << std::endl;
       }
 
-      if (iter % DISP_ITER == 0 || iter == maxIter - 1) {
+      if (iter % SAVE_ITER == 0 || iter == maxIter - 1) {
         std::string modelFName = std::string(data.prefix);
         bestModel.saveFacs(modelFName);
       }
@@ -872,7 +874,7 @@ void ModelMF::hogTrain(const Data &data, Model &bestModel,
                   << std::endl;
       }
 
-      if (iter % DISP_ITER == 0 || iter == maxIter - 1) {
+      if (iter % SAVE_ITER == 0 || iter == maxIter - 1) {
         std::string modelFName = std::string(data.prefix);
         bestModel.saveFacs(modelFName);
       }

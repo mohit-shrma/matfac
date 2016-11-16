@@ -3,6 +3,7 @@
 
 #define OBJ_ITER 1 
 #define DISP_ITER 1 
+#define SAVE_ITER 50 
 #define CHANCE_ITER 500
 #define EPS 1e-5
 #define MAX_PR_ITER 10000

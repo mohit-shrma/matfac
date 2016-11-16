@@ -835,20 +835,19 @@ double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
 double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems) {
 
-  int u, ii, item;
-  float itemRat;
-  double rmse = 0, uRegErr = 0, iRegErr = 0, obj = 0, diff = 0;
+  double rmse = 0, uRegErr = 0, iRegErr = 0, obj = 0;
   gk_csr_t *trainMat = data.trainMat;
 
-  for (u = 0; u < nUsers; u++) {
+#pragma omp parallel for reduction(+:rmse, uRegErr)
+  for (int u = 0; u < nUsers; u++) {
     //skip if invalid user
     auto search = invalidUsers.find(u);
     if (search != invalidUsers.end()) {
       //found and skip
       continue;
     }
-    for (ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
-      item = trainMat->rowind[ii];
+    for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+      int item = trainMat->rowind[ii];
       //skip if invalid item
       search = invalidItems.find(item);
       if (search != invalidItems.end()) {
@@ -856,15 +855,16 @@ double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
         continue;
       }
 
-      itemRat = trainMat->rowval[ii];
-      diff = itemRat - estRating(u, item);
+      float itemRat = trainMat->rowval[ii];
+      double diff = itemRat - estRating(u, item);
       rmse += diff*diff;
     }
     uRegErr += dotProd(uFac[u], uFac[u], facDim);
   }
   uRegErr = uRegErr*uReg;
   
-  for (item = 0; item < nItems; item++) {
+#pragma omp parallel for reduction(+: iRegErr)
+  for (int item = 0; item < nItems; item++) {
     //skip if invalid item
     auto search = invalidItems.find(item);
     if (search != invalidItems.end()) {
@@ -875,7 +875,7 @@ double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
   }
   iRegErr = iRegErr*iReg;
 
-  obj = rmse;// + uRegErr + iRegErr;
+  obj = rmse + uRegErr + iRegErr;
     
   //std::cout <<"\nrmse: " << std::scientific << rmse << " uReg: " << uRegErr << " iReg: " << iRegErr ; 
 
