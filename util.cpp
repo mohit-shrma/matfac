@@ -1034,3 +1034,25 @@ int getMaxItemInd(gk_csr_t* mat) {
   return maxInd;
 }
 
+
+void parBlockShuffle(std::vector<size_t>& arr, std::mt19937& mt) {
+  
+  int arrSz = arr.size();
+
+#pragma omp parallel 
+{
+  int tID = omp_get_thread_num();
+  int nThreads = omp_get_num_threads();
+  int blockSz = arrSz/nThreads;
+  auto start = arr.begin() + tID*blockSz;
+  auto end = arr.begin() + (tID+1)*blockSz;
+  if ((tID+1)*blockSz  >= arrSz) {
+    end = arr.end();
+  }
+  std::shuffle(start, end, mt);
+}
+
+}
+
+
+

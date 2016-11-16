@@ -561,7 +561,10 @@ int main(int argc , char* argv[]) {
   mfModel.display();
 
   //computeSampTopNFrmFullModel(data, params);  
-  
+  if (!FLAGS_origufac.empty()) {
+    std::cout << "\nFull RMSE: " << 
+      bestModel.fullLowRankErr(data, invalidUsers, invalidItems) << std::endl;
+  }
   //testTailLocRec(data, params);
   //testTailRec(data, params);
   //testRec(data, params);

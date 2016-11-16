@@ -196,8 +196,12 @@ void ModelMF::train(const Data &data, Model &bestModel,
   double subIterDuration = 0;
   for (iter = 0; iter < maxIter; iter++) {  
     
-    //shuffle the user item rating indexes
-    std::shuffle(uiRatingInds.begin(), uiRatingInds.end(), mt);
+    if (iter % 10 == 0) {
+      //shuffle the user item rating indexes
+      std::shuffle(uiRatingInds.begin(), uiRatingInds.end(), mt);
+    } else {
+      parBlockShuffle(uiRatingInds, mt);
+    }
 
     start = std::chrono::system_clock::now();
     for (const auto& ind: uiRatingInds) {
@@ -235,18 +239,18 @@ void ModelMF::train(const Data &data, Model &bestModel,
     //check objective
     if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
       
-      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
-            bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
-        break; 
+      if (GK_CSR_IS_VAL) {
+        if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
+              bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
+          break; 
+        }
+      } else {
+        if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
+              invalidUsers, invalidItems)) {
+          break; 
+        }
       }
        
-      /* 
-      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
-            invalidUsers, invalidItems)) {
-        break; 
-      }
-      */
-
       if (iter % DISP_ITER == 0) {
         std::cout << "ModelMF::train trainSeed: " << trainSeed
                   << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
@@ -451,17 +455,17 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
     //check objective
     if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
       
-      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
-            bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
-        break; 
+      if (GK_CSR_IS_VAL) {
+        if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
+              bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
+          break; 
+        }
+      } else {
+        if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
+              invalidUsers, invalidItems)) {
+          break; 
+        }
       }
-      
-      /*
-      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
-            invalidUsers, invalidItems)) {
-        break; 
-      }
-      */
       
       if (iter % DISP_ITER == 0) {
         std::cout << "ModelMF::trainALS trainSeed: " << trainSeed
@@ -695,18 +699,18 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
     //check objective
     if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
       
-      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
-            bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
-        break; 
+      if (GK_CSR_IS_VAL) {
+        if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
+              bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
+          break; 
+        }
+      } else {
+        if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
+              invalidUsers, invalidItems)) {
+          break; 
+        }
       }
-      
      
-      /*
-      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
-            invalidUsers, invalidItems)) {
-        break; 
-      }
-      */
       if (iter % DISP_ITER == 0) {
         std::cout << "ModelMF::trainCCDPP trainSeed: " << trainSeed
                   << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
@@ -813,8 +817,12 @@ void ModelMF::hogTrain(const Data &data, Model &bestModel,
   
   for (iter = 0; iter < maxIter; iter++) {  
     
-    //shuffle the user item rating indexes
-    std::shuffle(uiRatingInds.begin(), uiRatingInds.end(), mt);
+    if (iter % 10 == 0) {
+      //shuffle the user item rating indexes
+      std::shuffle(uiRatingInds.begin(), uiRatingInds.end(), mt);
+    } else {
+      parBlockShuffle(uiRatingInds, mt);
+    }
 
     start = std::chrono::system_clock::now();
 #pragma omp parallel for
@@ -852,18 +860,18 @@ void ModelMF::hogTrain(const Data &data, Model &bestModel,
 
     //check objective
     if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
-      
-      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
-            bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
-        break; 
+     
+      if (GK_CSR_IS_VAL) {
+        if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
+              bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
+          break; 
+        }
+      } else {
+        if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
+              invalidUsers, invalidItems)) {
+          break; 
+        }
       }
-      
-      /*
-      if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
-            invalidUsers, invalidItems)) {
-        break; 
-      }
-      */
 
       if (iter % DISP_ITER == 0) {
         std::cout << "ModelMF::hogTrain trainSeed: " << trainSeed

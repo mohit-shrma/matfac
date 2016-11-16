@@ -8,6 +8,7 @@
 #include <fstream>
 #include <cmath>
 #include <tuple>
+#include <omp.h>
 #include "GKlib.h"
 
 std::unordered_set<int> getHeadItems(gk_csr_t *mat, float pc);
@@ -73,5 +74,6 @@ int setUnion(std::unordered_set<int>& a, std::unordered_set<int>& b);
 float pearsonCorr(std::vector<float>& x, std::vector<float>& y, float xMean, 
     float yMean);
 int getMaxItemInd(gk_csr_t* mat);
+void parBlockShuffle(std::vector<size_t>& arr, std::mt19937& mt);
 #endif
 
