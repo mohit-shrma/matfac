@@ -834,6 +834,7 @@ int sparseCoRatedUsers(gk_csr_t* mat, int i, int j) {
 }
 
 
+//binary search in sorted array with bith ub and lb included
 int binSearch(int *sortedArr, int key, int ub, int lb) {
   
   int ind = -1;
@@ -853,7 +854,6 @@ int binSearch(int *sortedArr, int key, int ub, int lb) {
   return ind;
 }
 
-
 //return no. of co-rated users for the items
 int coRatedUsersFrmSortedMat(gk_csr_t* mat, int i, int j) {
   int coUsers = 0;
@@ -867,7 +867,7 @@ int coRatedUsersFrmSortedMat(gk_csr_t* mat, int i, int j) {
   for (int jj = mat->colptr[i]; jj < mat->colptr[i+1]; jj++) {
     int user   = mat->colind[jj];
     int lb = mat->colptr[j];
-    int ub = mat->colptr[j+1];
+    int ub = mat->colptr[j+1]-1;
     if (binSearch(mat->colind, user, ub, lb) != -1) {
       coUsers++;
     }

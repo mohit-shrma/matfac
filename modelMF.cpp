@@ -869,12 +869,11 @@ void ModelMF::trainCCD(const Data &data, Model &bestModel,
           double upd = (newV - uFac[u][k])*iFac[item][k]; 
           res->rowval[ii] -= upd;
           //update residual in item view for the user
-          for (int uu = res->colptr[item]; uu < res->colptr[item+1]; uu++) {
-            int currU = res->colind[uu];
-            if (currU == u) {
-              res->colval[uu] -= upd;
-              break;
-            } 
+          int lb = res->colptr[item];
+          int ub = res->colptr[item+1]-1;
+          int binInd = binSearch(res->colind, u, ub, lb);
+          if (binInd != -1) {
+            res->colval[binInd] -= upd;          
           }
         }
         
@@ -905,12 +904,11 @@ void ModelMF::trainCCD(const Data &data, Model &bestModel,
           double upd = (newV - iFac[item][k])*uFac[u][k]; 
           res->colval[uu] -= upd;
           //update residual in user view
-          for (int ii = res->rowptr[u]; ii < res->rowptr[u+1]; ii++) {
-            int currItem = res->rowind[ii];
-            if (currItem == item) {
-              res->rowval[ii] -= upd;
-              break;
-            }
+          int lb = res->rowptr[u];
+          int ub = res->rowptr[u+1]-1;
+          int binInd = binSearch(res->rowind, item, ub, lb);
+          if (binInd !=  -1) {
+            res->rowval[binInd] -= upd;
           }
         }
 

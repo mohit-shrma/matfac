@@ -75,5 +75,6 @@ float pearsonCorr(std::vector<float>& x, std::vector<float>& y, float xMean,
     float yMean);
 int getMaxItemInd(gk_csr_t* mat);
 void parBlockShuffle(std::vector<size_t>& arr, std::mt19937& mt);
+int binSearch(int *sortedArr, int key, int ub, int lb);
 #endif
 
