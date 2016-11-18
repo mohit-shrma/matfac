@@ -504,8 +504,8 @@ int main(int argc , char* argv[]) {
    //ModelMF mfModel(params, params.initUFacFile, 
   //    params.initIFacFile, params.seed);
  
-  
-  std::cout << "ifUISorted: " << checkIfUISorted(data.trainMat) << std::endl ;
+  bool isUISorted = checkIfUISorted(data.trainMat);
+  std::cout << "ifUISorted: " << isUISorted << std::endl;
   
   if (!GK_CSR_IS_VAL) {
     transformBinData(data, params);
@@ -540,7 +540,11 @@ int main(int argc , char* argv[]) {
   if (FLAGS_method == "ccd++") { 
     mfModel.trainCCDPP(data, bestModel, invalidUsers, invalidItems);
   } else if (FLAGS_method == "ccd") {
-    mfModel.trainCCD(data, bestModel, invalidUsers, invalidItems);
+    if (isUISorted) {
+      mfModel.trainCCD(data, bestModel, invalidUsers, invalidItems);
+    } else {
+      std::cerr << "Need sorted train mat for ccd." << std::endl;
+    }
   } else if (FLAGS_method == "als") {
     mfModel.trainALS(data, bestModel, invalidUsers, invalidItems);
   } else if (FLAGS_method== "hogsgd")  {
