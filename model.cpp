@@ -82,6 +82,7 @@ void Model::load(std::string prefix) {
 
 
 void Model::saveFacs(std::string prefix) {
+  std::cout << "Saving model... " << prefix << std::endl;
   std::string modelSign = modelSignature();
   //save user latent factors
   std::string uFacName = prefix + "_uFac_" + modelSign + ".mat";
@@ -841,17 +842,14 @@ double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
 #pragma omp parallel for reduction(+:rmse, uRegErr)
   for (int u = 0; u < nUsers; u++) {
     //skip if invalid user
-    auto search = invalidUsers.find(u);
-    if (search != invalidUsers.end()) {
+    if (invalidUsers.count(u) > 0) {
       //found and skip
       continue;
     }
     for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
       int item = trainMat->rowind[ii];
       //skip if invalid item
-      search = invalidItems.find(item);
-      if (search != invalidItems.end()) {
-        //found and skip
+      if (invalidItems.count(item) > 0) {
         continue;
       }
 
@@ -866,8 +864,7 @@ double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
 #pragma omp parallel for reduction(+: iRegErr)
   for (int item = 0; item < nItems; item++) {
     //skip if invalid item
-    auto search = invalidItems.find(item);
-    if (search != invalidItems.end()) {
+    if (invalidItems.count(item) > 0) {
       //found and skip
       continue;
     }
@@ -877,7 +874,8 @@ double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
 
   obj = rmse + uRegErr + iRegErr;
     
-  //std::cout <<"\nrmse: " << std::scientific << rmse << " uReg: " << uRegErr << " iReg: " << iRegErr ; 
+  //std::cout <<"\nrmse: " << std::scientific << rmse << " uReg: " << uRegErr 
+  //  << " iReg: " << iRegErr << std::endl; 
 
   return obj;
 }

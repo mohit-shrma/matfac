@@ -77,4 +77,5 @@ void writeMatBin(std::vector<std::vector<double>>& mat, int nrows, int ncols,
     const char *opFileName);
 void readMatBin(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
     const char *opFileName);
+void writeTriplets(gk_csr_t *mat, const char *fName);
 #endif

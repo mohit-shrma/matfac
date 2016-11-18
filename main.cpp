@@ -36,7 +36,7 @@ DEFINE_string(origifac, "", "original item factors");
 DEFINE_string(initufac, "", "initial user factors");
 DEFINE_string(initifac, "", "initial item factors");
 DEFINE_string(prefix, "", "prefix to prepend to logs n factors");
-DEFINE_string(method, "sgd", "sgd|hogsgd|als|ccd++");
+DEFINE_string(method, "sgd", "sgd|hogsgd|als|ccd|ccd++");
 
 Params parse_cmd_line(int argc, char *argv[]) {
  
@@ -509,6 +509,10 @@ int main(int argc , char* argv[]) {
   
   if (!GK_CSR_IS_VAL) {
     transformBinData(data, params);
+    //writeTriplets(data.trainMat, "train.triplet"); 
+    //writeTriplets(data.testMat, "test.triplet");
+    //writeTriplets(data.valMat, "val.triplet");
+    //exit(0);
   }
    
   /* 
@@ -535,6 +539,8 @@ int main(int argc , char* argv[]) {
   std::cout << "\nStarting model train...";
   if (FLAGS_method == "ccd++") { 
     mfModel.trainCCDPP(data, bestModel, invalidUsers, invalidItems);
+  } else if (FLAGS_method == "ccd") {
+    mfModel.trainCCD(data, bestModel, invalidUsers, invalidItems);
   } else if (FLAGS_method == "als") {
     mfModel.trainALS(data, bestModel, invalidUsers, invalidItems);
   } else if (FLAGS_method== "hogsgd")  {
@@ -543,6 +549,8 @@ int main(int argc , char* argv[]) {
     mfModel.train(data, bestModel, invalidUsers, invalidItems);
   }
 
+  std::cout << "\nTrain RMSE: " << bestModel.RMSE(data.trainMat, invalidUsers, 
+      invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
       invalidItems);
   std::cout << "\nValidation RMSE: " << bestModel.RMSE(data.valMat, invalidUsers, 
