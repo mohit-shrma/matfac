@@ -520,8 +520,7 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
   std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
   std::cout << "\nsvd duration: " << durationSVD.count();
 
-  int u, item, iter, bestIter = -1; 
-  float itemRat;
+  int iter, bestIter = -1; 
   double diff, r_ui_est;
   double bestObj, prevObj;
   double bestValRMSE, prevValRMSE;
@@ -587,7 +586,6 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
   for (iter = 0; iter < maxIter; iter++) { 
 
     start = std::chrono::system_clock::now();
-   
 
     for (int t = 0; t < facDim; t++) {
       const int k = t;
@@ -602,9 +600,33 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
       for (int item = 0; item < nItems; item++) {
         v_k[item] = iFac[item][k];
       }
-      
-       // std::cout << "Rank " << k << " obj " 
-       //   << objective(data, invalidUsers, invalidItems) << std::endl;
+     
+      //update residual
+      if (iter > 0) {
+          //update residual res
+#pragma omp parallel for
+          for (int u = 0; u < nUsers; u++) {
+            if (invalidUsers.count(u) > 0) {
+              continue;
+            }
+            for (int ii = res->rowptr[u]; ii < res->rowptr[u+1]; ii++) {
+              int item = res->rowind[ii];
+              res->rowval[ii] += uFac[u][k]*iFac[item][k]; 
+            }
+          }
+          
+          //update residual res^T
+#pragma omp parallel for
+          for (int item = 0; item < nItems; item++) {
+            if (invalidItems.count(item) > 0 || item >= res->ncols) {
+              continue;
+            }
+            for (int uu = res->colptr[item]; uu < res->colptr[item+1]; uu++) {
+              int u = res->colind[uu];
+              res->colval[uu] += uFac[u][k]*iFac[item][k]; 
+            }
+          } 
+      }     
       
       for (int subIter = 0; subIter < 5; subIter++) {
         
@@ -645,19 +667,24 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
         //update residual res
 #pragma omp parallel for
         for (int u = 0; u < nUsers; u++) {
+          if (invalidUsers.count(u) > 0) {
+            continue;
+          }
           for (int ii = res->rowptr[u]; ii < res->rowptr[u+1]; ii++) {
             int item = res->rowind[ii];
-            res->rowval[ii] += uFac[u][k]*iFac[item][k] - u_k[u]*v_k[item]; 
+            res->rowval[ii] -= u_k[u]*v_k[item]; 
           }
         }
         
         //update residual res^T
 #pragma omp parallel for
         for (int item = 0; item < nItems; item++) {
-          if (item >= res->ncols) {continue;}
+          if (invalidItems.count(item) > 0 || item >= res->ncols) {
+            continue;
+          }
           for (int uu = res->colptr[item]; uu < res->colptr[item+1]; uu++) {
             int u = res->colind[uu];
-            res->colval[uu] += uFac[u][k]*iFac[item][k] - u_k[u]*v_k[item]; 
+            res->colval[uu] -= u_k[u]*v_k[item]; 
           }
         } 
       
@@ -672,10 +699,7 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
           iFac[item][k] = v_k[item];
         }
         
-        std::cout << "Rank " << k << " obj " 
-          << objective(data, invalidUsers, invalidItems) << std::endl;
     }
-
 
     end = std::chrono::system_clock::now();  
    
