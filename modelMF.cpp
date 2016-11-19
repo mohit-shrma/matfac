@@ -820,7 +820,10 @@ void ModelMF::trainCCD(const Data &data, Model &bestModel,
   //index to above uiRatings pair
   std::vector<size_t> uiRatingInds(uiRatings.size());
   std::iota(uiRatingInds.begin(), uiRatingInds.end(), 0);
-  
+ 
+  std::vector<int> dims(facDim);
+  std::iota(dims.begin(), dims.end(), 0);
+
   std::uniform_int_distribution<> dis(0, facDim-1);
 
   //residual mat
@@ -835,8 +838,8 @@ void ModelMF::trainCCD(const Data &data, Model &bestModel,
   for (int u = 0; u < nUsers; u++) {
     for (int k = 0; k < facDim; k++) {
       uFac[u][k] = 0;
-    }
-  }
+     }
+  } 
 
 
   for (iter = 0; iter < maxIter; iter++) { 
@@ -849,9 +852,11 @@ void ModelMF::trainCCD(const Data &data, Model &bestModel,
         if (invalidUsers.count(u) > 0) {
           continue;
         }
-        
-        for (int subIter = 0; subIter < facDim; subIter++) {
-          int k = subIter;//dis(mt);
+      
+        std::vector<int> udims(dims);
+        std::shuffle(udims.begin(), udims.end(), mt);
+
+         for (const auto& k: udims) { 
           double num = 0, denom = uReg, newV;
           
           //compute update
@@ -862,7 +867,7 @@ void ModelMF::trainCCD(const Data &data, Model &bestModel,
           }
           newV = num/denom;
           
-          //update residual
+           //update residual
            for (int ii = res->rowptr[u]; ii < res->rowptr[u+1]; ii++) {
             int item = res->rowind[ii];
             double upd = (newV - uFac[u][k])*iFac[item][k]; 
@@ -886,9 +891,11 @@ void ModelMF::trainCCD(const Data &data, Model &bestModel,
         if (invalidItems.count(item) > 0 || item >= res->ncols) {
           continue;
         }
-        
-        for (int subIter = 0; subIter < facDim; subIter++) {
-          int k = subIter;//dis(mt);
+       
+        std::vector<int> udims(dims);
+        std::shuffle(udims.begin(), udims.end(), mt);
+
+        for (const auto& k: udims) {
           double num = 0, denom = iReg, newV;
           
           //compute update
