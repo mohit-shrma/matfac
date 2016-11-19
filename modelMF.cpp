@@ -843,8 +843,6 @@ void ModelMF::trainCCD(const Data &data, Model &bestModel,
 
     start = std::chrono::system_clock::now();
 
-    for (int subIter = 0; subIter < facDim; subIter++) {
-
 #pragma omp parallel for
       for (int u = 0; u < nUsers; u++) {
         
@@ -852,32 +850,34 @@ void ModelMF::trainCCD(const Data &data, Model &bestModel,
           continue;
         }
         
-        int k = dis(mt);
-        double num = 0, denom = uReg, newV;
-        
-        //compute update
-        for (int ii = res->rowptr[u]; ii < res->rowptr[u+1]; ii++) {
-          int item = res->rowind[ii];
-          num += (res->rowval[ii] + uFac[u][k]*iFac[item][k])*iFac[item][k];
-          denom += iFac[item][k]*iFac[item][k];
-        }
-        newV = num/denom;
-        
-        //update residual
-        for (int ii = res->rowptr[u]; ii < res->rowptr[u+1]; ii++) {
-          int item = res->rowind[ii];
-          double upd = (newV - uFac[u][k])*iFac[item][k]; 
-          res->rowval[ii] -= upd;
-          //update residual in item view for the user
-          int lb = res->colptr[item];
-          int ub = res->colptr[item+1]-1;
-          int binInd = binSearch(res->colind, u, ub, lb);
-          if (binInd != -1) {
-            res->colval[binInd] -= upd;          
+        for (int subIter = 0; subIter < facDim; subIter++) {
+          int k = subIter;//dis(mt);
+          double num = 0, denom = uReg, newV;
+          
+          //compute update
+          for (int ii = res->rowptr[u]; ii < res->rowptr[u+1]; ii++) {
+            int item = res->rowind[ii];
+            num += (res->rowval[ii] + uFac[u][k]*iFac[item][k])*iFac[item][k];
+            denom += iFac[item][k]*iFac[item][k];
           }
+          newV = num/denom;
+          
+          //update residual
+           for (int ii = res->rowptr[u]; ii < res->rowptr[u+1]; ii++) {
+            int item = res->rowind[ii];
+            double upd = (newV - uFac[u][k])*iFac[item][k]; 
+            res->rowval[ii] -= upd;
+            //update residual in item view for the user
+            int lb = res->colptr[item];
+            int ub = res->colptr[item+1]-1;
+            int binInd = binSearch(res->colind, u, ub, lb);
+            if (binInd != -1) {
+              res->colval[binInd] -= upd;          
+            }
+          }
+          
+          uFac[u][k] = newV;
         }
-        
-        uFac[u][k] = newV;
       }
 
 #pragma omp parallel for
@@ -887,36 +887,36 @@ void ModelMF::trainCCD(const Data &data, Model &bestModel,
           continue;
         }
         
-        int k = dis(mt);
-        double num = 0, denom = iReg, newV;
-        
-        //compute update
-        for (int uu = res->colptr[item]; uu < res->colptr[item+1]; uu++) {
-          int u = res->colind[uu];
-          num += (res->colval[uu] + uFac[u][k]*iFac[item][k])*uFac[u][k];
-          denom += uFac[u][k]*uFac[u][k];
-        }
-        newV = num/denom;
-        
-        //update residual
-        for (int uu = res->colptr[item]; uu < res->colptr[item+1]; uu++) {
-          int u = res->colind[uu];
-          double upd = (newV - iFac[item][k])*uFac[u][k]; 
-          res->colval[uu] -= upd;
-          //update residual in user view
-          int lb = res->rowptr[u];
-          int ub = res->rowptr[u+1]-1;
-          int binInd = binSearch(res->rowind, item, ub, lb);
-          if (binInd !=  -1) {
-            res->rowval[binInd] -= upd;
+        for (int subIter = 0; subIter < facDim; subIter++) {
+          int k = subIter;//dis(mt);
+          double num = 0, denom = iReg, newV;
+          
+          //compute update
+          for (int uu = res->colptr[item]; uu < res->colptr[item+1]; uu++) {
+            int u = res->colind[uu];
+            num += (res->colval[uu] + uFac[u][k]*iFac[item][k])*uFac[u][k];
+            denom += uFac[u][k]*uFac[u][k];
           }
+          newV = num/denom;
+          
+          //update residual
+          for (int uu = res->colptr[item]; uu < res->colptr[item+1]; uu++) {
+            int u = res->colind[uu];
+            double upd = (newV - iFac[item][k])*uFac[u][k]; 
+            res->colval[uu] -= upd;
+            //update residual in user view
+            int lb = res->rowptr[u];
+            int ub = res->rowptr[u+1]-1;
+            int binInd = binSearch(res->rowind, item, ub, lb);
+            if (binInd !=  -1) {
+              res->rowval[binInd] -= upd;
+            }
+          }
+
+          //update factor
+          iFac[item][k] = newV;
         }
-
-        //update factor
-        iFac[item][k] = newV;
       }
-
-    }
 
     end = std::chrono::system_clock::now();  
    

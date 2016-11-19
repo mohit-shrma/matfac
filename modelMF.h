@@ -14,7 +14,7 @@
 //#include "svdLapack.h"
 #include "svdFrmsvdlib.h"
 
-#define DISP_ITER 1 
+#define DISP_ITER 10 
 #define SAVE_ITER 50 
 
 class ModelMF : public Model {
