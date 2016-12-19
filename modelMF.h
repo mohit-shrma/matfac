@@ -10,8 +10,6 @@
 #include <string>
 #include "io.h"
 #include "model.h"
-//#include "svd.h"
-//#include "svdLapack.h"
 #include "svdFrmsvdlib.h"
 
 #define DISP_ITER 10 
