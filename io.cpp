@@ -98,11 +98,11 @@ void readMat(Eigen::MatrixXf& mat, int nrows, int ncols,
       //split the line
       while((pos = line.find(delimiter)) != std::string::npos) {
         token = line.substr(0, pos);
-        mat[i][j++] = std::stod(token);
+        mat(i, j++) = std::stod(token);
         line.erase(0, pos + delimiter.length());
       }
       if (line.length() > 0) {
-        mat[i][j++] = std::stod(line);
+        mat(i, j++) = std::stod(line);
       }
       assert(j == ncols);
       i++;
@@ -141,7 +141,7 @@ void writeMat(Eigen::MatrixXf& mat, int nrows, int ncols,
   if (opFile.is_open()) {
     for (i = 0; i < nrows; i++) { 
       for (j = 0; j < ncols; j++) {
-        opFile << mat[i][j] << " ";
+        opFile << mat(i, j) << " ";
       }
       opFile << std::endl;
     }
@@ -172,7 +172,7 @@ void writeMatBin(Eigen::MatrixXf& mat, int nrows, int ncols,
   if (opFile.is_open()) {
     for (int i = 0; i < nrows; i++) {
       for (int j = 0; j < ncols; j++) {
-        double val = mat[i][j];
+        double val = mat(i, j);
         opFile.write((char*)& val, sizeof(double));
       }
     }
@@ -201,7 +201,7 @@ void readMatBin(Eigen::MatrixXf& mat, int nrows, int ncols,
   if (ipFile.is_open()) {
     for (int i = 0; i < nrows; i++) {
       for (int j = 0; j < ncols; j++) {
-        ipFile.read((char*)& mat[i][j], sizeof(double));
+        ipFile.read((char*)& mat(i, j), sizeof(double));
       }
     }
     ipFile.close();

@@ -755,7 +755,7 @@ double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
       //found and skip
       continue;
     }
-    iRegErr += iFac[u].dot(iFac[u]);
+    iRegErr += iFac.row(u).dot(iFac.row(u));
   }
   iRegErr = iRegErr*iReg;
 
@@ -1263,11 +1263,11 @@ Model::Model(const Params& params, const char* uFacName, const char* iFacName,
 
   std::cout << "\nLoading user bias: " << uBFName;
   uBias = readEigVector(uBFName);
-  std::cout << "\nuBias norm: " << normVec(uBias);
+  std::cout << "\nuBias norm: " << uBias.norm();
   
   std::cout << "\nLoading item bias: " << iBFName;
   iBias = readEigVector(iBFName);
-  std::cout << "\niBias norm: " << normVec(iBias);
+  std::cout << "\niBias norm: " << iBias.norm();
 
   //read global bias
   std::cout << "\nLoading global bias...";

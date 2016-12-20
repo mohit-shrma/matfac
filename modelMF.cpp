@@ -83,13 +83,13 @@ void ModelMF::train(const Data &data, Model &bestModel,
 
       //update user
       for (int i = 0; i < facDim; i++) {
-        uFac[u][i] -= learnRate * (-2.0*diff*iFac[item][i] + 2.0*uReg*uFac[u][i]);
+        uFac(u, i) -= learnRate * (-2.0*diff*iFac(item, i) + 2.0*uReg*uFac(u, i));
       }
 
     
       //update item
       for (int i = 0; i < facDim; i++) {
-        iFac[item][i] -= learnRate * (-2.0*diff*uFac[u][i] + 2.0*iReg*iFac[item][i]);
+        iFac(item, i) -= learnRate * (-2.0*diff*uFac(u, i) + 2.0*iReg*iFac(item, i));
       }
 
     }
@@ -230,9 +230,9 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
           //update YTY
           for (int j = 0; j < facDim; j++) {
             for (int k = 0; k < facDim; k++) {
-              YTY(j, k) += iFac[item][j]*iFac[item][k];
+              YTY(j, k) += iFac(item, j)*iFac(item, k);
             }
-            b(j) += rating*iFac[item][j];
+            b(j) += rating*iFac(item, j);
           }
         }
       }
@@ -246,7 +246,7 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
       Eigen::VectorXf ufac =  YTY.ldlt().solve(b); 
       //Eigen::VectorXf ufac =  YTY.lu().solve(b); 
       for (int j = 0; j < facDim; j++) {
-        uFac[u][j] = ufac[j];
+        uFac(u, j) = ufac[j];
       } 
     } 
 
@@ -267,9 +267,9 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
           //update YTY
           for (int j = 0; j < facDim; j++) {
             for (int k = 0; k < facDim; k++) {
-              YTY(j, k) += uFac[user][j]*uFac[user][k];
+              YTY(j, k) += uFac(user, j)*uFac(user, k);
             }
-            b(j) += rating*uFac[user][j];
+            b(j) += rating*uFac(user, j);
           }
         }
       }
@@ -283,7 +283,7 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
       Eigen::VectorXf ifac =  YTY.ldlt().solve(b); 
       //Eigen::VectorXf ifac =  YTY.lu().solve(b); 
       for (int j = 0; j < facDim; j++) {
-        iFac[item][j] = ifac[j];
+        iFac(item, j) = ifac[j];
       } 
 
     } 
