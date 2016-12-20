@@ -10,10 +10,10 @@
 #include <string>
 #include "io.h"
 #include "model.h"
-//#include "svd.h"
-//#include "svdLapack.h"
 #include "svdFrmsvdlib.h"
 
+#define DISP_ITER 10 
+#define SAVE_ITER 50 
 
 class ModelMF : public Model {
 
@@ -27,6 +27,12 @@ class ModelMF : public Model {
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems) ;
     virtual void trainALS(const Data& data, Model& bestModel,
+        std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems) ;
+    void trainCCDPP(const Data& data, Model& bestModel,
+        std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems) ;
+    void trainCCD(const Data& data, Model& bestModel,
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems) ;
     void hogTrain(const Data& data, Model& bestModel,

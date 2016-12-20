@@ -10,6 +10,7 @@
 #include <tuple>
 #include <random>
 #include <numeric>
+#include <omp.h>
 #include "GKlib.h"
 
 std::unordered_set<int> getHeadItems(gk_csr_t *mat, float pc);
@@ -29,6 +30,7 @@ double dotProd(const std::vector<double> &a, const std::vector<double> &b, int s
   return prod;
 }
 double stddev(std::vector<double> v);
+std::pair<double, double> meanStdDev(std::vector<double> v);
 
 void genStats(gk_csr_t *mat, 
     std::vector<std::unordered_set<int>> uISetIgnore, std::string opPrefix);
@@ -73,5 +75,8 @@ int setIntersect(std::unordered_set<int>& a, std::unordered_set<int>& b);
 int setUnion(std::unordered_set<int>& a, std::unordered_set<int>& b);
 float pearsonCorr(std::vector<float>& x, std::vector<float>& y, float xMean, 
     float yMean);
+int getMaxItemInd(gk_csr_t* mat);
+void parBlockShuffle(std::vector<size_t>& arr, std::mt19937& mt);
+int binSearch(int *sortedArr, int key, int ub, int lb);
 #endif
 

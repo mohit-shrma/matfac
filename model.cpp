@@ -82,6 +82,7 @@ void Model::load(std::string prefix) {
 
 
 void Model::saveFacs(std::string prefix) {
+  std::cout << "Saving model... " << prefix << std::endl;
   std::string modelSign = modelSignature();
   //save user latent factors
   std::string uFacName = prefix + "_uFac_" + modelSign + ".mat";
@@ -197,38 +198,90 @@ double Model::RMSE(gk_csr_t *mat) {
 
 double Model::RMSE(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems) {
-  int u, i, ii, nnz;
-  float r_ui;
-  double r_ui_est, diff, rmse;
+  int nnz;
+  double r_ui, r_ui_est, diff, rmse;
 
   nnz = 0;
   rmse = 0;
-  for (u = 0; u < nUsers; u++) {
+
+#pragma omp parallel for reduction(+:rmse, nnz) private(r_ui, r_ui_est, diff)
+  for (int u = 0; u < nUsers; u++) {
+    
     //skip if invalid user
-    auto search = invalidUsers.find(u);
-    if (search != invalidUsers.end()) {
+    if (invalidUsers.count(u) > 0) {
       //found and skip
       continue;
     }
-    for (ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
-      i = mat->rowind[ii];
+
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      
+      int item = mat->rowind[ii];
       //skip if invalid item
-      search = invalidItems.find(i);
-      if (search != invalidItems.end() || i >= nItems) {
+      if (invalidItems.count(item) > 0 || item >= nItems) {
         //found and skip
         continue;
       }
       
-      r_ui = mat->rowval[ii];
-      r_ui_est = estRating(u, i);
-      diff = r_ui - r_ui_est;
-      rmse += diff*diff;
+      r_ui     = mat->rowval[ii];
+      r_ui_est = estRating(u, item);
+      diff     = r_ui - r_ui_est;
+      rmse     += diff*diff;
       nnz++;
     }
   }
+
   rmse = sqrt(rmse/nnz);
   
   return rmse;
+}
+
+
+std::pair<int, double> Model::RMSE(gk_csr_t *mat, std::unordered_set<int>& filtItems,
+    std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems) {
+  
+  int nnz;
+  double r_ui, r_ui_est, diff, rmse;
+  
+  nnz = 0;
+  rmse = 0;
+
+#pragma omp parallel for reduction(+:rmse, nnz) private(r_ui, r_ui_est, diff)
+  for (int u = 0; u < nUsers; u++) {
+    
+    //skip if invalid user
+    if (invalidUsers.count(u) > 0) {
+      //found and skip
+      continue;
+    }
+
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      
+      int item = mat->rowind[ii];
+      
+      //skip if invalid item
+      if (invalidItems.count(item) > 0 || item >= nItems) {
+        //found and skip
+        continue;
+      }
+
+      if (filtItems.count(item) == 0) {
+        //filtered item not found, skip
+        continue;
+      }
+
+      r_ui     = mat->rowval[ii];
+      r_ui_est = estRating(u, item);
+      diff     = r_ui - r_ui_est;
+      rmse     += diff*diff;
+      nnz++;
+
+    }
+
+  }
+ 
+  rmse = sqrt(rmse/nnz);
+  
+  return std::make_pair(nnz, rmse);
 }
 
 
@@ -483,7 +536,7 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
     }
   }
 
-  if (iter - bestIter >= 500) {
+  if (iter - bestIter >= CHANCE_ITER) {
     //can't go lower than best objective after 500 iterations
     printf("\nNOT CONVERGED: bestIter:%d bestObj: %.10e"
         " currIter:%d currObj: %.10e", bestIter, bestObj, iter, currObj);
@@ -567,43 +620,56 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
     std::cerr << "\nNo validation data" << std::endl;
     exit(0);
   }
-
-  if (iter > 0) {
-    
-    if (currValRMSE < bestValRMSE) {
-      bestModel = *this;
-      bestValRMSE = currValRMSE;
-      bestIter = iter;
-    }
-
-    if (iter - bestIter >= 50) {
-      //can't improve validation RMSE after 500 iterations
-      printf("\nNOT CONVERGED: bestIter:%d bestObj: %.10e bestValRMSE: %.10e"
-          " currIter:%d currObj: %.10e currValRMSE: %.10e", 
-          bestIter, bestObj, bestValRMSE, iter, currObj, currValRMSE);
-      ret = true;
-    }
-    
-    if (fabs(prevObj - currObj) < EPS) {
-      //convergence
-      printf("\nConverged in iteration: %d prevObj: %.10e currObj: %.10e"
-          " bestValRMSE: %.10e", iter, prevObj, currObj, bestValRMSE); 
-      ret = true;
-    }
-
-    if (fabs(prevValRMSE - currValRMSE) < 0.0001) {
-      printf("\nvalidation RMSE in iteration: %d prev: %.10e curr: %.10e" 
-          " bestValRMSE: %.10e", iter, prevValRMSE, currValRMSE, bestValRMSE); 
-      ret = true;
-    }
-
+  
+  //nan check
+  if (currObj != currObj || currValRMSE != currValRMSE) {
+    std::cout << "Found nan " << std::endl;
+    //half learning rate
+    if (learnRate > 1e-5) {
+      //replace current model by best model
+      *this = bestModel;
+      learnRate = learnRate/2;
+      return false;
+    } else {
+      return true;
+    };
   }
-
-  if (iter == 0) {
-    bestObj = currObj;
+    
+  if (currValRMSE < bestValRMSE) {
+    bestModel = *this;
     bestValRMSE = currValRMSE;
     bestIter = iter;
   }
+
+  if (iter - bestIter >= 100) {
+    //half the learning rate
+    if (learnRate > 1e-5) {
+      learnRate = learnRate/2;
+    }
+  }
+
+  if (iter - bestIter >= CHANCE_ITER) {
+    //can't improve validation RMSE after 500 iterations
+    printf("\nNOT CONVERGED: bestIter:%d bestObj: %.10e bestValRMSE: %.10e"
+        " currIter:%d currObj: %.10e currValRMSE: %.10e", 
+        bestIter, bestObj, bestValRMSE, iter, currObj, currValRMSE);
+    ret = true;
+  }
+  
+  if (fabs(prevObj - currObj) < EPS) {
+    //convergence
+    printf("\nConverged in iteration: %d prevObj: %.10e currObj: %.10e"
+        " bestValRMSE: %.10e", iter, prevObj, currObj, bestValRMSE); 
+    ret = true;
+  }
+
+  /*
+  if (fabs(prevValRMSE - currValRMSE) < 0.0001) {
+    printf("\nvalidation RMSE in iteration: %d prev: %.10e curr: %.10e" 
+        " bestValRMSE: %.10e", iter, prevValRMSE, currValRMSE, bestValRMSE); 
+    ret = true;
+  }
+  */
 
   prevObj = currObj;
   prevValRMSE = currValRMSE;
@@ -770,39 +836,35 @@ double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
 double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems) {
 
-  int u, ii, item;
-  float itemRat;
-  double rmse = 0, uRegErr = 0, iRegErr = 0, obj = 0, diff = 0;
+  double rmse = 0, uRegErr = 0, iRegErr = 0, obj = 0;
   gk_csr_t *trainMat = data.trainMat;
 
-  for (u = 0; u < nUsers; u++) {
+#pragma omp parallel for reduction(+:rmse, uRegErr)
+  for (int u = 0; u < nUsers; u++) {
     //skip if invalid user
-    auto search = invalidUsers.find(u);
-    if (search != invalidUsers.end()) {
+    if (invalidUsers.count(u) > 0) {
       //found and skip
       continue;
     }
-    for (ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
-      item = trainMat->rowind[ii];
+    for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+      int item = trainMat->rowind[ii];
       //skip if invalid item
-      search = invalidItems.find(item);
-      if (search != invalidItems.end()) {
-        //found and skip
+      if (invalidItems.count(item) > 0) {
         continue;
       }
 
-      itemRat = trainMat->rowval[ii];
-      diff = itemRat - estRating(u, item);
+      float itemRat = trainMat->rowval[ii];
+      double diff = itemRat - estRating(u, item);
       rmse += diff*diff;
     }
     uRegErr += uFac.row(u).dot(uFac.row(u));
   }
   uRegErr = uRegErr*uReg;
   
-  for (item = 0; item < nItems; item++) {
+#pragma omp parallel for reduction(+: iRegErr)
+  for (int item = 0; item < nItems; item++) {
     //skip if invalid item
-    auto search = invalidItems.find(item);
-    if (search != invalidItems.end()) {
+    if (invalidItems.count(item) > 0) {
       //found and skip
       continue;
     }
@@ -810,9 +872,10 @@ double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
   }
   iRegErr = iRegErr*iReg;
 
-  obj = rmse;// + uRegErr + iRegErr;
+  obj = rmse + uRegErr + iRegErr;
     
-  //std::cout <<"\nrmse: " << std::scientific << rmse << " uReg: " << uRegErr << " iReg: " << iRegErr ; 
+  //std::cout <<"\nrmse: " << std::scientific << rmse << " uReg: " << uRegErr 
+  //  << " iReg: " << iRegErr << std::endl; 
 
   return obj;
 }
@@ -898,7 +961,7 @@ double Model::fullLowRankErr(const Data& data) {
   for (int u = 0; u < nUsers; u++) {
     for (int item = 0; item < nItems; item++) {
       r_ui_est = estRating(u, item);
-      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.facDim);
       diff = r_ui_orig - r_ui_est;
       rmse += diff*diff;
     }
@@ -927,7 +990,7 @@ double Model::fullLowRankErr(const Data& data,
         continue;
       }
       r_ui_est = estRating(u, item);
-      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.facDim);
       diff = r_ui_orig - r_ui_est;
       rmse += diff*diff;
     }
@@ -974,7 +1037,7 @@ double Model::subMatKnownRankErr(const Data& data, int uStart, int uEnd,
   for (int u = uStart; u <= uEnd; u++) {
     for (int item = iStart; item <= iEnd; item++) {
       r_ui_est = estRating(u, item);
-      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.facDim);
       diff = r_ui_orig - r_ui_est;
       rmse += diff*diff;
     }
@@ -1004,7 +1067,7 @@ double Model::subMatKnownRankNonObsErr(const Data& data, int uStart, int uEnd,
         continue;
       }
       r_ui_est = estRating(u, item);
-      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.facDim);
       diff = r_ui_orig - r_ui_est;
       seKnown += diff*diff;
       nnzKnown++;
@@ -1014,7 +1077,7 @@ double Model::subMatKnownRankNonObsErr(const Data& data, int uStart, int uEnd,
   for (u = uStart; u < uEnd; u++) {
     for (item = iStart; item < iEnd; item++) {
       r_ui_est = estRating(u, item);
-      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.facDim);
       diff = r_ui_orig - r_ui_est;
       seUnknown += diff*diff;
     }
@@ -1057,7 +1120,7 @@ double Model::subMatKnownRankNonObsErrWSet(const Data& data, int uStart, int uEn
         continue;
       }
       r_ui_est = estRating(u, item);
-      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.facDim);
       diff = r_ui_orig - r_ui_est;
       seKnown += diff*diff;
       nnzKnown++;
@@ -1077,7 +1140,7 @@ double Model::subMatKnownRankNonObsErrWSet(const Data& data, int uStart, int uEn
         continue;
       }
       r_ui_est = estRating(u, item);
-      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.origFacDim);
+      r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.facDim);
       diff = r_ui_orig - r_ui_est;
       seUnknown += diff*diff;
       nnzUnknown++;
@@ -1198,7 +1261,9 @@ Model::Model(const Params& params) {
   trainSeed = -1;
 
   std::default_random_engine generator (params.seed);
-  std::uniform_real_distribution<double> dist (0.0, 1.0);
+  float lb = -0.01, ub = 0.01;
+  std::uniform_real_distribution<double> dist (lb, ub);
+  std::cout << "lb = " << lb << " ub = " << ub << std::endl;
 
   //init user latent factors
   uFac = Eigen::MatrixXf(nUsers, facDim);

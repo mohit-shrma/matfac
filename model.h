@@ -105,6 +105,8 @@ class Model {
       int& bestIter, double& bestObj, double& prevObj, int uStart, int uEnd,
       int iStart, int iEnd); 
     double RMSE(gk_csr_t* mat);
+    std::pair<int, double> RMSE(gk_csr_t* mat, std::unordered_set<int>& filtItems,
+        std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems);
     double RMSE(gk_csr_t* mat, std::unordered_set<int>& invalidUsers,
       std::unordered_set<int>& invalidItems);
     double RMSE(std::vector<std::tuple<int, int, float>>& trainRatings);

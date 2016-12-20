@@ -88,6 +88,5 @@ void readMatBin(std::vector<std::vector<double>>& mat, int nrows, int ncols,
 void readMatBin(Eigen::MatrixXf& mat, int nrows, int ncols, 
     const char *opFileName);
 Eigen::VectorXf readEigVector(const char *ipFileName) ;
-
-
+void writeTriplets(gk_csr_t *mat, const char *fName);
 #endif

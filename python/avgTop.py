@@ -58,9 +58,11 @@ def getAvgMetric(ipFileList):
 
 
 def main():
-  if len(sys.argv) >= 2:
+  if len(sys.argv) == 2:
     ipF = sys.argv[1]
     ipFileList = getIpFileList(ipF)
+  elif len(sys.argv) > 2:
+    ipFileList = sys.argv[1:]
   else:
     ipFileList = map(lambda x: x.strip('\n'), sys.stdin.readlines())
     

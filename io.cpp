@@ -63,7 +63,7 @@ void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols,
       //split the line
       while((pos = line.find(delimiter)) != std::string::npos) {
         token = line.substr(0, pos);
-        mat[i][j++] = std::stod(token);
+        mat[i][j++] = std::stold(token);
         line.erase(0, pos + delimiter.length());
       }
       if (line.length() > 0) {
@@ -75,7 +75,7 @@ void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols,
     inFile.close();
   } else {
     std::cout << "\nCan't open file: " << fileName;
-   }
+  }
   
 } 
 
@@ -883,6 +883,17 @@ void writeCoRatings(gk_csr_t *mat, const char *fName) {
   }
   opFile.close();
 
+}
+
+
+void writeTriplets(gk_csr_t *mat, const char *fName) {
+  std::ofstream opFile(fName);
+  for (int u = 0; u < mat->nrows; u++) {
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      opFile << u << " " << mat->rowind[ii] << " " << mat->rowval[ii] << std::endl;
+    }
+  }
+  opFile.close();
 }
 
 

@@ -3,6 +3,8 @@
 #include <future>
 #include <chrono>
 #include <thread>
+
+
 #include "io.h"
 #include "util.h"
 #include "datastruct.h"
@@ -12,18 +14,48 @@
 #include "longTail.h"
 #include "analyzeModels.h"
 
+#include <gflags/gflags.h>
+DEFINE_uint64(maxiter, 100, "number of iterations");
+DEFINE_uint64(facdim, 5, "dimension of factors");
+DEFINE_uint64(svdfacdim, 5, "dimension of factors");
+DEFINE_double(ureg, 0.01, "user regularization");
+DEFINE_double(ireg, 0.01, "item regularization");
+DEFINE_double(learnrate, 0.005, "learn rate");
+DEFINE_double(rhorms, 0.0, "rho rms");
+DEFINE_double(alpha, 0.0, "alpha");
+DEFINE_int32(seed, 1, "seed");
+
+DEFINE_string(trainmat, "", "training CSR matrix");
+DEFINE_string(testmat, "", "test CSR matrix");
+DEFINE_string(valmat, "", "validation CSR matrix");
+DEFINE_string(graphmat, "", "item-item graph csr matrix");
+DEFINE_string(origufac, "", "original user factors");
+DEFINE_string(origifac, "", "original item factors");
+DEFINE_string(initufac, "", "initial user factors");
+DEFINE_string(initifac, "", "initial item factors");
+DEFINE_string(prefix, "", "prefix to prepend to logs n factors");
+DEFINE_string(method, "sgd", "sgd|hogsgd|als|ccd|ccd++");
+
 Params parse_cmd_line(int argc, char *argv[]) {
+ 
+  google::ParseCommandLineFlags(&argc, &argv, true);
   
-  if (argc < 22) {
-    std::cout << "\nNot enough arguments";
-    exit(0);
-  }  
+  bool isexit = false;
+  if (FLAGS_trainmat.empty() || FLAGS_testmat.empty() || FLAGS_valmat.empty()) {
+    std::cerr << "Missing either: train, test or val matrix" << std::endl;
+    isexit = true;
+  }
+  if (FLAGS_prefix.empty()) {
+    std::cerr << "Missing prefix string to prepend: --prefix " << std::endl;
+    isexit = true;
+  }
   
-  Params params(atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), 
-      atoi(argv[5]), atoi(argv[6]), atoi(argv[7]),
-      atof(argv[8]), atof(argv[9]), atof(argv[10]), atof(argv[11]), atof(argv[12]),
-      argv[13], argv[14], argv[15], argv[16], argv[17], argv[18], argv[19], argv[20], 
-      argv[21]);
+  if (isexit) {exit(-1);}
+
+  Params params(FLAGS_facdim, FLAGS_maxiter, FLAGS_svdfacdim, FLAGS_seed, 
+      FLAGS_ureg, FLAGS_ireg, FLAGS_learnrate, FLAGS_rhorms,
+      FLAGS_alpha, FLAGS_trainmat, FLAGS_testmat, FLAGS_valmat, FLAGS_graphmat,
+      FLAGS_origufac, FLAGS_origifac, FLAGS_initufac, FLAGS_initifac, FLAGS_prefix);
 
   return params;
 }
@@ -53,7 +85,15 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   auto rowColFreq = getRowColFreq(data.trainMat);
   auto userFreq = rowColFreq.first;
   auto itemFreq = rowColFreq.second;
-  
+ 
+  auto usersMeanStd = meanStdDev(userFreq);
+  auto itemsMeanStd = meanStdDev(itemFreq);
+
+  std::cout << "user freq mean: " << usersMeanStd.first << " std: " 
+    << usersMeanStd.second << std::endl;
+  std::cout << "item freq mean: " << itemsMeanStd.first << " std: " 
+    << itemsMeanStd.second << std::endl;
+
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
   std::string modelSign = fullModel.modelSignature();
@@ -78,7 +118,7 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   std::cout << "\nTrain RMSE: " << bestModel.RMSE(data.trainMat, invalidUsers, invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, invalidItems);
   std::cout << "\nVal RMSE: " << bestModel.RMSE(data.valMat, invalidUsers, invalidItems);
-  std::cout << "\nFull RMSE: " << bestModel.fullLowRankErr(data, invalidUsers, invalidItems);
+  //std::cout << "\nFull RMSE: " << bestModel.fullLowRankErr(data, invalidUsers, invalidItems);
   std::cout << std::endl;
   /*
   //write out invalid users
@@ -106,19 +146,104 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   int nItems = data.trainMat->ncols;
     
   //get filtered items corresponding to head items
-  std::unordered_set<int> filtItems;
   //auto headItems = getHeadItems(data.trainMat, 0.2); 
-  //filtItems = headItems;
 
-  //add top 100 frequent items to filtItems
-  for (auto&& pair: itemFreqPairs) {
-    filtItems.insert(pair.first);
-    if (filtItems.size() == 100) {
-      break;
+  
+  std::vector<float> freqPcs = {1.0, 5.0, 10, 25, 50};
+  for (auto&& filtPc: freqPcs) {
+    std::unordered_set<int> filtItems, notFiltItems;
+    float filtSzThresh = (filtPc/100.0)*((float)itemFreqPairs.size());
+    //std::cout << "No. of top " << filtPc << " % freq items: " <<  filtSzThresh << std::endl;
+    for (auto&& pair: itemFreqPairs) {
+      if (filtItems.size() <= filtSzThresh) {
+        filtItems.insert(pair.first);
+      } else {
+        notFiltItems.insert(pair.first);
+      }
     }
+    auto countNRMSE = bestModel.RMSE(data.testMat, filtItems, invalidUsers, invalidItems);
+    auto countNRMSE2 = bestModel.RMSE(data.testMat, notFiltItems, invalidUsers, invalidItems);
+    std::cout << "FiltPc: " << (int)filtPc << " " << countNRMSE.first << " " << countNRMSE.second 
+      << " " << countNRMSE2.first << " " <<countNRMSE2.second 
+      << " " << countNRMSE.first + countNRMSE2.first << std::endl;  
   }
+  
 
+  std::vector<float> maxFreqs = {5, 10 , 15, 20, 30, 50, 75, 100, 150, 200};
+  for (auto&& maxFreq: maxFreqs) {
+    std::unordered_set<int> freqItems, notFreqItems;
+    for (auto&& pair: itemFreqPairs) {
+      if (pair.second < maxFreq) {
+        notFreqItems.insert(pair.first);
+      } else {
+        freqItems.insert(pair.first);
+      }
+    }
+    auto countNRMSE = bestModel.RMSE(data.testMat, freqItems, invalidUsers, invalidItems);
+    auto countNRMSE2 = bestModel.RMSE(data.testMat, notFreqItems, invalidUsers, invalidItems);
+    std::cout << "MaxFreq: " << (int)maxFreq << " " << countNRMSE.first << " " 
+      << countNRMSE.second << " " << countNRMSE2.first << " " << countNRMSE2.second 
+      << " " << countNRMSE.first + countNRMSE2.first << std::endl;
+  }
+  
 
+  auto itemsMeanVar = trainItemsMeanVar(data.trainMat);  
+  double avgVar = 0;
+  for (const auto& itemMeanVar: itemsMeanVar) {
+    avgVar += itemMeanVar.second;
+  }
+  avgVar = avgVar/itemsMeanVar.size();
+  
+  std::cout << "Average variance: " << avgVar << std::endl;
+
+  //std::vector<float> freqPcs = {1.0, 5.0, 10, 25, 50};
+  //for (auto&& filtPc: freqPcs) {
+  for (auto&& maxFreq: maxFreqs) {
+    std::unordered_set<int> freqItems, inFreqItems;
+    //float filtSzThresh = (filtPc/100.0)*((float)itemFreqPairs.size());
+    for (auto&& pair: itemFreqPairs) {
+      //if (freqItems.size() <= filtSzThresh) {
+      if (pair.second >= maxFreq) {
+        freqItems.insert(pair.first);
+      } else {
+        inFreqItems.insert(pair.first);
+      }
+    }
+
+    std::vector<float> varThreshs = {0, 0.01, 0.05};
+    
+    for (const auto& varThresh: varThreshs) {
+      
+      float varianceThresh = avgVar*(1 + varThresh);
+      std::unordered_set<int> highVarFreqItems, highVarNonfreqItems;
+      
+      for (auto& item: freqItems) {
+        if (itemsMeanVar[item].second >= varianceThresh) {
+          highVarFreqItems.insert(item); 
+        }
+      }
+      
+      for (auto& item: inFreqItems) {
+        if (itemsMeanVar[item].second >= varianceThresh) {
+          highVarNonfreqItems.insert(item);
+        }
+      }
+
+      auto countNRMSE = bestModel.RMSE(data.testMat, highVarFreqItems, 
+          invalidUsers, invalidItems);
+      auto countNRMSE2 = bestModel.RMSE(data.testMat, highVarNonfreqItems, 
+          invalidUsers, invalidItems);
+      int res =  (countNRMSE.second < countNRMSE2.second)?1:0;
+      std::cout << "FreqVar: " << varThresh << " MaxFreq: " << maxFreq << " " 
+        << " " << countNRMSE.first << " " << countNRMSE.second 
+        << " " << countNRMSE2.first << " " << countNRMSE2.second 
+        << " " << varianceThresh  << " " << res  
+        << std::endl;
+    }
+
+  }
+  
+  std::unordered_set<int> filtItems;  
   /*
   //add filtItems to invalItems
   for (auto&& item: filtItems) {
@@ -265,6 +390,14 @@ void transformBinData(Data& data, Params& params) {
 
 int main(int argc , char* argv[]) {
  
+
+  //partition the given matrix into train test val
+  /*
+  gk_csr_t *mat = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, 1, 0);
+  writeTrainTestValMat(mat, argv[2], argv[3], argv[4], 0.2, 0.2, atoi(argv[5]));  
+  return 0;
+  */
+
   /* 
   gk_csr_t *mat1 = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, 1, 0);
   gk_csr_t *mat2 = gk_csr_Read(argv[2], GK_CSR_FMT_CSR, GK_CSR_IS_VAL, 0);
@@ -272,15 +405,34 @@ int main(int argc , char* argv[]) {
   return 0;
   */
 
+  /*
+  gk_csr_t *mat = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, 0, 0);
+  int nnz = getNNZ(mat);
+  
+  auto rowColFreq = getRowColFreq(mat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+ 
+  auto usersMeanStd = meanStdDev(userFreq);
+  auto itemsMeanStd = meanStdDev(itemFreq);
+  
+  std::cout << "nnz: " << nnz << std::endl;
+  std::cout << "user freq mean: " << usersMeanStd.first << " std: " 
+    << usersMeanStd.second << std::endl;
+  std::cout << "item freq mean: " << itemsMeanStd.first << " std: " 
+    << itemsMeanStd.second << std::endl;
+  return 0;
+  */
+
   //get passed parameters
   Params params = parse_cmd_line(argc, argv);
+  Data data (params);
+  params.nUsers = data.nUsers;
+  params.nItems = data.nItems;
   params.display();
-  
   
   //initialize seed
   std::srand(params.seed);
-
-  Data data (params);
   
    /*
   auto meanVar = getMeanVar(data.origUFac, data.origIFac, data.origFacDim, 
@@ -293,7 +445,7 @@ int main(int argc , char* argv[]) {
   //auto headItems = getHeadItems(data.trainMat, 0.1);
   //writeTailTestMat(data.testMat, "nf_480189x17772.tail.test.5.csr", headItems);
   
-  /*  
+  /*   
   std::string matPre = params.prefix;//"each_61265x1623_10";
   std::string suff = ".syn.ind.csr"; 
   
@@ -325,8 +477,8 @@ int main(int argc , char* argv[]) {
       (matPre + ".val" + suff).c_str(),
       0.1, 0.1, params.seed);
   }
+  exit(0); 
   */
-
   //writeBlkDiagJoinedCSR("", "", "");
 
   //computeConfScoresFrmModel(data, params);
@@ -351,7 +503,19 @@ int main(int argc , char* argv[]) {
    //ModelMF mfModel(params, params.initUFacFile, 
   //    params.initIFacFile, params.seed);
  
+  bool isUISorted = checkIfUISorted(data.trainMat);
+  std::cout << "ifUISorted: " << isUISorted << std::endl;
+  
+  if (!GK_CSR_IS_VAL) {
+    transformBinData(data, params);
+    //writeTriplets(data.trainMat, "train.triplet"); 
+    //writeTriplets(data.testMat, "test.triplet");
+    //writeTriplets(data.valMat, "val.triplet");
+    //exit(0);
+  }
+   
   /* 
+  
   std::string ans;
   std::cout << "Want to train? ";
   std::getline(std::cin, ans);
@@ -361,25 +525,35 @@ int main(int argc , char* argv[]) {
   }
   */
   
-    
-  std::cout << "ifUISorted: " << checkIfUISorted(data.trainMat) << std::endl ;
-  
-  if (!GK_CSR_IS_VAL) {
-    transformBinData(data, params);
-  }
-
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
   svdFrmSvdlibCSREig(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
   //initialize MF model with last learned model if any
-  //mfModel.loadFacs(params.prefix);
+  mfModel.loadFacs(params.prefix);
 
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
-
+  
   ModelMF bestModel(mfModel);
   std::cout << "\nStarting model train...";
-  mfModel.train(data, bestModel, invalidUsers, invalidItems);
+  if (FLAGS_method == "ccd++") { 
+    mfModel.trainCCDPP(data, bestModel, invalidUsers, invalidItems);
+  } else if (FLAGS_method == "ccd") {
+    if (isUISorted) {
+      mfModel.trainCCD(data, bestModel, invalidUsers, invalidItems);
+    } else {
+      std::cerr << "Need sorted train mat for ccd." << std::endl;
+    }
+  } else if (FLAGS_method == "als") {
+    mfModel.trainALS(data, bestModel, invalidUsers, invalidItems);
+  } else if (FLAGS_method== "hogsgd")  {
+    mfModel.hogTrain(data, bestModel, invalidUsers, invalidItems);
+  } else {
+    mfModel.train(data, bestModel, invalidUsers, invalidItems);
+  }
+
+  std::cout << "\nTrain RMSE: " << bestModel.RMSE(data.trainMat, invalidUsers, 
+      invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
       invalidItems);
   std::cout << "\nValidation RMSE: " << bestModel.RMSE(data.valMat, invalidUsers, 
@@ -396,10 +570,12 @@ int main(int argc , char* argv[]) {
   writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
   std::cout << std::endl << "**** Model parameters ****" << std::endl;
   mfModel.display();
-   
 
   //computeSampTopNFrmFullModel(data, params);  
-  
+  if (!FLAGS_origufac.empty()) {
+    std::cout << "\nFull RMSE: " << 
+      bestModel.fullLowRankErr(data, invalidUsers, invalidItems) << std::endl;
+  }
   //testTailLocRec(data, params);
   //testTailRec(data, params);
   //testRec(data, params);

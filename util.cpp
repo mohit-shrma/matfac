@@ -166,7 +166,11 @@ std::vector<std::pair<double, double>> trainItemsMeanVar(gk_csr_t* mat) {
     double itemMean = 0;
     double itemVar = 0;
     double nRatings = mat->colptr[item+1] - mat->colptr[item]; 
-
+    
+    if (nRatings == 0) {
+      continue;
+    }
+      
     for (int uu = mat->colptr[item]; uu < mat->colptr[item+1]; uu++) {
       int user = mat->colind[uu];
       float rating = mat->colval[uu];
@@ -265,6 +269,26 @@ bool isInsideBlock(int u, int item, int uStart, int uEnd, int iStart,
     return false;
   }
 }
+
+
+std::pair<double, double> meanStdDev(std::vector<double> v) {
+  
+  double sum = 0;
+  for (int i = 0; i < v.size(); i++) {
+    sum += v[i];
+  }
+  double mean = sum / v.size();
+  
+  double sq_sum = 0;
+  //subtract mean, compute square sum
+  for (int i = 0; i < v.size(); i++) {
+    sq_sum += (v[i] - mean)*(v[i] - mean);
+  }
+
+  double stdev = sqrt(sq_sum / v.size());
+  return std::make_pair(mean, stdev);
+}
+
 
 
 //compute standard deviation in vector
@@ -810,6 +834,7 @@ int sparseCoRatedUsers(gk_csr_t* mat, int i, int j) {
 }
 
 
+//binary search in sorted array with bith ub and lb included
 int binSearch(int *sortedArr, int key, int ub, int lb) {
   
   int ind = -1;
@@ -829,7 +854,6 @@ int binSearch(int *sortedArr, int key, int ub, int lb) {
   return ind;
 }
 
-
 //return no. of co-rated users for the items
 int coRatedUsersFrmSortedMat(gk_csr_t* mat, int i, int j) {
   int coUsers = 0;
@@ -843,7 +867,7 @@ int coRatedUsersFrmSortedMat(gk_csr_t* mat, int i, int j) {
   for (int jj = mat->colptr[i]; jj < mat->colptr[i+1]; jj++) {
     int user   = mat->colind[jj];
     int lb = mat->colptr[j];
-    int ub = mat->colptr[j+1];
+    int ub = mat->colptr[j+1]-1;
     if (binSearch(mat->colind, user, ub, lb) != -1) {
       coUsers++;
     }
@@ -995,6 +1019,39 @@ float pearsonCorr(std::vector<float>& x, std::vector<float>& y, float xMean,
   
   float corr = num/(denomX*denomY);
   return corr;
+}
+
+
+int getMaxItemInd(gk_csr_t* mat) {
+  int maxInd = 0;
+  for (int u = 0; u < mat->nrows; u++) {
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      if (maxInd << mat->rowind[ii]) {
+        maxInd = mat->rowind[ii];
+      }
+    }
+  }
+  return maxInd;
+}
+
+
+void parBlockShuffle(std::vector<size_t>& arr, std::mt19937& mt) {
+  
+  int arrSz = arr.size();
+
+#pragma omp parallel 
+{
+  int tID = omp_get_thread_num();
+  int nThreads = omp_get_num_threads();
+  int blockSz = arrSz/nThreads;
+  auto start = arr.begin() + tID*blockSz;
+  auto end = arr.begin() + (tID+1)*blockSz;
+  if ((tID+1)*blockSz  >= arrSz) {
+    end = arr.end();
+  }
+  std::shuffle(start, end, mt);
+}
+
 }
 
 
