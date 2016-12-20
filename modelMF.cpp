@@ -565,7 +565,10 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
   std::vector<size_t> uiRatingInds(uiRatings.size());
   std::iota(uiRatingInds.begin(), uiRatingInds.end(), 0);
   
-  std::uniform_int_distribution<> dis(0, facDim-1);
+  std::vector<int> dims(facDim);
+  std::iota(dims.begin(), dims.end(), 0);
+  
+  std::uniform_int_distribution<> binDis(0, 1);
 
   //residual mat
   gk_csr_t *res = gk_csr_Dup(trainMat);
@@ -586,9 +589,8 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
   for (iter = 0; iter < maxIter; iter++) { 
 
     start = std::chrono::system_clock::now();
-
-    for (int t = 0; t < facDim; t++) {
-      const int k = t;
+    std::shuffle(dims.begin(), dims.end(), mt);
+    for (const auto& k : dims) {
       std::vector<double> u_k(nUsers, 0), v_k(nItems, 0);  
 
 #pragma omp parallel for
