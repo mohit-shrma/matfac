@@ -1,0 +1,24 @@
+cmake_minimum_required(VERSION 2.6)
+#cmake -D CMAKE_C_COMPILER="/path/to/your/c/compiler/executable" -D CMAKE_CXX_COMPILER "/path/to/your/cpp/compiler/executable" /path/to/directory/containing/CMakeLists.txt
+
+project(mf)
+
+set(CMAKE_CXX_FLAGS "-std=c++11 -O3 -g -Wall -fopenmp")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "bin/")
+set(CMAKE_FILES_DIRECTORY "build/")
+
+include_directories(/home/karypisg/msharma/dev/George/trunk)
+include_directories(/home/karypisg/msharma/dev/eigen)
+include_directories(/home/karypisg/msharma/dev/SVDLIBC)
+
+link_directories(/home/karypisg/msharma/dev/George/trunk/build/Linux-x86_64/)
+link_directories(/home/karypisg/msharma/dev/SVDLIBC)
+
+file(GLOB SOURCES "*.cpp")
+add_executable(mf ${SOURCES})
+
+set(gflags_DIR "/home/karypisg/msharma/dev/gflags/build")
+find_package(gflags REQUIRED)
+
+target_link_libraries(mf GKlib svd m gflags)
+
