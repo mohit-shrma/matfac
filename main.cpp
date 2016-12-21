@@ -9,8 +9,6 @@
 #include "util.h"
 #include "datastruct.h"
 #include "modelMF.h"
-#include "modelMFBias.h"
-#include "modelMFLoc.h"
 #include "confCompute.h"
 #include "topBucketComp.h"
 #include "longTail.h"
@@ -80,8 +78,8 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   Params svdParams(params);
   svdParams.facDim = svdParams.svdFacDim;
   ModelMF svdModel(svdParams, svdParams.seed);
-  //svdFrmSvdlibCSRSparsity(data.trainMat, svdModel.facDim, svdModel.uFac, 
-  //    svdModel.iFac, true);
+  svdFrmSvdlibCSRSparsityEig(data.trainMat, svdModel.facDim, svdModel.uFac, 
+      svdModel.iFac, true);
 
   //get number of ratings per user and item, i.e. frequency
   auto rowColFreq = getRowColFreq(data.trainMat);
@@ -391,6 +389,7 @@ void transformBinData(Data& data, Params& params) {
 
 
 int main(int argc , char* argv[]) {
+ 
 
   //partition the given matrix into train test val
   /*
@@ -528,7 +527,7 @@ int main(int argc , char* argv[]) {
   
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
-  //svdFrmSvdlibCSR(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
+  svdFrmSvdlibCSREig(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
   //initialize MF model with last learned model if any
   mfModel.loadFacs(params.prefix);
 

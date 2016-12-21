@@ -6,18 +6,17 @@ set(CMAKE_CXX_FLAGS "-std=c++11 -O3 -g -Wall")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "bin/")          
 set(CMAKE_FILES_DIRECTORY "build/")    
 
-include_directories(/home/grad02/mohit/George/GKlib/trunk)
-include_directories(/home/grad02/mohit/lib/eigen)
-include_directories(/home/grad02/mohit/lib/SVDLIBC)
-#include_directories(/home/grad02/mohit/exmoh/dev/github/gflags/lib)
+include_directories(/Users/mohitsharma/dev/gklib/trunk)
+include_directories(/Users/mohitsharma/dev/eigen)
+include_directories(/Users/mohitsharma/dev/SVDLIBC)
 
-link_directories(/home/grad02/mohit/George/GKlib/trunk/build/Linux-x86_64/)
-link_directories(/home/grad02/mohit/lib/SVDLIBC)
+link_directories(/Users/mohitsharma/dev/gklib/trunk/build/Darwin-x86_64)
+link_directories(/Users/mohitsharma/dev/SVDLIBC)
 
 file(GLOB SOURCES "*.cpp")
 add_executable(mf ${SOURCES})
 
-set(gflags_DIR "/home/grad02/mohit/exmoh/dev/github/gflags/lib/cmake/gflags")
+set(gflags_DIR "/Users/mohitsharma/dev/gflags/build")
 find_package(gflags REQUIRED)
 
 find_package(OpenMP)

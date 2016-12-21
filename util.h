@@ -8,8 +8,9 @@
 #include <fstream>
 #include <cmath>
 #include <tuple>
-#include <omp.h>
 #include <random>
+#include <numeric>
+#include <omp.h>
 #include "GKlib.h"
 
 std::unordered_set<int> getHeadItems(gk_csr_t *mat, float pc);

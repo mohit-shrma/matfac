@@ -31,10 +31,10 @@ class Model {
     int maxIter;
     float uReg;
     float iReg;
-    std::vector<std::vector<double>> uFac; 
-    std::vector<std::vector<double>> iFac;
-    std::vector<double> uBias;
-    std::vector<double> iBias;
+    Eigen::MatrixXf uFac; 
+    Eigen::MatrixXf iFac;
+    Eigen::VectorXf uBias;
+    Eigen::VectorXf iBias;
     double mu; //global bias
 
     //declare constructor

@@ -67,11 +67,11 @@ void Model::load(std::string prefix) {
 
   //read user bias
   std::string uBFName = prefix + "_uBias_" + modelSign + ".vec";
-  uBias = readDVector(uBFName.c_str());
+  uBias = readEigVector(uBFName.c_str());
 
   //read item bias
   std::string iBFName = prefix + "_iBias_" + modelSign + ".vec";
-  iBias = readDVector(iBFName.c_str());
+  iBias = readEigVector(iBFName.c_str());
 
   //read global bias 
   std::vector<double> gBias;
@@ -153,10 +153,10 @@ void Model::load(const char* uFacName, const char* iFacName, const char* uBFName
   readMat(iFac, nItems, facDim, iFacName);
 
   //read user bias
-  uBias = readDVector(uBFName);
+  uBias = readEigVector(uBFName);
 
   //read item bias
-  iBias = readDVector(iBFName);
+  iBias = readEigVector(iBFName);
 
   //read global bias 
   std::vector<double> gBias;
@@ -344,7 +344,7 @@ double Model::RMSE(std::vector<std::tuple<int, int, float>>& trainRatings) {
 
 
 double Model::estRating(int user, int item) {
-  return dotProd(uFac[user], iFac[item], facDim);
+  return uFac.row(user).dot(iFac.row(item));
 }
 
 
@@ -771,12 +771,12 @@ double Model::objective(const Data& data) {
       diff = itemRat - estRating(u, item);
       rmse += diff*diff;
     }
-    uRegErr += dotProd(uFac[u], uFac[u], facDim);
+    uRegErr += uFac.row(u).dot(uFac.row(u));
   }
   uRegErr = uRegErr*uReg;
   
   for (item = 0; item < nItems; item++) {
-    iRegErr += dotProd(iFac[item], iFac[item], facDim);
+    iRegErr += iFac.row(item).dot(iFac.row(item));;
   }
   iRegErr = iRegErr*iReg;
 
@@ -810,7 +810,7 @@ double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
       //found and skip
       continue;
     }
-    uRegErr += dotProd(uFac[u], uFac[u], facDim);
+    uRegErr += uFac.row(u).dot(uFac.row(u));
   }
   uRegErr = uRegErr*uReg;
 
@@ -821,7 +821,7 @@ double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
       //found and skip
       continue;
     }
-    iRegErr += dotProd(iFac[item], iFac[item], facDim);
+    iRegErr += iFac.row(u).dot(iFac.row(u));
   }
   iRegErr = iRegErr*iReg;
 
@@ -857,7 +857,7 @@ double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
       double diff = itemRat - estRating(u, item);
       rmse += diff*diff;
     }
-    uRegErr += dotProd(uFac[u], uFac[u], facDim);
+    uRegErr += uFac.row(u).dot(uFac.row(u));
   }
   uRegErr = uRegErr*uReg;
   
@@ -868,7 +868,7 @@ double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
       //found and skip
       continue;
     }
-    iRegErr += dotProd(iFac[item], iFac[item], facDim);
+    iRegErr += iFac.row(item).dot(iFac.row(item));
   }
   iRegErr = iRegErr*iReg;
 
@@ -899,12 +899,12 @@ double Model::objectiveSubMat(const Data& data, int uStart, int uEnd,
       diff = itemRat - estRating(u, item);
       rmse += diff*diff;
     }
-    uRegErr += dotProd(uFac[u], uFac[u], facDim);
+    uRegErr += uFac.row(u).dot(uFac.row(u));
   }
   uRegErr = uRegErr*uReg;
   
   for (item = iStart; item < iEnd; item++) {
-    iRegErr += dotProd(iFac[item], iFac[item], facDim);
+    iRegErr += iFac.row(item).dot(iFac.row(item));
   }
   iRegErr = iRegErr*iReg;
 
@@ -935,7 +935,7 @@ double Model::objectiveExSubMat(const Data& data, int uStart, int uEnd,
       diff = itemRat - estRating(u, item);
       rmse += diff*diff;
     }
-    uRegErr += dotProd(uFac[u], uFac[u], facDim);
+    uRegErr += uFac.row(u).dot(uFac.row(u)); 
   }
   uRegErr = uRegErr*uReg;
   
@@ -943,7 +943,7 @@ double Model::objectiveExSubMat(const Data& data, int uStart, int uEnd,
     if (item >= iStart && item < iEnd) {
       continue;
     }
-    iRegErr += dotProd(iFac[item], iFac[item], facDim);
+    iRegErr += iFac.row(item).dot(iFac.row(item));
   }
   iRegErr = iRegErr*iReg;
 
@@ -1266,32 +1266,33 @@ Model::Model(const Params& params) {
   std::cout << "lb = " << lb << " ub = " << ub << std::endl;
 
   //init user latent factors
-  uFac.assign(nUsers, std::vector<double>(facDim, 0));
-  for (auto& uf: uFac) {
-    for (auto& v: uf) {
-      v = dist(generator);    
+  uFac = Eigen::MatrixXf(nUsers, facDim);
+  for (int u = 0; u < nUsers; u++) {
+    for (int k = 0; k < facDim; k++) {
+      uFac(u,k) = dist(generator);
     }
   }
-
 
   //init item latent factors
-  iFac.assign(nItems, std::vector<double>(facDim, 0));
-  for (auto& itemf: iFac) {
-    for (auto& v: itemf) {
-      v = dist(generator);
+  iFac = Eigen::MatrixXf(nItems, facDim);
+  for (int i = 0; i < nItems; i++) {
+    for (int k = 0; k < facDim; k++) {
+      iFac(i,k) = dist(generator);
     }
   }
+
+
  
   //init user biases
-  uBias = std::vector<double>(nUsers, 0);
-  for (auto& v: uBias) {
-    v = dist(generator);  
+  uBias = Eigen::VectorXf(nUsers);
+  for (int u = 0; u < nUsers;  u++) {
+    uBias(u) = dist(generator);
   }
 
   //init item biases
-  iBias = std::vector<double>(nItems, 0);
-  for (auto& v: iBias) {
-    v = dist(generator);
+  iBias = Eigen::VectorXf(nItems);
+  for (int i = 0; i < nItems; i++) {
+    iBias(i) = dist(generator);
   }
 
 }
@@ -1326,12 +1327,12 @@ Model::Model(const Params& params, const char* uFacName, const char* iFacName,
   readMat(iFac, nItems, facDim, iFacName);
 
   std::cout << "\nLoading user bias: " << uBFName;
-  uBias = readDVector(uBFName);
-  std::cout << "\nuBias norm: " << normVec(uBias);
+  uBias = readEigVector(uBFName);
+  std::cout << "\nuBias norm: " << uBias.norm();
   
   std::cout << "\nLoading item bias: " << iBFName;
-  iBias = readDVector(iBFName);
-  std::cout << "\niBias norm: " << normVec(iBias);
+  iBias = readEigVector(iBFName);
+  std::cout << "\niBias norm: " << iBias.norm();
 
   //read global bias
   std::cout << "\nLoading global bias...";

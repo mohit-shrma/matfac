@@ -2800,7 +2800,7 @@ void predSampUsersRMSEProbPar(const Data& data,
  
   std::vector<double> itemNorm;
   for (int item = 0; item < nItems; item++) {
-    itemNorm.push_back(normVec(fullModel.iFac[item]));
+    itemNorm.push_back((fullModel.iFac.row(item).norm()));
   }
 
   auto itemAvgRatings = meanItemRating(trainMat);
@@ -3931,7 +3931,7 @@ void predSampUsersRMSEFreqPar(const Data& data,
  
   std::vector<double> itemNorm;
   for (int item = 0; item < nItems; item++) {
-    itemNorm.push_back(normVec(fullModel.iFac[item]));
+    itemNorm.push_back(fullModel.iFac.row(item).norm());
   }
 
   auto itemAvgRatings = meanItemRating(trainMat);
