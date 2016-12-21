@@ -35,9 +35,9 @@ class Params {
 
     Params(int facDim, int maxIter, int svdFacDim, int seed,
         float uReg, float iReg,  float learnRate, float rhoRMS, 
-        float alpha, std::string trainMatFile, std::string testMatFile, std::string valMatFile,
-        std::string graphMatFile, std::string origUFacFile, std::string origIFacFile, 
-        std::string initUFacFile, std::string initIFacFile, std::string prefix)
+        float alpha, std::string& trainMatFile, std::string& testMatFile, std::string& valMatFile,
+        std::string& graphMatFile, std::string& origUFacFile, std::string& origIFacFile, 
+        std::string& initUFacFile, std::string& initIFacFile, std::string& prefix)
       : nUsers(-1), nItems(-1), facDim(facDim), maxIter(maxIter), svdFacDim(svdFacDim), seed(seed),
       uReg(uReg), iReg(iReg), learnRate(learnRate), rhoRMS(rhoRMS), 
       alpha(alpha), trainMatFile(trainMatFile.c_str()), testMatFile(testMatFile.c_str()), 
