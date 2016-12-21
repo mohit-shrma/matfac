@@ -73,6 +73,7 @@ void ModelMF::train(const Data &data, Model &bestModel,
   double subIterDuration = 0;
   for (iter = 0; iter < maxIter; iter++) {  
     
+    start = std::chrono::system_clock::now();
     if (iter % 10 == 0) {
       //shuffle the user item rating indexes
       std::shuffle(uiRatingInds.begin(), uiRatingInds.end(), mt);
@@ -80,7 +81,6 @@ void ModelMF::train(const Data &data, Model &bestModel,
       parBlockShuffle(uiRatingInds, mt);
     }
 
-    start = std::chrono::system_clock::now();
     for (const auto& ind: uiRatingInds) {
       //get user, item and rating
       u       = std::get<0>(uiRatings[ind]);
@@ -451,31 +451,17 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
   double subIterDuration = 0;
   
   //fill uFac as 0
-#pragma omp parallel for
-  for (int u = 0; u < nUsers; u++) {
-    for (int k = 0; k < facDim; k++) {
-      uFac(u, k) = 0;
-    }
-  }
-
+  uFac.fill(0);
+  Eigen::VectorXf u_k(nUsers), v_k(nItems);
 
   for (iter = 0; iter < maxIter; iter++) { 
 
     start = std::chrono::system_clock::now();
     std::shuffle(dims.begin(), dims.end(), mt);
     for (const auto& k : dims) {
-      std::vector<double> u_k(nUsers, 0), v_k(nItems, 0);  
+      u_k = uFac.col(k);
+      v_k = iFac.col(k);
 
-#pragma omp parallel for
-      for (int u = 0; u < nUsers; u++) {
-        u_k[u] = uFac(u, k);
-      }
-
-#pragma omp parallel for
-      for (int item = 0; item < nItems; item++) {
-        v_k[item] = iFac(item, k);
-      }
-     
       //update residual
       if (iter > 0) {
           //update residual res
@@ -514,11 +500,11 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
           double num = 0, denom = uReg, newV;
           for (int ii = res->rowptr[u]; ii < res->rowptr[u+1]; ii++) {
             int item = res->rowind[ii];
-            num += res->rowval[ii] * v_k[item];
-            denom += v_k[item]*v_k[item];
+            num += res->rowval[ii] * v_k(item);
+            denom += v_k(item)*v_k(item);
           }
           newV = num/denom;
-          u_k[u] = newV;
+          u_k(u) = newV;
         }
 
         //update v
@@ -530,11 +516,11 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
           double num = 0, denom = iReg, newV;
           for (int uu = res->colptr[item]; uu < res->colptr[item+1]; uu++) {
             int u = res->colind[uu];
-            num += res->colval[uu] * u_k[u];
-            denom += u_k[u]*u_k[u];
+            num += res->colval[uu] * u_k(u);
+            denom += u_k(u)*u_k(u);
           }
           newV = num/denom;
-          v_k[item] = newV;
+          v_k(item) = newV;
         }
 
       }
@@ -547,7 +533,7 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
           }
           for (int ii = res->rowptr[u]; ii < res->rowptr[u+1]; ii++) {
             int item = res->rowind[ii];
-            res->rowval[ii] -= u_k[u]*v_k[item]; 
+            res->rowval[ii] -= u_k(u)*v_k(item); 
           }
         }
         
@@ -559,21 +545,13 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
           }
           for (int uu = res->colptr[item]; uu < res->colptr[item+1]; uu++) {
             int u = res->colind[uu];
-            res->colval[uu] -= u_k[u]*v_k[item]; 
+            res->colval[uu] -= u_k(u)*v_k(item); 
           }
         } 
       
        //update factors
-#pragma omp parallel for 
-        for (int u = 0; u < nUsers; u++) {
-          uFac(u, k) = u_k[u];
-        }
-
-#pragma omp parallel for
-        for (int item = 0; item < nItems; item++) {
-          iFac(item, k) = v_k[item];
-        }
-        
+       uFac.col(k) = u_k;
+       iFac.col(k) = v_k;
     }
 
     end = std::chrono::system_clock::now();  
