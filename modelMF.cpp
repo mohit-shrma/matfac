@@ -237,6 +237,11 @@ void ModelMF::trainUShuffle(const Data &data, Model &bestModel,
       for (int ii = trainMat->rowptr[u]; ii << trainMat->rowptr[u+1]; ii++) {
         
         item = trainMat->rowind[ii];
+        
+        if (invalidItems.count(item) > 0) {
+          continue;
+        }
+
         itemRat = trainMat->rowval[ii];
  
         r_ui_est = uFac.row(u).dot(iFac.row(item));
