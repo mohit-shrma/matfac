@@ -527,7 +527,7 @@ int main(int argc , char* argv[]) {
   
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
-  svdFrmSvdlibCSREig(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
+  //svdFrmSvdlibCSREig(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
   //initialize MF model with last learned model if any
   mfModel.loadFacs(params.prefix);
 

@@ -221,29 +221,21 @@ void ModelMF::trainUShuffle(const Data &data, Model &bestModel,
   std::cout << "No. of valid users: " << validUsers.size() << std::endl;
   
   double subIterDuration = 0;
+  
   for (iter = 0; iter < maxIter; iter++) {  
     
     start = std::chrono::system_clock::now();
     
-    if (iter % 10 == 0) {
-      //shuffle the user item rating indexes
-      std::shuffle(validUsers.begin(), validUsers.end(), mt);
-    } else {
-      parBlockShuffle(validUsers, mt);
-    }
+    //shuffle the users
+    std::shuffle(validUsers.begin(), validUsers.end(), mt);
 
     for (const auto& u: validUsers) {
 
-      for (int ii = trainMat->rowptr[u]; ii << trainMat->rowptr[u+1]; ii++) {
+      for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
         
         item = trainMat->rowind[ii];
         
-        if (invalidItems.count(item) > 0) {
-          continue;
-        }
-
         itemRat = trainMat->rowval[ii];
- 
         r_ui_est = uFac.row(u).dot(iFac.row(item));
         diff = itemRat - r_ui_est;
 

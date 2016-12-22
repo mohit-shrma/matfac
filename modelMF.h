@@ -12,7 +12,7 @@
 #include "model.h"
 #include "svdFrmsvdlib.h"
 
-#define DISP_ITER 10 
+#define DISP_ITER 5 
 #define SAVE_ITER 50 
 
 class ModelMF : public Model {
