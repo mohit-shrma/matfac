@@ -34,7 +34,7 @@ DEFINE_string(origifac, "", "original item factors");
 DEFINE_string(initufac, "", "initial user factors");
 DEFINE_string(initifac, "", "initial item factors");
 DEFINE_string(prefix, "", "prefix to prepend to logs n factors");
-DEFINE_string(method, "sgd", "sgd|hogsgd|als|ccd|ccd++");
+DEFINE_string(method, "sgd", "sgd|sgdu|hogsgd|als|ccd|ccd++");
 
 Params parse_cmd_line(int argc, char *argv[]) {
  
@@ -546,8 +546,10 @@ int main(int argc , char* argv[]) {
     }
   } else if (FLAGS_method == "als") {
     mfModel.trainALS(data, bestModel, invalidUsers, invalidItems);
-  } else if (FLAGS_method== "hogsgd")  {
+  } else if (FLAGS_method == "hogsgd")  {
     mfModel.hogTrain(data, bestModel, invalidUsers, invalidItems);
+  } else if (FLAGS_method == "sgdu") {
+    mfModel.trainUShuffle(data, bestModel, invalidUsers, invalidItems); 
   } else {
     mfModel.train(data, bestModel, invalidUsers, invalidItems);
   }
