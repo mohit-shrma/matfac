@@ -15,7 +15,7 @@
 #include "analyzeModels.h"
 
 #include <gflags/gflags.h>
-DEFINE_uint64(maxiter, 100, "number of iterations");
+DEFINE_uint64(maxiter, 5000, "number of iterations");
 DEFINE_uint64(facdim, 5, "dimension of factors");
 DEFINE_uint64(svdfacdim, 5, "dimension of factors");
 DEFINE_double(ureg, 0.01, "user regularization");
