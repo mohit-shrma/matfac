@@ -379,11 +379,11 @@ void transformBinData(Data& data, Params& params) {
   std::cout << "\nCreating original model to transform binary ratings..." << std::endl;
   ModelMF origModel(params, params.origUFacFile, params.origIFacFile, 
       params.seed);
-  origModel.updateMatWRatings(data.trainMat);
+  origModel.updateMatWRatingsGaussianNoise(data.trainMat);
   gk_csr_CreateIndex(data.trainMat, GK_CSR_COL);
-  origModel.updateMatWRatings(data.testMat);
+  origModel.updateMatWRatingsGaussianNoise(data.testMat);
   gk_csr_CreateIndex(data.testMat, GK_CSR_COL);
-  origModel.updateMatWRatings(data.valMat);
+  origModel.updateMatWRatingsGaussianNoise(data.valMat);
   gk_csr_CreateIndex(data.valMat, GK_CSR_COL);
 }
 

@@ -1172,6 +1172,20 @@ void Model::updateMatWRatings(gk_csr_t *mat) {
 }
 
 
+void Model::updateMatWRatingsGaussianNoise(gk_csr_t *mat) {
+  std::mt19937 mt(1); //seed for gaussian noise is 1
+  std::normal_distribution<> gauss(0, 0.01);
+  for (int u = 0; u < mat->nrows; u++) {
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      int item = mat->rowind[ii];
+      if (item < nItems) {
+        mat->rowval[ii] = estRating(u, item) + gauss(mt);
+      }
+    }
+  }
+}
+
+
 std::vector<std::pair<double, double>> Model::itemsMeanVar(gk_csr_t* mat) {
   
   std::vector<std::pair<double, double>> meanVar;

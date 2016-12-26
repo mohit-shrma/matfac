@@ -139,6 +139,7 @@ class Model {
     double estAvgRating(std::unordered_set<int>& invalidUsers, 
         std::unordered_set<int>& invalidItems);
     void updateMatWRatings(gk_csr_t *mat);
+    void updateMatWRatingsGaussianNoise(gk_csr_t *mat);
     double fullLowRankErr(const Data& data, 
         std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems);
     double fullLowRankErr(const Data& data, 
