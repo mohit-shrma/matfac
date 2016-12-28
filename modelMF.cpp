@@ -295,34 +295,36 @@ void ModelMF::trainSGDPar(const Data &data, Model &bestModel,
   for (iter = 0; iter < maxIter; iter++) {  
     
     start = std::chrono::system_clock::now();
-    sgdUpdateBlockSeq(bMask, maxThreads, updateSeq, mt);
-
+    
+    for (int k = 0; k < maxThreads; k++) {
+      sgdUpdateBlockSeq(bMask, maxThreads, updateSeq, mt);
 #pragma omp parallel for
-    for (int t = 0; t < maxThreads; t++) {
-      const auto& users = usersPart[t];
-      const auto& items = itemsPart[t];
-      for (const auto& u: users) {
-        for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+      for (int t = 0; t < maxThreads; t++) {
+        const auto& users = usersPart[t];
+        const auto& items = itemsPart[t];
+        for (const auto& u: users) {
+          for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+            
+            int item = trainMat->rowind[ii];
+            if (items.count(item) == 0) {
+              continue;
+            }
+
+            float itemRat = trainMat->rowval[ii];
+            float r_ui_est = uFac.row(u).dot(iFac.row(item));
+            float diff = itemRat - r_ui_est;
+
+            //update user
+            for (int i = 0; i < facDim; i++) {
+              uFac(u, i) -= learnRate * (-2.0*diff*iFac(item, i) + 2.0*uReg*uFac(u, i));
+            }
           
-          int item = trainMat->rowind[ii];
-          if (items.count(item) == 0) {
-            continue;
-          }
+            //update item
+            for (int i = 0; i < facDim; i++) {
+              iFac(item, i) -= learnRate * (-2.0*diff*uFac(u, i) + 2.0*iReg*iFac(item, i));
+            }
 
-          float itemRat = trainMat->rowval[ii];
-          float r_ui_est = uFac.row(u).dot(iFac.row(item));
-          float diff = itemRat - r_ui_est;
-
-          //update user
-          for (int i = 0; i < facDim; i++) {
-            uFac(u, i) -= learnRate * (-2.0*diff*iFac(item, i) + 2.0*uReg*uFac(u, i));
           }
-        
-          //update item
-          for (int i = 0; i < facDim; i++) {
-            iFac(item, i) -= learnRate * (-2.0*diff*uFac(u, i) + 2.0*iReg*iFac(item, i));
-          }
-
         }
       }
     }
