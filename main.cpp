@@ -525,6 +525,7 @@ int main(int argc , char* argv[]) {
   }
   */
   
+  /*
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
   //svdFrmSvdlibCSREig(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
@@ -578,13 +579,16 @@ int main(int argc , char* argv[]) {
     std::cout << "\nFull RMSE: " << 
       bestModel.fullLowRankErr(data, invalidUsers, invalidItems) << std::endl;
   }
+  */
+
   //testTailLocRec(data, params);
   //testTailRec(data, params);
   //testRec(data, params);
   //computeHeadTailRMSE(data, params);
   
   //analyzeAccuracy(data, params);
-  //compJaccSimAccu(data, params);
+  analyzeAccuracySingleOrigModel(data, params);
+  compJaccSimAccuSingleOrigModel(data, params);
   //meanAndVarSameGroundAllUsers(data, params);
   //convertToBin(data, params);
 
