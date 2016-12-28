@@ -8,12 +8,15 @@
 #include <utility>
 #include <unordered_set>
 #include <string>
+#include <omp.h>
 #include "io.h"
 #include "model.h"
 #include "svdFrmsvdlib.h"
 
 #define DISP_ITER 5 
 #define SAVE_ITER 50 
+
+typedef Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic> MatrixXb;
 
 class ModelMF : public Model {
 
@@ -24,6 +27,9 @@ class ModelMF : public Model {
     ModelMF(const Params& params, const char*uFacName, const char* iFacName, 
         int seed):Model(params, uFacName, iFacName, seed) {}
     virtual void train(const Data& data, Model& bestModel,
+        std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems) ;
+    void trainSGDPar(const Data &data, Model &bestModel, 
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems) ;
     void trainUShuffle(const Data& data, Model& bestModel,
