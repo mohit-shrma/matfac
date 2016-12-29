@@ -1,31 +1,29 @@
 #include "modelMF.h"
 
 
-void sgdUpdateBlockSeq(MatrixXb& bMask, 
-    int dim, std::vector<std::pair<int, int>>& updateSeq, std::mt19937& mt) {
+void sgdUpdateBlockSeq(int dim, std::vector<std::pair<int, int>>& updateSeq, 
+    std::mt19937& mt) {
   
-  bMask.fill(false);
   updateSeq.clear();
-  std::uniform_int_distribution<int> dis(0, dim-1);
-  std::vector<bool> rowMask(dim, false);
+  std::vector<bool> colMask(dim, false);
   std::vector<int> rowInds(dim);
   std::iota(rowInds.begin(), rowInds.end(), 0);
   std::shuffle(rowInds.begin(), rowInds.end(), mt);
 
   for (int ind = 0; ind < dim; ind++) {
     int currRow = rowInds[ind];
-    int currCol = dis(mt);
-    while (true) {
-      if (bMask.col(currCol).any()) {
-        currCol = dis(mt);
-      } else{
-        bMask(currRow, currCol) = true;
-        updateSeq.push_back(std::make_pair(currRow, currCol));
-        break;
+    std::vector<int> leftCols;
+    for (int k = 0; k < dim; k++) {
+      if (!colMask[k]) {
+        leftCols.push_back(k);
       }
     }
+    std::uniform_int_distribution<int> dis(0, leftCols.size()-1);
+    int currCol = leftCols[dis(mt)];
+    updateSeq.push_back(std::make_pair(currRow, currCol));
+    colMask[currCol] = true;
   }
-  
+ 
   /*
   std::cout << "Block seq ..." << std::endl;
   for (const auto& pair: updateSeq) {
@@ -301,14 +299,13 @@ void ModelMF::trainSGDPar(const Data &data, Model &bestModel,
   }
 
   std::vector<std::pair<int, int>> updateSeq;
-  MatrixXb bMask(maxThreads, maxThreads);
 
   for (iter = 0; iter < maxIter; iter++) {  
     
     start = std::chrono::system_clock::now();
     
     for (int k = 0; k < maxThreads; k++) {
-      sgdUpdateBlockSeq(bMask, maxThreads, updateSeq, mt);
+      sgdUpdateBlockSeq(maxThreads, updateSeq, mt);
 #pragma omp parallel for
       for (int t = 0; t < maxThreads; t++) {
         const auto& users = usersPart[updateSeq[t].first];
