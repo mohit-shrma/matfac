@@ -26,6 +26,13 @@ void sgdUpdateBlockSeq(MatrixXb& bMask,
     }
   }
   
+  /*
+  std::cout << "Block seq ..." << std::endl;
+  for (const auto& pair: updateSeq) {
+    std::cout << pair.first << "," << pair.second << " ";
+  }
+  std::cout << std::endl;
+  */
 }
 
 
@@ -184,10 +191,6 @@ void ModelMF::trainSGDPar(const Data &data, Model &bestModel,
     std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems) {
 
-  //copy passed known factors
-  //uFac = data.origUFac;
-  //iFac = data.origIFac;
-  
   std::cout << "\nModelMF::trainSGDPar trainSeed: " << trainSeed;
   
   int nnz = data.trainNNZ;
@@ -246,7 +249,7 @@ void ModelMF::trainSGDPar(const Data &data, Model &bestModel,
   std::chrono::time_point<std::chrono::system_clock> start, end;
   std::chrono::duration<double> duration;
   
- std::cout << "\nModelMF::train trainSeed: " << trainSeed 
+  std::cout << "\nModelMF::trainSGDPar trainSeed: " << trainSeed 
     << " invalidUsers: " << invalidUsers.size()
     << " invalidItems: " << invalidItems.size() << std::endl;
   
@@ -261,16 +264,21 @@ void ModelMF::trainSGDPar(const Data &data, Model &bestModel,
   
   std::shuffle(trainUsers.begin(), trainUsers.end(), mt);
   std::shuffle(trainItems.begin(), trainItems.end(), mt);
-  int maxThreads = omp_get_max_threads(); 
   
+  int maxThreads = omp_get_max_threads(); 
+  std::cout << "maxThreads: " << maxThreads << std::endl;
+
   //create maxThreads partitions of users
   int usersPerPart = trainUsers.size()/maxThreads;
+  std::cout << "train users: " << trainUsers.size() << " usersPerPart: " 
+    << usersPerPart << std::endl;
   std::vector<std::unordered_set<int>> usersPart(maxThreads); 
   int currPart = 0;
   for (int i = 0; i < trainUsers.size(); i++) {
     usersPart[currPart].insert(trainUsers[i]);
-    if (i % usersPerPart == 0) {
+    if (i != 0 && i % usersPerPart == 0) {
       if (currPart != maxThreads - 1) {
+        std::cout << "currPart: " << currPart << " i: " << i << std::endl;
         currPart++;
       }
     }
@@ -278,12 +286,15 @@ void ModelMF::trainSGDPar(const Data &data, Model &bestModel,
 
   //create maxThreads partitions of items
   int itemsPerPart = trainItems.size()/maxThreads;
+  std::cout << "train items: " << trainItems.size() << " itemsPerPart: " 
+    << itemsPerPart << std::endl;
   std::vector<std::unordered_set<int>> itemsPart(maxThreads); 
   currPart = 0;
   for (int i = 0; i < trainItems.size(); i++) {
     itemsPart[currPart].insert(trainItems[i]);
-    if (i % itemsPerPart == 0) {
+    if (i != 0 && i % itemsPerPart == 0) {
       if (currPart != maxThreads - 1) {
+        std::cout << "currPart: " << currPart << " i: " << i << std::endl;
         currPart++;
       }
     }
@@ -300,8 +311,8 @@ void ModelMF::trainSGDPar(const Data &data, Model &bestModel,
       sgdUpdateBlockSeq(bMask, maxThreads, updateSeq, mt);
 #pragma omp parallel for
       for (int t = 0; t < maxThreads; t++) {
-        const auto& users = usersPart[t];
-        const auto& items = itemsPart[t];
+        const auto& users = usersPart[updateSeq[t].first];
+        const auto& items = itemsPart[updateSeq[t].second];
         for (const auto& u: users) {
           for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
             
@@ -350,7 +361,7 @@ void ModelMF::trainSGDPar(const Data &data, Model &bestModel,
       }
        
       if (iter % DISP_ITER == 0) {
-        std::cout << "ModelMF::train trainSeed: " << trainSeed
+        std::cout << "ModelMF::trainSGDPar trainSeed: " << trainSeed
                   << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
                   << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)
                   << " Val RMSE: " << prevValRMSE
@@ -373,7 +384,6 @@ void ModelMF::trainSGDPar(const Data &data, Model &bestModel,
 
   std::cout << "\nBest model validation RMSE: " << bestModel.RMSE(data.valMat, 
       invalidUsers, invalidItems);
-
 }
 
 

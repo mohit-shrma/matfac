@@ -34,7 +34,7 @@ DEFINE_string(origifac, "", "original item factors");
 DEFINE_string(initufac, "", "initial user factors");
 DEFINE_string(initifac, "", "initial item factors");
 DEFINE_string(prefix, "", "prefix to prepend to logs n factors");
-DEFINE_string(method, "sgd", "sgd|sgdu|hogsgd|als|ccd|ccd++");
+DEFINE_string(method, "sgd", "sgd|sgdpar|sgdu|hogsgd|als|ccd|ccd++");
 
 Params parse_cmd_line(int argc, char *argv[]) {
  
@@ -525,7 +525,6 @@ int main(int argc , char* argv[]) {
   }
   */
   
-  /*
   ModelMF mfModel(params, params.seed);
   //initialize model with svd
   //svdFrmSvdlibCSREig(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
@@ -551,6 +550,8 @@ int main(int argc , char* argv[]) {
     mfModel.hogTrain(data, bestModel, invalidUsers, invalidItems);
   } else if (FLAGS_method == "sgdu") {
     mfModel.trainUShuffle(data, bestModel, invalidUsers, invalidItems); 
+  } else if (FLAGS_method == "sgdpar") {
+    mfModel.trainSGDPar(data, bestModel, invalidUsers, invalidItems); 
   } else {
     mfModel.train(data, bestModel, invalidUsers, invalidItems);
   }
@@ -579,7 +580,7 @@ int main(int argc , char* argv[]) {
     std::cout << "\nFull RMSE: " << 
       bestModel.fullLowRankErr(data, invalidUsers, invalidItems) << std::endl;
   }
-  */
+  
 
   //testTailLocRec(data, params);
   //testTailRec(data, params);
@@ -587,8 +588,8 @@ int main(int argc , char* argv[]) {
   //computeHeadTailRMSE(data, params);
   
   //analyzeAccuracy(data, params);
-  analyzeAccuracySingleOrigModel(data, params);
-  compJaccSimAccuSingleOrigModel(data, params);
+  //analyzeAccuracySingleOrigModel(data, params);
+  //compJaccSimAccuSingleOrigModel(data, params);
   //meanAndVarSameGroundAllUsers(data, params);
   //convertToBin(data, params);
 
