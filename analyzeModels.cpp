@@ -357,7 +357,7 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
   std::cout << "\nModel sign: " << modelSign << std::endl;    
   prefix = "sgd_" + std::to_string(params.facDim) + "_1_" + modelSign + "_invalUsers.txt";
   std::vector<int> invalUsersVec = readVector(prefix.c_str());
-  prefix = std::string(params.prefix) + "_1_" + modelSign + "_invalItems.txt";
+  prefix = "sgd_" + std::to_string(params.facDim) + "_1_" + modelSign + "_invalItems.txt";
   std::vector<int> invalItemsVec = readVector(prefix.c_str());
   for (auto v: invalUsersVec) {
     invalidUsers.insert(v);
@@ -368,27 +368,33 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
   
   std::cout << "SGD model: " << std::endl;
   std::cout << "Train RMSE: " << sgdModel.RMSE(data.trainMat, invalidUsers,
-      invalidItems, origModel);
+      invalidItems, origModel) << std::endl;
   std::cout << "Test RMSE: " << sgdModel.RMSE(data.testMat, invalidUsers, 
-      invalidItems, origModel);
+      invalidItems, origModel) << std::endl;
   std::cout << "Val RMSE: " << sgdModel.RMSE(data.valMat, invalidUsers,
-      invalidItems, origModel);
+      invalidItems, origModel) << std::endl;
+  std::cout << "Full RMSE: " << sgdModel.fullLowRankErr(data, invalidUsers, 
+      invalidItems, origModel) << std::endl;
   
   std::cout << "ALS model: " << std::endl;
   std::cout << "Train RMSE: " << alsModel.RMSE(data.trainMat, invalidUsers,
-      invalidItems, origModel);
+      invalidItems, origModel) << std::endl;
   std::cout << "Test RMSE: " << alsModel.RMSE(data.testMat, invalidUsers, 
-      invalidItems, origModel);
+      invalidItems, origModel) << std::endl;
   std::cout << "Val RMSE: " << alsModel.RMSE(data.valMat, invalidUsers,
-      invalidItems, origModel);
+      invalidItems, origModel) << std::endl;
+  std::cout << "Full RMSE: " << alsModel.fullLowRankErr(data, invalidUsers, 
+      invalidItems, origModel) << std::endl;
   
   std::cout << "CCD++ model: " << std::endl;
   std::cout << "Train RMSE: " << ccdModel.RMSE(data.trainMat, invalidUsers,
-      invalidItems, origModel);
+      invalidItems, origModel) << std::endl;
   std::cout << "Test RMSE: " << ccdModel.RMSE(data.testMat, invalidUsers, 
-      invalidItems, origModel);
+      invalidItems, origModel) << std::endl;
   std::cout << "Val RMSE: " << ccdModel.RMSE(data.valMat, invalidUsers,
-      invalidItems, origModel);
+      invalidItems, origModel) << std::endl;
+  std::cout << "Full RMSE: " << ccdModel.fullLowRankErr(data, invalidUsers, 
+      invalidItems, origModel) << std::endl;
 
   std::vector<double> epsilons = {0.1, 0.25, 0.5, 1.0};
   //std::vector<double> epsilons = {0.5};
@@ -400,8 +406,11 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
     std::vector<std::vector<float>> itemsJacSims(nItems);
     std::vector<std::vector<float>> itemAccuCount(nItems);
     std::vector<std::vector<float>> itemPearsonCorr(nItems);
+    
+    float rmseAvg = 0;
+    unsigned long int nnz = 0;
 
-#pragma omp parallel for
+#pragma omp parallel for reduction(+:rmseAvg, nnz)
     for (int item = 0; item < nItems; item++) {
       if (invalidItems.count(item) > 0) {
         continue;
@@ -415,7 +424,7 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
       float sgdErrMean = 0, alsErrMean = 0, ccdErrMean = 0;
 
       std::vector<bool> ratedUsers(nUsers, false);
-      int count = 0;
+      unsigned long int count = 0;
 
       for (int uu = data.trainMat->colptr[item]; 
           uu < data.trainMat->colptr[item+1]; uu++) {
@@ -436,8 +445,12 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
         float r_ui_sgd = sgdModel.estRating(user, item);
         float r_ui_als = alsModel.estRating(user, item);
         float r_ui_ccd = ccdModel.estRating(user, item);
-
-        float sgdDiff = fabs(r_ui - r_ui_sgd);
+        float r_ui_avg = (r_ui_sgd + r_ui_als + r_ui_ccd)/3;
+        
+        rmseAvg += (r_ui - r_ui_avg)*(r_ui - r_ui_avg);
+        nnz++;
+        
+        float sgdDiff  = fabs(r_ui - r_ui_sgd);
         sgdErrMean += sgdDiff; 
         sgdErr.push_back(sgdDiff);
         if (sgdDiff <= epsilon) {
@@ -501,10 +514,13 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
       
     }
     
-    std::string opFName = std::string(params.prefix) + "_" + 
+    std::cout << "rmseAvg: " << rmseAvg << " nnz: " << nnz << std::endl;
+    std::cout << "rmseAvg: " << std::sqrt(rmseAvg/nnz) << std::endl;
+
+    std::string opFName = std::string(params.prefix) + "_paiwise_" + 
       std::to_string(epsilon) + "_modelsJacSim.txt";
     
-    std::string opFName2 = std::string(params.prefix) + "_" + 
+    std::string opFName2 = std::string(params.prefix) + "_pairwise_" + 
       std::to_string(epsilon) + "_modelsPearson.txt";
 
     std::cout << "Writing... " << opFName << std::endl;
