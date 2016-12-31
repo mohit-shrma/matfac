@@ -6,6 +6,7 @@
 #include <iomanip>
 
 void compJaccSimAccu(Data& data, Params& params);
+void compJaccSimAccuMeth(Data& data, Params& params);
 void compJaccSimAccuSingleOrigModel(Data& data, Params& params);
 void analyzeAccuracy(Data& data, Params& params);
 void analyzeAccuracySingleOrigModel(Data& data, Params& params);

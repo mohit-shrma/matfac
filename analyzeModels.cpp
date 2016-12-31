@@ -333,6 +333,209 @@ void compJaccSimAccuSingleOrigModel(Data& data, Params& params) {
 }
 
 
+void compJaccSimAccuMeth(Data& data, Params& params) {
+
+  std::vector<ModelMF> mfModels;
+  ModelMF origModel(params, params.origUFacFile, params.origIFacFile,
+      params.seed);
+  ModelMF sgdModel(params, params.seed);
+  ModelMF alsModel(params, params.seed);
+  ModelMF ccdModel(params, params.seed);
+  
+  std::string prefix = "sgd_" + std::to_string(params.facDim) + "_1";
+  sgdModel.loadFacs(prefix.c_str());
+
+  prefix = "als_" + std::to_string(params.facDim) + "_1";
+  alsModel.loadFacs(prefix.c_str());
+
+  prefix = "ccd++_" + std::to_string(params.facDim) + "_1"; 
+  ccdModel.loadFacs(prefix.c_str());
+
+  std::unordered_set<int> invalidUsers;
+  std::unordered_set<int> invalidItems;
+  std::string modelSign = sgdModel.modelSignature();
+  std::cout << "\nModel sign: " << modelSign << std::endl;    
+  prefix = "sgd_" + std::to_string(params.facDim) + "_1_" + modelSign + "_invalUsers.txt";
+  std::vector<int> invalUsersVec = readVector(prefix.c_str());
+  prefix = std::string(params.prefix) + "_1_" + modelSign + "_invalItems.txt";
+  std::vector<int> invalItemsVec = readVector(prefix.c_str());
+  for (auto v: invalUsersVec) {
+    invalidUsers.insert(v);
+  }
+  for (auto v: invalItemsVec) {
+    invalidItems.insert(v);
+  }
+  
+  std::cout << "SGD model: " << std::endl;
+  std::cout << "Train RMSE: " << sgdModel.RMSE(data.trainMat, invalidUsers,
+      invalidItems, origModel);
+  std::cout << "Test RMSE: " << sgdModel.RMSE(data.testMat, invalidUsers, 
+      invalidItems, origModel);
+  std::cout << "Val RMSE: " << sgdModel.RMSE(data.valMat, invalidUsers,
+      invalidItems, origModel);
+  
+  std::cout << "ALS model: " << std::endl;
+  std::cout << "Train RMSE: " << alsModel.RMSE(data.trainMat, invalidUsers,
+      invalidItems, origModel);
+  std::cout << "Test RMSE: " << alsModel.RMSE(data.testMat, invalidUsers, 
+      invalidItems, origModel);
+  std::cout << "Val RMSE: " << alsModel.RMSE(data.valMat, invalidUsers,
+      invalidItems, origModel);
+  
+  std::cout << "CCD++ model: " << std::endl;
+  std::cout << "Train RMSE: " << ccdModel.RMSE(data.trainMat, invalidUsers,
+      invalidItems, origModel);
+  std::cout << "Test RMSE: " << ccdModel.RMSE(data.testMat, invalidUsers, 
+      invalidItems, origModel);
+  std::cout << "Val RMSE: " << ccdModel.RMSE(data.valMat, invalidUsers,
+      invalidItems, origModel);
+
+  std::vector<double> epsilons = {0.1, 0.25, 0.5, 1.0};
+  //std::vector<double> epsilons = {0.5};
+  int nUsers     = data.trainMat->nrows;
+  int nItems     = data.trainMat->ncols;
+
+  for (auto&& epsilon: epsilons) {
+    std::cout << "epsilon: " << epsilon << std::endl;
+    std::vector<std::vector<float>> itemsJacSims(nItems);
+    std::vector<std::vector<float>> itemAccuCount(nItems);
+    std::vector<std::vector<float>> itemPearsonCorr(nItems);
+
+#pragma omp parallel for
+    for (int item = 0; item < nItems; item++) {
+      if (invalidItems.count(item) > 0) {
+        continue;
+      }
+      
+      std::unordered_set<int> sgdAccuItems;
+      std::unordered_set<int> alsAccuItems;
+      std::unordered_set<int> ccdAccuItems;
+      
+      std::vector<float> sgdErr, alsErr, ccdErr;
+      float sgdErrMean = 0, alsErrMean = 0, ccdErrMean = 0;
+
+      std::vector<bool> ratedUsers(nUsers, false);
+      int count = 0;
+
+      for (int uu = data.trainMat->colptr[item]; 
+          uu < data.trainMat->colptr[item+1]; uu++) {
+        ratedUsers[data.trainMat->colind[uu]] = true;
+      }
+
+      for (int user = 0; user < nUsers; user++) {
+        
+        if (invalidUsers.count(user) > 0) {
+          continue;
+        }
+
+        if (ratedUsers[user]) {
+          continue;
+        }
+        
+        float r_ui     = origModel.estRating(user, item);
+        float r_ui_sgd = sgdModel.estRating(user, item);
+        float r_ui_als = alsModel.estRating(user, item);
+        float r_ui_ccd = ccdModel.estRating(user, item);
+
+        float sgdDiff = fabs(r_ui - r_ui_sgd);
+        sgdErrMean += sgdDiff; 
+        sgdErr.push_back(sgdDiff);
+        if (sgdDiff <= epsilon) {
+          sgdAccuItems.insert(user);
+        }
+        
+        float alsDiff = fabs(r_ui - r_ui_als);
+        alsErrMean += alsDiff;
+        alsErr.push_back(alsDiff);
+        if (alsDiff <= epsilon) {
+          alsAccuItems.insert(user);
+        }
+
+        float ccdDiff = fabs(r_ui - r_ui_ccd);
+        ccdErrMean += ccdDiff;
+        ccdErr.push_back(ccdDiff);
+        if (ccdDiff <= epsilon) {
+          ccdAccuItems.insert(user);
+        }
+
+        count++;
+      }
+      
+      sgdErrMean /= count;
+      alsErrMean /= count;
+      ccdErrMean /= count;
+ 
+      itemAccuCount[item].push_back(sgdAccuItems.size()); 
+      itemAccuCount[item].push_back(alsAccuItems.size()); 
+      itemAccuCount[item].push_back(ccdAccuItems.size()); 
+      
+      float sgdALSIntersectCount = (float) setIntersect(sgdAccuItems, alsAccuItems);
+      float sgdALSUnionCount = (float) setUnion(sgdAccuItems, alsAccuItems);
+      float sgdALSJacSim = 0;
+      if (sgdALSUnionCount > 0) {
+        sgdALSJacSim = sgdALSIntersectCount/sgdALSUnionCount;
+      }
+      itemsJacSims[item].push_back(sgdALSJacSim);
+      itemPearsonCorr[item].push_back(pearsonCorr(sgdErr, alsErr, sgdErrMean, 
+            alsErrMean));
+
+      float alsCCDIntersectCount = (float) setIntersect(alsAccuItems, ccdAccuItems);
+      float alsCCDUnionCount = (float) setUnion(alsAccuItems, ccdAccuItems);;
+      float alsCCDJacSim = 0; 
+      if (alsCCDUnionCount > 0) {
+        alsCCDJacSim = alsCCDIntersectCount/alsCCDUnionCount;
+      }
+      itemsJacSims[item].push_back(alsCCDJacSim);
+      itemPearsonCorr[item].push_back(pearsonCorr(alsErr, ccdErr, alsErrMean, 
+            ccdErrMean));
+
+      float sgdCCDIntersectCount = (float) setIntersect(sgdAccuItems, ccdAccuItems);
+      float sgdCCDUnionCount  = (float) setUnion(sgdAccuItems, ccdAccuItems);
+      float sgdCCDJacSim = 0;
+      if (sgdCCDUnionCount > 0) {
+        sgdCCDJacSim = sgdCCDIntersectCount/sgdCCDUnionCount;
+      }
+      itemsJacSims[item].push_back(sgdCCDJacSim);
+      itemPearsonCorr[item].push_back(pearsonCorr(sgdErr, ccdErr, sgdErrMean, 
+            ccdErrMean)); 
+      
+    }
+    
+    std::string opFName = std::string(params.prefix) + "_" + 
+      std::to_string(epsilon) + "_modelsJacSim.txt";
+    
+    std::string opFName2 = std::string(params.prefix) + "_" + 
+      std::to_string(epsilon) + "_modelsPearson.txt";
+
+    std::cout << "Writing... " << opFName << std::endl;
+
+    std::ofstream opFile(opFName.c_str());
+    std::ofstream opFile2(opFName2.c_str());
+
+    for (int item  = 0; item < nItems; item++) {
+      opFile << item << " ";
+      for (auto&& sim: itemsJacSims[item]) {
+        opFile << sim << " ";
+      }
+      for (auto&& accu: itemAccuCount[item]) {
+        opFile << accu << " ";
+      }
+      opFile << std::endl;
+
+      opFile2 << item << " ";
+      for (auto&& corr: itemPearsonCorr[item]) {
+        opFile2 << corr << " ";
+      }
+      opFile2 << std::endl;
+    }
+
+    opFile.close();
+    opFile2.close();
+  }
+
+}
+
+
 void analyzeAccuracy(Data& data, Params& params) {
   
   std::vector<ModelMF> mfModels;
