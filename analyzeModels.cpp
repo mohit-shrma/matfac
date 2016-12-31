@@ -406,6 +406,9 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
     std::vector<std::vector<float>> itemsJacSims(nItems);
     std::vector<std::vector<float>> itemAccuCount(nItems);
     std::vector<std::vector<float>> itemPearsonCorr(nItems);
+    std::vector<float> sgdItemsAvgRMSE(nItems, 0);
+    std::vector<float> alsItemsAvgRMSE(nItems, 0);
+    std::vector<float> ccdItemsAvgRMSE(nItems, 0);
     
     float rmseAvg = 0;
     unsigned long int nnz = 0;
@@ -422,7 +425,7 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
       
       std::vector<float> sgdErr, alsErr, ccdErr;
       float sgdErrMean = 0, alsErrMean = 0, ccdErrMean = 0;
-
+      float sgdItemAvgRMSE = 0, alsItemAvgRMSE = 0, ccdItemAvgRMSE = 0;
       std::vector<bool> ratedUsers(nUsers, false);
       unsigned long int count = 0;
 
@@ -451,6 +454,7 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
         nnz++;
         
         float sgdDiff  = fabs(r_ui - r_ui_sgd);
+        sgdItemAvgRMSE += sgdDiff*sgdDiff;
         sgdErrMean += sgdDiff; 
         sgdErr.push_back(sgdDiff);
         if (sgdDiff <= epsilon) {
@@ -458,6 +462,7 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
         }
         
         float alsDiff = fabs(r_ui - r_ui_als);
+        alsItemAvgRMSE += alsDiff*alsDiff;
         alsErrMean += alsDiff;
         alsErr.push_back(alsDiff);
         if (alsDiff <= epsilon) {
@@ -465,6 +470,7 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
         }
 
         float ccdDiff = fabs(r_ui - r_ui_ccd);
+        ccdItemAvgRMSE += ccdDiff*ccdDiff;
         ccdErrMean += ccdDiff;
         ccdErr.push_back(ccdDiff);
         if (ccdDiff <= epsilon) {
@@ -477,7 +483,11 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
       sgdErrMean /= count;
       alsErrMean /= count;
       ccdErrMean /= count;
- 
+      
+      sgdItemsAvgRMSE[item] = std::sqrt(sgdItemAvgRMSE/count);
+      alsItemsAvgRMSE[item] = std::sqrt(alsItemAvgRMSE/count);
+      ccdItemsAvgRMSE[item] = std::sqrt(ccdItemAvgRMSE/count);
+
       itemAccuCount[item].push_back(sgdAccuItems.size()); 
       itemAccuCount[item].push_back(alsAccuItems.size()); 
       itemAccuCount[item].push_back(ccdAccuItems.size()); 
@@ -522,11 +532,15 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
     
     std::string opFName2 = std::string(params.prefix) + "_pairwise_" + 
       std::to_string(epsilon) + "_modelsPearson.txt";
+    
+    std::string opFName3 = std::string(params.prefix) + "_pairwise_" +
+      std::to_string(epsilon) + "_itemAvgRMSE.txt";
 
     std::cout << "Writing... " << opFName << std::endl;
 
     std::ofstream opFile(opFName.c_str());
     std::ofstream opFile2(opFName2.c_str());
+    std::ofstream opFile3(opFName3.c_str());
 
     for (int item  = 0; item < nItems; item++) {
       opFile << item << " ";
@@ -543,10 +557,15 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
         opFile2 << corr << " ";
       }
       opFile2 << std::endl;
+      
+      opFile3 << item << " " << sgdItemsAvgRMSE[item] << " " << 
+        alsItemsAvgRMSE[item] << " " << ccdItemsAvgRMSE[item] <<
+        std::endl;
     }
 
     opFile.close();
     opFile2.close();
+    opFile3.close();
   }
 
 }
