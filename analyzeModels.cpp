@@ -401,6 +401,28 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
   int nUsers     = data.trainMat->nrows;
   int nItems     = data.trainMat->ncols;
 
+  std::vector<int> itemFreq(nItems, 0);
+  std::vector<float> meanGTRating(nItems, 0), varianceGTRating(nItems, 0);
+  
+  std::vector<std::pair<double, double>> trainMeanVar;
+  trainMeanVar = trainItemsMeanVar(data.trainMat);
+
+#pragma omp parallel for
+  for (int item = 0; item < nItems; item++) {
+    itemFreq[item] = (data.trainMat->colptr[item+1] - 
+        data.trainMat->colptr[item]);
+    
+    std::vector<double> userRatings;
+    for (int user = 0; user < nUsers; user++) {
+      userRatings.push_back(origModel.estRating(user, item));
+    }
+
+    std::pair<double, double> meanNStd = meanStdDev(userRatings);
+    meanGTRating[item]                 = meanNStd.first;
+    varianceGTRating[item]             = meanNStd.second;
+  }
+
+
   for (auto&& epsilon: epsilons) {
     std::cout << "epsilon: " << epsilon << std::endl;
     std::vector<std::vector<float>> itemsJacSims(nItems);
@@ -567,6 +589,18 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
     opFile2.close();
     opFile3.close();
   }
+
+  std::string opFName = std::string(params.prefix) + "_" + 
+    "itemFreqMeanVar.txt";
+  std::ofstream opFile(opFName.c_str());
+  for (int item = 0; item < nItems; item++) {
+    opFile << item << " " << itemFreq[item] << " " 
+      << trainMeanVar[item].first << " " 
+      << trainMeanVar[item].second << " " 
+      << meanGTRating[item] << " " 
+      << varianceGTRating[item] << std::endl;
+  } 
+  opFile.close();
 
 }
 
