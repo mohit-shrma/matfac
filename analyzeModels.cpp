@@ -184,8 +184,9 @@ void compJaccSimAccuSingleOrigModel(Data& data, Params& params) {
   ModelMF origModel(params, params.origUFacFile, params.origIFacFile,
       params.seed);
 
-  for (int i = 1; i <= 3; i++) {
-    std::string prefix = std::string(params.prefix) + "_" + std::to_string(i);
+  for (int i = 1; i <= 10; i++) {
+    std::string prefix = std::string(params.prefix) + "_"  
+      + std::to_string(params.facDim) + "_" + std::to_string(i);
     ModelMF fullModel(params, params.seed);
     fullModel.loadFacs(prefix.c_str());
     mfModels.push_back(fullModel);
@@ -197,9 +198,11 @@ void compJaccSimAccuSingleOrigModel(Data& data, Params& params) {
   std::unordered_set<int> invalidItems;
   std::string modelSign = mfModels[0].modelSignature();
   std::cout << "\nModel sign: " << modelSign << std::endl;    
-  std::string prefix = std::string(params.prefix) + "_1_" + modelSign + "_invalUsers.txt";
+  std::string prefix = std::string(params.prefix) + "_" + 
+    std::to_string(params.facDim) + "_1_" + modelSign + "_invalUsers.txt";
   std::vector<int> invalUsersVec = readVector(prefix.c_str());
-  prefix = std::string(params.prefix) + "_1_" + modelSign + "_invalItems.txt";
+  prefix = std::string(params.prefix) + "_" + 
+    std::to_string(params.facDim) + "_1_" + modelSign + "_invalItems.txt";
   std::vector<int> invalItemsVec = readVector(prefix.c_str());
   for (auto v: invalUsersVec) {
     invalidUsers.insert(v);
