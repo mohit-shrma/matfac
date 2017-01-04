@@ -338,29 +338,31 @@ void compJaccSimAccuSingleOrigModel(Data& data, Params& params) {
 
 void compJaccSimAccuMeth(Data& data, Params& params) {
 
-  std::vector<ModelMF> mfModels;
   ModelMF origModel(params, params.origUFacFile, params.origIFacFile,
       params.seed);
   ModelMF sgdModel(params, params.seed);
   ModelMF alsModel(params, params.seed);
   ModelMF ccdModel(params, params.seed);
   
-  std::string prefix = "sgd_" + std::to_string(params.facDim) + "_1";
+  //std::string prefix = "sgdpar_20_" + std::to_string(params.facDim) + "_1";
+  std::string prefix = "sgdpar_20";
   sgdModel.loadFacs(prefix.c_str());
 
-  prefix = "als_" + std::to_string(params.facDim) + "_1";
+  //prefix = "als_20_" + std::to_string(params.facDim) + "_1";
+  prefix = "als_20";
   alsModel.loadFacs(prefix.c_str());
 
-  prefix = "ccd++_" + std::to_string(params.facDim) + "_1"; 
+  //prefix = "ccd++_20_" + std::to_string(params.facDim) + "_1"; 
+  prefix = "ccd++_20"; 
   ccdModel.loadFacs(prefix.c_str());
 
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
   std::string modelSign = sgdModel.modelSignature();
   std::cout << "\nModel sign: " << modelSign << std::endl;    
-  prefix = "sgd_" + std::to_string(params.facDim) + "_1_" + modelSign + "_invalUsers.txt";
+  prefix = "sgdpar_20_" + modelSign + "_invalUsers.txt";
   std::vector<int> invalUsersVec = readVector(prefix.c_str());
-  prefix = "sgd_" + std::to_string(params.facDim) + "_1_" + modelSign + "_invalItems.txt";
+  prefix = "sgdpar_20_" + modelSign + "_invalItems.txt";
   std::vector<int> invalItemsVec = readVector(prefix.c_str());
   for (auto v: invalUsersVec) {
     invalidUsers.insert(v);
@@ -409,22 +411,28 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
   
   std::vector<std::pair<double, double>> trainMeanVar;
   trainMeanVar = trainItemsMeanVar(data.trainMat);
-
-#pragma omp parallel for
+  
+  float maxRat = 0, minRat = 100;
+  
+#pragma omp parallel for reduction(max: maxRat), reduction(min: minRat)
   for (int item = 0; item < nItems; item++) {
+    maxRat = 0, minRat = 100;
     itemFreq[item] = (data.trainMat->colptr[item+1] - 
         data.trainMat->colptr[item]);
     
     std::vector<double> userRatings;
     for (int user = 0; user < nUsers; user++) {
-      userRatings.push_back(origModel.estRating(user, item));
+      float rating = origModel.estRating(user, item);
+      if (maxRat < rating) {maxRat = rating;}
+      if (minRat > rating) {minRat = rating;}
+      userRatings.push_back(rating);
     }
 
     std::pair<double, double> meanNStd = meanStdDev(userRatings);
     meanGTRating[item]                 = meanNStd.first;
     varianceGTRating[item]             = meanNStd.second;
   }
-
+  std::cout << "maxRat: " << maxRat << " minRat: " << minRat << std::endl;
 
   for (auto&& epsilon: epsilons) {
     std::cout << "epsilon: " << epsilon << std::endl;
@@ -552,7 +560,7 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
     std::cout << "rmseAvg: " << rmseAvg << " nnz: " << nnz << std::endl;
     std::cout << "rmseAvg: " << std::sqrt(rmseAvg/nnz) << std::endl;
 
-    std::string opFName = std::string(params.prefix) + "_paiwise_" + 
+    std::string opFName = std::string(params.prefix) + "_pairwise_" + 
       std::to_string(epsilon) + "_modelsJacSim.txt";
     
     std::string opFName2 = std::string(params.prefix) + "_pairwise_" + 
