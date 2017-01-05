@@ -581,6 +581,12 @@ void ModelMF::trainALS(const Data &data, Model &bestModel,
   std::vector<std::unordered_set<int>> uISet(nUsers);
   genStats(trainMat, uISet, std::to_string(trainSeed));
   getInvalidUsersItems(trainMat, uISet, invalidUsers, invalidItems);
+  for (int u = trainMat->nrows; u < data.nUsers; u++) {
+    invalidUsers.insert(u);
+  }
+  for (int item = trainMat->ncols; item < data.nItems; item++) {
+    invalidItems.insert(item);
+  }
  
   //std::cout << "\nNNZ = " << nnz;
   prevObj = objective(data, invalidUsers, invalidItems);
@@ -796,6 +802,12 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
   std::vector<std::unordered_set<int>> uISet(nUsers);
   genStats(trainMat, uISet, std::to_string(trainSeed));
   getInvalidUsersItems(trainMat, uISet, invalidUsers, invalidItems);
+  for (int u = trainMat->nrows; u < data.nUsers; u++) {
+    invalidUsers.insert(u);
+  }
+  for (int item = trainMat->ncols; item < data.nItems; item++) {
+    invalidItems.insert(item);
+  }
  
   //std::cout << "\nNNZ = " << nnz;
   prevObj = objective(data, invalidUsers, invalidItems);
@@ -1032,6 +1044,12 @@ void ModelMF::trainCCD(const Data &data, Model &bestModel,
   std::vector<std::unordered_set<int>> uISet(nUsers);
   genStats(trainMat, uISet, std::to_string(trainSeed));
   getInvalidUsersItems(trainMat, uISet, invalidUsers, invalidItems);
+  for (int u = trainMat->nrows; u < data.nUsers; u++) {
+    invalidUsers.insert(u);
+  }
+  for (int item = trainMat->ncols; item < data.nItems; item++) {
+    invalidItems.insert(item);
+  }
  
   //std::cout << "\nNNZ = " << nnz;
   prevObj = objective(data, invalidUsers, invalidItems);
@@ -1251,7 +1269,13 @@ void ModelMF::hogTrain(const Data &data, Model &bestModel,
   std::vector<std::unordered_set<int>> uISet(nUsers);
   genStats(trainMat, uISet, std::to_string(trainSeed));
   getInvalidUsersItems(trainMat, uISet, invalidUsers, invalidItems);
-  
+  for (int u = trainMat->nrows; u < data.nUsers; u++) {
+    invalidUsers.insert(u);
+  }
+  for (int item = trainMat->ncols; item < data.nItems; item++) {
+    invalidItems.insert(item);
+  }
+
   //std::cout << "\nNNZ = " << nnz;
   prevObj = objective(data, invalidUsers, invalidItems);
   bestObj = prevObj;
