@@ -80,6 +80,8 @@ int getMaxItemInd(gk_csr_t* mat);
 void parBlockShuffle(std::vector<size_t>& arr, std::mt19937& mt);
 int binSearch(int *sortedArr, int key, int ub, int lb);
 float adapDotProd(Eigen::MatrixXf& uFac, Eigen::MatrixXf& iFac, 
-    int u, int item, int minRank);
+   int u, int item, int minRank);
+void sgdUpdateBlockSeq(int dim, std::vector<std::pair<int, int>>& updateSeq, 
+    std::mt19937& mt);
 #endif
 

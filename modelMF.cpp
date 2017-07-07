@@ -1,37 +1,6 @@
 #include "modelMF.h"
 
 
-void sgdUpdateBlockSeq(int dim, std::vector<std::pair<int, int>>& updateSeq, 
-    std::mt19937& mt) {
-  
-  updateSeq.clear();
-  std::vector<bool> colMask(dim, false);
-  std::vector<int> rowInds(dim);
-  std::iota(rowInds.begin(), rowInds.end(), 0);
-  std::shuffle(rowInds.begin(), rowInds.end(), mt);
-
-  for (int ind = 0; ind < dim; ind++) {
-    int currRow = rowInds[ind];
-    std::vector<int> leftCols;
-    for (int k = 0; k < dim; k++) {
-      if (!colMask[k]) {
-        leftCols.push_back(k);
-      }
-    }
-    std::uniform_int_distribution<int> dis(0, leftCols.size()-1);
-    int currCol = leftCols[dis(mt)];
-    updateSeq.push_back(std::make_pair(currRow, currCol));
-    colMask[currCol] = true;
-  }
- 
-  /*
-  std::cout << "Block seq ..." << std::endl;
-  for (const auto& pair: updateSeq) {
-    std::cout << pair.first << "," << pair.second << " ";
-  }
-  std::cout << std::endl;
-  */
-}
 
 
 void ModelMF::train(const Data &data, Model &bestModel, 

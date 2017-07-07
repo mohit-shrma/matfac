@@ -1,4 +1,4 @@
-#include "modelDropout.h"
+#include "modelDropoutMF.h"
 
 
 double ModelDropoutMF::estRating(int user, int item) {
@@ -14,7 +14,7 @@ double ModelDropoutMF::estRating(int user, int item) {
 //have objective corresponding to this
 double ModelDropoutMF::estRating(int user, int item, int minRank) {
   double rat = 0;
-  int minRank = std::min(minRank, std::min(userRankMap[user], itemRankMap[item]));
+  minRank = std::min(minRank, std::min(userRankMap[user], itemRankMap[item]));
   for (int k = 0; k < minRank; k++) {
     rat += uFac(user, k)*iFac(item, k);
   }
@@ -116,7 +116,7 @@ double ModelDropoutMF::objective(const Data& data, std::unordered_set<int>& inva
 }
 
 
-bool ModelDropoutMF::isTerminateModel(Model& bestModel, const Data& data, int iter,
+bool ModelDropoutMF::isTerminateModel(ModelDropoutMF& bestModel, const Data& data, int iter,
     int& bestIter, double& bestObj, double& prevObj, double& bestValRMSE,
     double& prevValRMSE, std::unordered_set<int>& invalidUsers, 
     std::unordered_set<int>& invalidItems, int minRank) {
@@ -188,20 +188,13 @@ bool ModelDropoutMF::isTerminateModel(Model& bestModel, const Data& data, int it
 }
 
 
-void ModelDropoutMF::trainSGDAdapPar(const Data &data, Model &bestModel, 
+void ModelDropoutMF::trainSGDAdapPar(const Data &data, ModelDropoutMF &bestModel, 
     std::unordered_set<int>& invalidUsers,
-    std::unordered_set<int>& invalidItems, 
-    std::vector<int>& userRankMap, 
-    std::vector<int>& itemRankMap,
-    std::vector<int>& ranks) {
+    std::unordered_set<int>& invalidItems) {
 
-  std::cout << "\nModelMF::trainSGDAdapPar trainSeed: " << trainSeed;
+  std::cout << "\nModelDropoutMF::trainSGDAdapPar trainSeed: " << trainSeed;
   
   int nnz = data.trainNNZ;
-  
-  std::cout << "\nObj b4 svd: " << objective(data) 
-    << " Train RMSE: " << RMSE(data.trainMat) 
-    << " Train nnz: " << nnz << std::endl;
   
   std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
   startSVD = std::chrono::system_clock::now();
@@ -371,23 +364,26 @@ void ModelDropoutMF::trainSGDAdapPar(const Data &data, Model &bestModel,
       if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
         
         if (GK_CSR_IS_VAL) {
-          //TODO:
           if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
                 bestValRMSE, prevValRMSE, invalidUsers, invalidItems, minRank)) {
             break; 
           }
         } else {
-          //TODO:
+          //TODO
+          std::cerr << "Need to override following method" << std::endl;
+          break;
+          /*
           if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
                 invalidUsers, invalidItems, minRank)) {
             break; 
           }
+          */
         }
          
         if (iter % DISP_ITER == 0) {
           std::cout << "ModelMF::trainSGDPar trainSeed: " << trainSeed
                     << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
-                    << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)
+                    << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems, minRank)
                     << " Val RMSE: " << prevValRMSE
                     << " subIterDuration: " << subIterDuration
                     << std::endl;
@@ -409,7 +405,7 @@ void ModelDropoutMF::trainSGDAdapPar(const Data &data, Model &bestModel,
   bestModel.saveFacs(modelFName);
 
   std::cout << "\nBest model validation RMSE: " << bestModel.RMSE(data.valMat, 
-      invalidUsers, invalidItems);
+      invalidUsers, invalidItems, ranks[ranks.size()-1]);
 }
 
 
