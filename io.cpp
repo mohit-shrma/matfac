@@ -214,6 +214,7 @@ std::vector<int> readVector(const char *ipFileName) {
   std::ifstream ipFile(ipFileName);
   std::string line; 
   if (ipFile.is_open()) {
+    std::cout << "Reading... " << ipFileName << std::endl;
     while(getline(ipFile, line)) {
       if (line.length() > 0) {
         vec.push_back(std::stoi(line));

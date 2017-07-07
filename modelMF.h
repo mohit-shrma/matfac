@@ -13,7 +13,7 @@
 #include "model.h"
 #include "svdFrmsvdlib.h"
 
-#define DISP_ITER 5 
+#define DISP_ITER 50 
 #define SAVE_ITER 50 
 
 typedef Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic> MatrixXb;
@@ -32,6 +32,9 @@ class ModelMF : public Model {
     void trainSGDPar(const Data &data, Model &bestModel, 
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems) ;
+    void trainSGDParSVD(const Data &data, Model &bestModel, 
+        std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems) ;
     void trainUShuffle(const Data& data, Model& bestModel,
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems) ;
@@ -39,6 +42,9 @@ class ModelMF : public Model {
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems) ;
     void trainCCDPP(const Data& data, Model& bestModel,
+        std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems) ;
+    void trainCCDPPFreqAdap(const Data& data, Model& bestModel,
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems) ;
     void trainCCD(const Data& data, Model& bestModel,

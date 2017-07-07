@@ -31,10 +31,12 @@ class Model {
     int maxIter;
     float uReg;
     float iReg;
+    float sing_a, sing_b; //hyper param for singular val reg
     Eigen::MatrixXf uFac; 
     Eigen::MatrixXf iFac;
     Eigen::VectorXf uBias;
     Eigen::VectorXf iBias;
+    Eigen::VectorXf singularVals;
     double mu; //global bias
 
     //declare constructor
@@ -77,6 +79,9 @@ class Model {
     virtual double objective(const Data& data, 
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems);
+    double objectiveSing(const Data& data, 
+        std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems);
     double objective(const Data& data, std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems, 
         std::vector<std::tuple<int, int, float>>& trainRatings);
@@ -90,10 +95,14 @@ class Model {
         int& bestIter, double& bestObj, double& prevObj, 
         std::unordered_set<int>& invalidUsers, 
         std::unordered_set<int>& invalidItems);
-    bool isTerminateModel(Model& bestModel, const Data& data, int iter,
+    virtual bool isTerminateModel(Model& bestModel, const Data& data, int iter,
       int& bestIter, double& bestObj, double& prevObj, double& bestValRMSE,
       double& prevValRMSE, std::unordered_set<int>& invalidUsers, 
       std::unordered_set<int>& invalidItems);
+    bool isTerminateModelSing(Model& bestModel, const Data& data, int iter,
+        int& bestIter, double& bestObj, double& prevObj, double& bestValRMSE,
+        double& prevValRMSE, std::unordered_set<int>& invalidUsers, 
+        std::unordered_set<int>& invalidItems);
     bool isTerminateModel(Model& bestModel, const Data& data, int iter,
         int& bestIter, double& bestObj, double& prevObj, 
         std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems,
@@ -149,5 +158,7 @@ class Model {
     std::vector<std::pair<double, double>> usersMeanVar(gk_csr_t* mat);
     void saveBinFacs(std::string prefix);
     void loadBinFacs(std::string prefix);
+    void initInfreqFactors(const Params& params, const Data& data);
+    std::pair<double, double> hiLoNorms(std::unordered_set<int>& items);
 };
 #endif

@@ -241,6 +241,27 @@ double Model::RMSE(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
 }
 
 
+std::pair<double, double> Model::hiLoNorms(std::unordered_set<int>& items) {
+
+  int count = 0;
+  float hiNorm = 0;
+  float loNorm = 0;
+
+  for (auto& item: items) {
+      for (int k = 0; k < facDim/2; k++) {
+        loNorm += iFac(item, k)*iFac(item, k);   
+      }
+      for (int k = facDim/2; k < facDim; k++) {
+        hiNorm += iFac(item, k)*iFac(item, k);
+      }
+      loNorm += sqrt(loNorm);
+      hiNorm += sqrt(hiNorm);
+  }
+
+  return std::make_pair(hiNorm/items.size(), loNorm/items.size());
+}
+
+
 std::pair<int, double> Model::RMSE(gk_csr_t *mat, std::unordered_set<int>& filtItems,
     std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems) {
   
@@ -683,6 +704,78 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
 }
 
 
+bool Model::isTerminateModelSing(Model& bestModel, const Data& data, int iter,
+    int& bestIter, double& bestObj, double& prevObj, double& bestValRMSE,
+    double& prevValRMSE, std::unordered_set<int>& invalidUsers, 
+    std::unordered_set<int>& invalidItems) {
+  bool ret = false;
+  double currObj = objectiveSing(data, invalidUsers, invalidItems);
+  double currValRMSE = -1;
+  
+  if (data.valMat) {
+    currValRMSE = RMSE(data.valMat, invalidUsers, invalidItems);
+  } else {
+    std::cerr << "\nNo validation data" << std::endl;
+    exit(0);
+  }
+  
+  //nan check
+  if (currObj != currObj || currValRMSE != currValRMSE) {
+    std::cout << "Found nan " << std::endl;
+    //half learning rate
+    if (learnRate > 1e-5) {
+      //replace current model by best model
+      *this = bestModel;
+      learnRate = learnRate/2;
+      return false;
+    } else {
+      return true;
+    };
+  }
+    
+  if (currValRMSE < bestValRMSE) {
+    bestModel = *this;
+    bestValRMSE = currValRMSE;
+    bestIter = iter;
+  }
+
+  if (iter - bestIter >= 100) {
+    //half the learning rate
+    if (learnRate > 1e-5) {
+      learnRate = learnRate/2;
+    }
+  }
+
+  if (iter - bestIter >= CHANCE_ITER) {
+    //can't improve validation RMSE after 500 iterations
+    printf("\nNOT CONVERGED: bestIter:%d bestObj: %.10e bestValRMSE: %.10e"
+        " currIter:%d currObj: %.10e currValRMSE: %.10e", 
+        bestIter, bestObj, bestValRMSE, iter, currObj, currValRMSE);
+    ret = true;
+  }
+  
+  if (fabs(prevObj - currObj) < EPS) {
+    //convergence
+    printf("\nConverged in iteration: %d prevObj: %.10e currObj: %.10e"
+        " bestValRMSE: %.10e", iter, prevObj, currObj, bestValRMSE); 
+    ret = true;
+  }
+
+  /*
+  if (fabs(prevValRMSE - currValRMSE) < 0.0001) {
+    printf("\nvalidation RMSE in iteration: %d prev: %.10e curr: %.10e" 
+        " bestValRMSE: %.10e", iter, prevValRMSE, currValRMSE, bestValRMSE); 
+    ret = true;
+  }
+  */
+
+  prevObj = currObj;
+  prevValRMSE = currValRMSE;
+
+  return ret;
+}
+
+
 bool Model::isTerminateModelSubMat(Model& bestModel, const Data& data, int iter,
     int& bestIter, double& bestObj, double& prevObj, int uStart, int uEnd,
     int iStart, int iEnd) {
@@ -886,6 +979,56 @@ double Model::objective(const Data& data, std::unordered_set<int>& invalidUsers,
 }
 
 
+double Model::objectiveSing(const Data& data, std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems) {
+
+  double rmse = 0, uRegErr = 0, iRegErr = 0, obj = 0;
+  gk_csr_t *trainMat = data.trainMat;
+
+#pragma omp parallel for reduction(+:rmse, uRegErr)
+  for (int u = 0; u < nUsers; u++) {
+    //skip if invalid user
+    if (invalidUsers.count(u) > 0) {
+      //found and skip
+      continue;
+    }
+    for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+      int item = trainMat->rowind[ii];
+      //skip if invalid item
+      if (invalidItems.count(item) > 0) {
+        continue;
+      }
+
+      float itemRat = trainMat->rowval[ii];
+      double diff = itemRat - estRating(u, item);
+      rmse += diff*diff;
+    }
+    for (int k = 0; k < facDim; k++) {
+      uRegErr += uFac(u, k)*uFac(u, k)*singularVals(k); 
+    }
+  }
+  
+#pragma omp parallel for reduction(+: iRegErr)
+  for (int item = 0; item < nItems; item++) {
+    //skip if invalid item
+    if (invalidItems.count(item) > 0) {
+      //found and skip
+      continue;
+    }
+    for (int k = 0; k < facDim; k++) {
+      iRegErr += iFac(item, k)*iFac(item, k)*singularVals(k);
+    }
+  }
+
+  obj = rmse + uRegErr + iRegErr;
+    
+  //std::cout <<"\nrmse: " << std::scientific << rmse << " uReg: " << uRegErr 
+  //  << " iReg: " << iRegErr << std::endl; 
+
+  return obj;
+}
+
+
 double Model::objectiveSubMat(const Data& data, int uStart, int uEnd,
     int iStart, int iEnd) {
 
@@ -978,15 +1121,20 @@ double Model::fullLowRankErr(const Data& data) {
 
 double Model::fullLowRankErr(const Data& data, 
     std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems) {
-  double rmse;
-  rmse = 0;
-#pragma omp parallel for reduction(+ : rmse) 
+  double rmse = 0, count = 0;
+#pragma omp parallel for reduction(+ : rmse, count) 
   for (int u = 0; u < nUsers; u++) {
     //skip if invalid user
     if (invalidUsers.find(u) != invalidUsers.end()) {
       continue;
     }
     
+    std::vector<bool> ratedItems(nItems, false);
+    for (int ii = data.trainMat->rowptr[u]; ii < data.trainMat->rowptr[u+1]; ii++) {
+      int item = data.trainMat->rowind[ii];
+      ratedItems[item] = true;
+    }
+
     double r_ui_est, r_ui_orig, diff;
 
     for (int item = 0; item < nItems; item++) {
@@ -994,13 +1142,20 @@ double Model::fullLowRankErr(const Data& data,
       if (invalidItems.find(item) != invalidItems.end()) {
         continue;
       }
+
+      //skip if rated item
+      if (ratedItems[item]) {
+        continue;
+      }
+
       r_ui_est = estRating(u, item);
       r_ui_orig = dotProd(data.origUFac[u], data.origIFac[item], data.facDim);
       diff = r_ui_orig - r_ui_est;
       rmse += diff*diff;
+      count += 1;
     }
   }
-  rmse = sqrt(rmse/((nUsers-invalidUsers.size())*(nItems-invalidItems.size())));
+  rmse = sqrt(rmse/count);
   return rmse;
 }
 
@@ -1008,13 +1163,18 @@ double Model::fullLowRankErr(const Data& data,
 double Model::fullLowRankErr(const Data& data, 
     std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems,
     Model& origModel) {
-  double rmse;
-  rmse = 0;
-#pragma omp parallel for reduction(+ : rmse) 
+  double rmse = 0, count = 0;
+#pragma omp parallel for reduction(+ : rmse, count) 
   for (int u = 0; u < nUsers; u++) {
     //skip if invalid user
     if (invalidUsers.find(u) != invalidUsers.end()) {
       continue;
+    }
+    
+    std::vector<bool> ratedItems(nItems, false);
+    for (int ii = data.trainMat->rowptr[u]; ii < data.trainMat->rowptr[u+1]; ii++) {
+      int item = data.trainMat->rowind[ii];
+      ratedItems[item] = true;
     }
     
     double r_ui_est, r_ui_orig, diff;
@@ -1024,13 +1184,20 @@ double Model::fullLowRankErr(const Data& data,
       if (invalidItems.find(item) != invalidItems.end()) {
         continue;
       }
+      
+      //skip if rated item
+      if (ratedItems[item]) {
+        continue;
+      }
+
       r_ui_est = estRating(u, item);
       r_ui_orig = origModel.estRating(u, item);
       diff = r_ui_orig - r_ui_est;
       rmse += diff*diff;
+      count += 1;
     }
   }
-  rmse = sqrt(rmse/((nUsers-invalidUsers.size())*(nItems-invalidItems.size())));
+  rmse = sqrt(rmse/count);
   return rmse;
 }
 
@@ -1265,6 +1432,45 @@ std::vector<std::pair<double, double>> Model::usersMeanVar(gk_csr_t* mat) {
 }
 
 
+void Model::initInfreqFactors(const Params& params, const Data& data) {
+  std::vector<int> itemFreq(nItems, 0);
+  std::vector<int> userFreq(nUsers, 0);
+#pragma omp parallel for
+  for (int item = 0; item < nItems; item++) {
+    itemFreq[item] = (data.trainMat->colptr[item+1] - 
+        data.trainMat->colptr[item]);
+  }
+
+#pragma omp parallel for
+  for (int u = 0; u < nUsers; u++) {
+    userFreq[u] = data.trainMat->rowptr[u+1] - data.trainMat->rowptr[u];
+  }
+  
+  float lb = -0.01, ub = 0.01;
+  std::default_random_engine generator (params.seed);
+  std::uniform_real_distribution<double> dist (lb, ub);
+  std::cout << "Infreq lb = " << lb << " ub = " << ub << std::endl;
+
+
+  for (int u = 0; u < nUsers; u++) {
+    if (userFreq[u] <= 30) {
+      for (int k = 0; k < facDim; k++) {
+        uFac(u,k) = dist(generator);
+      }
+    }
+  }
+
+  for (int i = 0; i < nItems; i++) {
+    if (itemFreq[i] < 30) {
+      for (int k = 0; k < facDim; k++) {
+        iFac(i,k) = dist(generator);
+      }
+    }
+  }
+
+}
+
+
 //define constructor
 Model::Model(const Params& params) {
 
@@ -1273,6 +1479,8 @@ Model::Model(const Params& params) {
   facDim    = params.facDim;
   uReg      = params.uReg;
   iReg      = params.iReg;
+  sing_a    = params.uReg;
+  sing_b    = params.iReg;
   learnRate = params.learnRate;
   origLearnRate = params.learnRate;
   rhoRMS    = params.rhoRMS;
@@ -1280,7 +1488,7 @@ Model::Model(const Params& params) {
   trainSeed = -1;
 
   std::default_random_engine generator (params.seed);
-  float lb = -0.01, ub = 0.01;
+  float lb = 0, ub = 1;
   std::uniform_real_distribution<double> dist (lb, ub);
   std::cout << "lb = " << lb << " ub = " << ub << std::endl;
 
@@ -1300,8 +1508,6 @@ Model::Model(const Params& params) {
     }
   }
 
-
- 
   //init user biases
   uBias = Eigen::VectorXf(nUsers);
   for (int u = 0; u < nUsers;  u++) {
@@ -1313,7 +1519,9 @@ Model::Model(const Params& params) {
   for (int i = 0; i < nItems; i++) {
     iBias(i) = dist(generator);
   }
-
+  
+  //init singular vals
+  singularVals = Eigen::VectorXf(facDim);
 }
 
 

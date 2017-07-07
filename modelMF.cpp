@@ -384,6 +384,213 @@ void ModelMF::trainSGDPar(const Data &data, Model &bestModel,
 }
 
 
+void ModelMF::trainSGDParSVD(const Data &data, Model &bestModel, 
+    std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems) {
+
+  std::cout << "\nModelMF::trainSGDParSVD trainSeed: " << trainSeed;
+  
+  int nnz = data.trainNNZ;
+  
+  std::cout << "\nObj b4 svd: " << objective(data) 
+    << " Train RMSE: " << RMSE(data.trainMat) 
+    << " Train nnz: " << nnz << std::endl;
+  
+  std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
+  startSVD = std::chrono::system_clock::now();
+  //initialization with svd of the passed matrix
+  singularVals = svdFrmSvdlibCSREig(data.trainMat, facDim, uFac, iFac, false); 
+
+  std::cout << "Rank regs: ";
+  for (int k = 0; k < facDim; k++) {
+    std::cout << (1.0 + sing_a)/(sing_b + singularVals(k)) << " ";
+  }
+  std::cout << std::endl;
+
+  endSVD = std::chrono::system_clock::now();
+  std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
+  std::cout << "\nsvd duration: " << durationSVD.count();
+
+  int iter, bestIter = -1, i; 
+  double bestObj, prevObj;
+  double bestValRMSE, prevValRMSE;
+
+  gk_csr_t *trainMat = data.trainMat;
+
+  std::vector<std::unordered_set<int>> uISet(nUsers);
+  genStats(trainMat, uISet, std::to_string(trainSeed));
+  getInvalidUsersItems(trainMat, uISet, invalidUsers, invalidItems);
+  for (int u = trainMat->nrows; u < data.nUsers; u++) {
+    invalidUsers.insert(u);
+  }
+  for (int item = trainMat->ncols; item < data.nItems; item++) {
+    invalidItems.insert(item);
+  }
+
+  std::vector<int> trainUsers, trainItems;
+  
+  for (int u = 0; u < trainMat->nrows; u++) {
+    if (invalidUsers.count(u) == 0) {
+      trainUsers.push_back(u);
+    }
+  }
+  
+  for (int item = 0; item < trainMat->ncols; item++) {
+    if (invalidItems.count(item) == 0) {
+      trainItems.push_back(item);
+    }
+  }
+
+  //std::cout << "\nNNZ = " << nnz;
+  prevObj = objective(data, invalidUsers, invalidItems);
+  bestObj = prevObj;
+  bestValRMSE = prevValRMSE = RMSE(data.valMat, invalidUsers, invalidItems);
+  std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " 
+    << RMSE(data.trainMat, invalidUsers, invalidItems) << " Val RMSE: " 
+    << bestValRMSE;
+
+  std::chrono::time_point<std::chrono::system_clock> start, end;
+  std::chrono::duration<double> duration;
+  
+  std::cout << "\nModelMF::trainSGDParSVD trainSeed: " << trainSeed 
+    << " invalidUsers: " << invalidUsers.size()
+    << " invalidItems: " << invalidItems.size() << std::endl;
+  
+  //random engine
+  std::mt19937 mt(trainSeed);
+  //get user-item ratings from training data
+  const auto uiRatings = getUIRatings(trainMat, invalidUsers, invalidItems);
+
+  std::cout << "\nTrain NNZ after removing invalid users and items: " 
+    << uiRatings.size() << std::endl;
+  double subIterDuration = 0;
+  
+  std::shuffle(trainUsers.begin(), trainUsers.end(), mt);
+  std::shuffle(trainItems.begin(), trainItems.end(), mt);
+  
+  int maxThreads = omp_get_max_threads(); 
+  std::cout << "maxThreads: " << maxThreads << std::endl;
+
+  //create maxThreads partitions of users
+  int usersPerPart = trainUsers.size()/maxThreads;
+  std::cout << "train users: " << trainUsers.size() << " usersPerPart: " 
+    << usersPerPart << std::endl;
+  std::vector<std::unordered_set<int>> usersPart(maxThreads); 
+  int currPart = 0;
+  for (int i = 0; i < trainUsers.size(); i++) {
+    usersPart[currPart].insert(trainUsers[i]);
+    if (i != 0 && i % usersPerPart == 0) {
+      if (currPart != maxThreads - 1) {
+        std::cout << "currPart: " << currPart << " i: " << i << std::endl;
+        currPart++;
+      }
+    }
+  }
+
+  //create maxThreads partitions of items
+  int itemsPerPart = trainItems.size()/maxThreads;
+  std::cout << "train items: " << trainItems.size() << " itemsPerPart: " 
+    << itemsPerPart << std::endl;
+  std::vector<std::unordered_set<int>> itemsPart(maxThreads); 
+  currPart = 0;
+  for (int i = 0; i < trainItems.size(); i++) {
+    itemsPart[currPart].insert(trainItems[i]);
+    if (i != 0 && i % itemsPerPart == 0) {
+      if (currPart != maxThreads - 1) {
+        std::cout << "currPart: " << currPart << " i: " << i << std::endl;
+        currPart++;
+      }
+    }
+  }
+
+  std::vector<std::pair<int, int>> updateSeq;
+
+  for (iter = 0; iter < maxIter; iter++) {  
+    
+    start = std::chrono::system_clock::now();
+    
+    for (int k = 0; k < maxThreads; k++) {
+      sgdUpdateBlockSeq(maxThreads, updateSeq, mt);
+#pragma omp parallel for
+      for (int t = 0; t < maxThreads; t++) {
+        const auto& users = usersPart[updateSeq[t].first];
+        const auto& items = itemsPart[updateSeq[t].second];
+        for (const auto& u: users) {
+          for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+            
+            int item = trainMat->rowind[ii];
+            if (items.count(item) == 0) {
+              continue;
+            }
+
+            float itemRat = trainMat->rowval[ii];
+            float r_ui_est = uFac.row(u).dot(iFac.row(item));
+            float diff = itemRat - r_ui_est;
+            
+            //update user
+            for (int i = 0; i < facDim; i++) {
+              uFac(u, i) -= learnRate * (-2.0*diff*iFac(item, i) +
+                  2.0*((sing_a + 1)/(sing_b + singularVals[i]))*uFac(u, i));
+            }
+          
+            //update item
+            for (int i = 0; i < facDim; i++) {
+              iFac(item, i) -= learnRate * (-2.0*diff*uFac(u, i) 
+                  + 2.0*((sing_a + 1)/(sing_b + singularVals[i]))*iFac(item, i));
+            }
+
+          }
+        }
+      }
+    }
+
+    end = std::chrono::system_clock::now();  
+   
+    duration =  end - start;
+    subIterDuration = duration.count();
+
+    //check objective
+    if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
+      
+      if (GK_CSR_IS_VAL) {
+        if (isTerminateModelSing(bestModel, data, iter, bestIter, bestObj, prevObj,
+              bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
+          break; 
+        }
+      } else {
+        if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
+              invalidUsers, invalidItems)) {
+          break; 
+        }
+      }
+       
+      if (iter % DISP_ITER == 0) {
+        std::cout << "ModelMF::trainSGDPar trainSeed: " << trainSeed
+                  << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
+                  << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)
+                  << " Val RMSE: " << prevValRMSE
+                  << " subIterDuration: " << subIterDuration
+                  << std::endl;
+      }
+
+      if (iter % SAVE_ITER == 0 || iter == maxIter - 1) {
+        std::string modelFName = std::string(data.prefix);
+        bestModel.saveFacs(modelFName);
+      }
+
+    }
+     
+  }
+      
+  //save best model found till now
+  std::string modelFName = std::string(data.prefix);
+  bestModel.saveFacs(modelFName);
+
+  std::cout << "\nBest model validation RMSE: " << bestModel.RMSE(data.valMat, 
+      invalidUsers, invalidItems);
+}
+
+
 void ModelMF::trainUShuffle(const Data &data, Model &bestModel, 
     std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems) {
@@ -914,6 +1121,260 @@ void ModelMF::trainCCDPP(const Data &data, Model &bestModel,
           }
           newV = num/denom;
           v_k(item) = newV;
+        }
+
+      }
+
+        //update residual res
+#pragma omp parallel for
+        for (int u = 0; u < nUsers; u++) {
+          if (invalidUsers.count(u) > 0) {
+            continue;
+          }
+          for (int ii = res->rowptr[u]; ii < res->rowptr[u+1]; ii++) {
+            int item = res->rowind[ii];
+            res->rowval[ii] -= u_k(u)*v_k(item); 
+          }
+        }
+        
+        //update residual res^T
+#pragma omp parallel for
+        for (int item = 0; item < nItems; item++) {
+          if (invalidItems.count(item) > 0 || item >= res->ncols) {
+            continue;
+          }
+          for (int uu = res->colptr[item]; uu < res->colptr[item+1]; uu++) {
+            int u = res->colind[uu];
+            res->colval[uu] -= u_k(u)*v_k(item); 
+          }
+        } 
+      
+       //update factors
+       uFac.col(k) = u_k;
+       iFac.col(k) = v_k;
+    }
+
+    end = std::chrono::system_clock::now();  
+   
+    duration =  end - start;
+    subIterDuration = duration.count();
+
+    //check objective
+    if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
+      
+      if (GK_CSR_IS_VAL) {
+        if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
+              bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
+          break; 
+        }
+      } else {
+        if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
+              invalidUsers, invalidItems)) {
+          break; 
+        }
+      }
+     
+      if (iter % DISP_ITER == 0) {
+        std::cout << "ModelMF::trainCCDPP trainSeed: " << trainSeed
+                  << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
+                  << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems)
+                  << " Val RMSE: " << prevValRMSE
+                  << " subIterDuration: " << subIterDuration
+                  << std::endl;
+      }
+
+      if (iter % SAVE_ITER == 0 || iter == maxIter - 1) {
+        std::string modelFName = std::string(data.prefix);
+        bestModel.saveFacs(modelFName);
+      }
+
+    }
+     
+  }
+      
+  //save best model found till now
+  std::string modelFName = std::string(data.prefix);
+  bestModel.saveFacs(modelFName);
+
+  std::cout << "\nBest model validation RMSE: " << bestModel.RMSE(data.valMat, 
+      invalidUsers, invalidItems);
+  
+  gk_csr_Free(&res);
+}
+
+
+void ModelMF::trainCCDPPFreqAdap(const Data &data, Model &bestModel, 
+    std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems) {
+
+  //copy passed known factors
+  //uFac = data.origUFac;
+  //iFac = data.origIFac;
+  
+  std::cout << "\nModelMF::trainCCDPPFreqAdap trainSeed: " << trainSeed;
+  
+  int nnz = data.trainNNZ;
+  
+  std::cout << "\nObj b4 svd: " << objective(data) 
+    << " Train RMSE: " << RMSE(data.trainMat) 
+    << " Train nnz: " << nnz << std::endl;
+  
+  std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
+  startSVD = std::chrono::system_clock::now();
+  //initialization with svd of the passed matrix
+  //svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac, false); 
+  
+  endSVD = std::chrono::system_clock::now();
+  std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
+  std::cout << "\nsvd duration: " << durationSVD.count();
+
+  int iter, bestIter = -1; 
+  double diff, r_ui_est;
+  double bestObj, prevObj;
+  double bestValRMSE, prevValRMSE;
+
+  gk_csr_t *trainMat = data.trainMat;
+
+  auto rowColFreq = getRowColFreq(data.trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+  
+  //array to hold user and item gradients
+  std::vector<double> uGrad (facDim, 0);
+  std::vector<double> iGrad (facDim, 0);
+ 
+  //vector to hold user gradient accumulation
+  std::vector<std::vector<double>> uGradsAcc (nUsers, 
+      std::vector<double>(facDim,0)); 
+
+  //vector to hold item gradient accumulation
+  std::vector<std::vector<double>> iGradsAcc (nItems, 
+      std::vector<double>(facDim,0)); 
+
+  std::vector<std::unordered_set<int>> uISet(nUsers);
+  genStats(trainMat, uISet, std::to_string(trainSeed));
+  getInvalidUsersItems(trainMat, uISet, invalidUsers, invalidItems);
+  for (int u = trainMat->nrows; u < data.nUsers; u++) {
+    invalidUsers.insert(u);
+  }
+  for (int item = trainMat->ncols; item < data.nItems; item++) {
+    invalidItems.insert(item);
+  }
+ 
+  //std::cout << "\nNNZ = " << nnz;
+  prevObj = objective(data, invalidUsers, invalidItems);
+  bestObj = prevObj;
+  bestValRMSE = prevValRMSE = RMSE(data.valMat, invalidUsers, invalidItems);
+  std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " 
+    << RMSE(data.trainMat, invalidUsers, invalidItems);
+
+  std::chrono::time_point<std::chrono::system_clock> start, end;
+  std::chrono::duration<double> duration;
+  
+ std::cout << "\nModelMF::trainCCDPP trainSeed: " << trainSeed 
+    << " invalidUsers: " << invalidUsers.size()
+    << " invalidItems: " << invalidItems.size() << std::endl;
+  
+  //random engine
+  std::mt19937 mt(trainSeed);
+  //get user-item ratings from training data
+  auto uiRatings = getUIRatings(trainMat, invalidUsers, invalidItems);
+  //index to above uiRatings pair
+  std::vector<size_t> uiRatingInds(uiRatings.size());
+  std::iota(uiRatingInds.begin(), uiRatingInds.end(), 0);
+  
+  std::vector<int> dims(facDim);
+  std::iota(dims.begin(), dims.end(), 0);
+  
+  std::uniform_int_distribution<> binDis(0, 1);
+
+  //residual mat
+  gk_csr_t *res = gk_csr_Dup(trainMat);
+
+  std::cout << "\nTrain NNZ after removing invalid users and items: " 
+    << uiRatings.size() << std::endl;
+  double subIterDuration = 0;
+  
+  //fill uFac as 0
+  uFac.fill(0);
+  Eigen::VectorXf u_k(nUsers), v_k(nItems);
+
+  for (iter = 0; iter < maxIter; iter++) { 
+
+    start = std::chrono::system_clock::now();
+    //std::shuffle(dims.begin(), dims.end(), mt);
+    for (const auto& k : dims) {
+      u_k = uFac.col(k);
+      v_k = iFac.col(k);
+
+      //update residual
+      if (iter > 0) {
+          //update residual res
+#pragma omp parallel for
+          for (int u = 0; u < nUsers; u++) {
+            if (invalidUsers.count(u) > 0) {
+              continue;
+            }
+            for (int ii = res->rowptr[u]; ii < res->rowptr[u+1]; ii++) {
+              int item = res->rowind[ii];
+              res->rowval[ii] += uFac(u, k)*iFac(item, k); 
+            }
+          }
+          
+          //update residual res^T
+#pragma omp parallel for
+          for (int item = 0; item < nItems; item++) {
+            if (invalidItems.count(item) > 0 || item >= res->ncols) {
+              continue;
+            }
+            for (int uu = res->colptr[item]; uu < res->colptr[item+1]; uu++) {
+              int u = res->colind[uu];
+              res->colval[uu] += uFac(u, k)*iFac(item, k); 
+            }
+          } 
+      }     
+      
+      for (int subIter = 0; subIter < 5; subIter++) {
+        
+        //update u
+#pragma omp parallel for 
+        for (int u = 0; u < nUsers; u++) {
+          if (invalidUsers.count(u) > 0) {
+            continue;
+          }
+          double num = 0, denom = uReg, newV;
+          for (int ii = res->rowptr[u]; ii < res->rowptr[u+1]; ii++) {
+            int item = res->rowind[ii];
+            num += res->rowval[ii] * v_k(item);
+            denom += v_k(item)*v_k(item);
+          }
+          newV = num/denom;
+          u_k(u) = newV;
+        }
+
+        //update v
+#pragma omp parallel for 
+        for (int item = 0; item < nItems; item++) {
+          if (invalidItems.count(item) > 0 || item >= res->ncols) {
+            continue;
+          }
+          double num = 0, denom = iReg, newV;
+          for (int uu = res->colptr[item]; uu < res->colptr[item+1]; uu++) {
+            int u = res->colind[uu];
+            num += res->colval[uu] * u_k(u);
+            denom += u_k(u)*u_k(u);
+          }
+          newV = num/denom;
+          v_k(item) = newV;
+          
+          bool isInfreq = false;
+          if (itemFreq[item] < 75) {
+            isInfreq = true;
+            if (k > 0) {
+              v_k(item) = 0;
+            }
+          }
+
         }
 
       }
