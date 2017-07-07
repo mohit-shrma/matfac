@@ -11,6 +11,7 @@
 #include <random>
 #include <numeric>
 #include <omp.h>
+#include <Eigen/Dense>
 #include "GKlib.h"
 
 std::unordered_set<int> getHeadItems(gk_csr_t *mat, float pc);
@@ -78,5 +79,7 @@ float pearsonCorr(std::vector<float>& x, std::vector<float>& y, float xMean,
 int getMaxItemInd(gk_csr_t* mat);
 void parBlockShuffle(std::vector<size_t>& arr, std::mt19937& mt);
 int binSearch(int *sortedArr, int key, int ub, int lb);
+float adapDotProd(Eigen::MatrixXf& uFac, Eigen::MatrixXf& iFac, 
+    int u, int item, int minRank);
 #endif
 

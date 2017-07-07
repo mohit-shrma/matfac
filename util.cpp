@@ -159,10 +159,12 @@ std::vector<std::pair<double, double>> trainItemsMeanVar(gk_csr_t* mat) {
   for (int item = 0; item < mat->ncols; item++) {
     meanVar.push_back(std::make_pair(0,0));
   }
+  
+  float maxRat = -100, minRat = 100;
 
-#pragma omp parallel for
+#pragma omp parallel for reduction(max:maxRat), reduction(min:minRat)
   for (int item = 0; item < mat->ncols; item++) {
-    
+    maxRat = -100, minRat = 100;
     double itemMean = 0;
     double itemVar = 0;
     double nRatings = mat->colptr[item+1] - mat->colptr[item]; 
@@ -174,6 +176,8 @@ std::vector<std::pair<double, double>> trainItemsMeanVar(gk_csr_t* mat) {
     for (int uu = mat->colptr[item]; uu < mat->colptr[item+1]; uu++) {
       int user = mat->colind[uu];
       float rating = mat->colval[uu];
+      if (maxRat < rating) {maxRat = rating;}
+      if (minRat > rating) {minRat = rating;}
       itemMean += rating;
     }
     itemMean = itemMean/nRatings;
@@ -189,7 +193,7 @@ std::vector<std::pair<double, double>> trainItemsMeanVar(gk_csr_t* mat) {
     
     meanVar[item] = std::make_pair(itemMean, itemVar);
   }
-  
+  std::cout << "mat maxRat: " << maxRat << " minRat: " << minRat << std::endl; 
   return meanVar;
 }
 
@@ -288,7 +292,6 @@ std::pair<double, double> meanStdDev(std::vector<double> v) {
   double stdev = sqrt(sq_sum / v.size());
   return std::make_pair(mean, stdev);
 }
-
 
 
 //compute standard deviation in vector
@@ -854,6 +857,7 @@ int binSearch(int *sortedArr, int key, int ub, int lb) {
   return ind;
 }
 
+
 //return no. of co-rated users for the items
 int coRatedUsersFrmSortedMat(gk_csr_t* mat, int i, int j) {
   int coUsers = 0;
@@ -904,7 +908,6 @@ int coRatedUsersFrmSortedMatLinMerge(gk_csr_t* mat, int i, int j) {
 
   return coUsers;
 }
-
 
 
 int checkIfUISorted(gk_csr_t* mat) {
@@ -1054,5 +1057,14 @@ void parBlockShuffle(std::vector<size_t>& arr, std::mt19937& mt) {
 
 }
 
+
+float adapDotProd(Eigen::MatrixXf& uFac, Eigen::MatrixXf& iFac, 
+    int u, int item, int minRank) {
+  float prod = 0;
+  for (int k = 0; k < minRank; k++) {
+    prod += uFac(u, k)*iFac(item, k);
+  }
+  return prod;
+}
 
 
