@@ -14,7 +14,7 @@
 #include "svdFrmsvdlib.h"
 
 #define DISP_ITER 50 
-#define SAVE_ITER 50 
+#define SAVE_ITER 100 
 
 class ModelDropoutMF : public Model {
 
@@ -40,17 +40,37 @@ class ModelDropoutMF : public Model {
         std::vector<int>& ranks): Model(params, uFacName, iFacName, seed),
                                   userRankMap(userRankMap), 
                                   itemRankMap(itemRankMap), ranks(ranks) {}
+    ModelDropoutMF(const Params& params, int seed) : Model(params, seed) {}
     void trainSGDAdapPar(const Data& data, ModelDropoutMF &bestModel, 
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems);
-    
-    double estRating(int user, int item) override;
-    double estRating(int user, int item, int minRank);
+    virtual void trainSGDProbPar(const Data &data, 
+        ModelDropoutMF &bestModel, 
+        std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems);
+    void trainSGDProbParBPR(const Data &data, 
+        ModelDropoutMF &bestModel, 
+        std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems);
+    void trainSGDProbOrderedPar(const Data &data, 
+        ModelDropoutMF &bestModel, 
+        std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems);
+    void trainSGDOnlyOrderedPar(const Data &data, 
+        ModelDropoutMF &bestModel, 
+        std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems);
+    void trainSGDProbOrderedParBPR(const Data &data, 
+        ModelDropoutMF &bestModel, 
+        std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems);
+    virtual double estRating(int user, int item) override;
+    virtual double estRating(int user, int item, int minRank);
     bool isTerminateModel(ModelDropoutMF& bestModel, const Data& data, int iter,
       int& bestIter, double& bestObj, double& prevObj, double& bestValRMSE,
       double& prevValRMSE, std::unordered_set<int>& invalidUsers, 
       std::unordered_set<int>& invalidItems, int minRank);
-    double objective(const Data& data, std::unordered_set<int>& invalidUsers,
+    virtual double objective(const Data& data, std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems, int minRank);
     double RMSE(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems, int minRank);
