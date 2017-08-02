@@ -35,7 +35,7 @@ class ModelPoissonDropout : public Model {
                                  userFreq(userFreq), itemFreq(itemFreq) {
                                     //intialize factorial table
                                     factorial.push_back(1);
-                                    for (int i = 1; i <= params.facDim; i++) {
+                                    for (int i = 1; i <= params.facDim+1; i++) {
                                       factorial.push_back(factorial.back()*((double)i));
                                     }
                                     fDimWt = std::vector<double>(params.facDim, 0);
@@ -47,7 +47,7 @@ class ModelPoissonDropout : public Model {
                                  userFreq(userFreq), itemFreq(itemFreq) {
                                     //intialize factorial table
                                     factorial.push_back(1);
-                                    for (int i = 1; i <= params.facDim; i++) {
+                                    for (int i = 1; i <= params.facDim+1; i++) {
                                       factorial.push_back(factorial.back()*((double)i));
                                     }
                                     fDimWt = std::vector<double>(params.facDim, 0);
@@ -60,7 +60,7 @@ class ModelPoissonDropout : public Model {
                                  userFreq(userFreq), itemFreq(itemFreq) {
                                     //intialize factorial table
                                     factorial.push_back(1);
-                                    for (int i = 1; i <= params.facDim; i++) {
+                                    for (int i = 1; i <= params.facDim+1; i++) {
                                       factorial.push_back(factorial.back()*((double)i));
                                     }
                                     fDimWt = std::vector<double>(params.facDim, 0);
@@ -68,7 +68,7 @@ class ModelPoissonDropout : public Model {
     ModelPoissonDropout(const Params& params, int seed) : Model(params, seed) {
                                     //intialize factorial table
                                     factorial.push_back(1);
-                                    for (int i = 1; i <= params.facDim; i++) {
+                                    for (int i = 1; i <= params.facDim+1; i++) {
                                       factorial.push_back(factorial.back()*((double)i));
                                     }
                                     fDimWt = std::vector<double>(params.facDim, 0);
@@ -77,6 +77,9 @@ class ModelPoissonDropout : public Model {
     virtual void train(const Data& data, Model &bestModel, 
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems) override;
+    void trainSigmoid(const Data& data, Model &bestModel, 
+        std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems);
     virtual double estRating(int user, int item) override;
 };
 
