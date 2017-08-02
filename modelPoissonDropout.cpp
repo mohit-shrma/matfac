@@ -148,8 +148,7 @@ void ModelPoissonDropout::train(const Data& data, Model &bestModel,
     << " invalidUsers: " << invalidUsers.size()
     << " invalidItems: " << invalidItems.size() << std::endl;
   
-  //random engine
-  std::mt19937 mt(trainSeed);
+
   //get user-item ratings from training data
   const auto uiRatings = getUIRatings(trainMat, invalidUsers, invalidItems);
 
@@ -157,11 +156,17 @@ void ModelPoissonDropout::train(const Data& data, Model &bestModel,
     << uiRatings.size() << std::endl;
   double subIterDuration = 0;
   
-  std::shuffle(trainUsers.begin(), trainUsers.end(), mt);
-  std::shuffle(trainItems.begin(), trainItems.end(), mt);
   
   int maxThreads = omp_get_max_threads(); 
   std::cout << "maxThreads: " << maxThreads << std::endl;
+  
+  //random engine
+  std::vector<std::mt19937> rEngines;
+  for (int t = 0; t < maxThreads; t++) {
+    rEngines.push_back(std::mt19937 (trainSeed+t));
+  }
+  std::shuffle(trainUsers.begin(), trainUsers.end(), rEngines[0]);
+  std::shuffle(trainItems.begin(), trainItems.end(), rEngines[0]);
 
   //create maxThreads partitions of users
   int usersPerPart = trainUsers.size()/maxThreads;
@@ -211,9 +216,10 @@ void ModelPoissonDropout::train(const Data& data, Model &bestModel,
     start = std::chrono::system_clock::now();
 
     for (int k = 0; k < maxThreads; k++) {
-      sgdUpdateBlockSeq(maxThreads, updateSeq, mt);
+      sgdUpdateBlockSeq(maxThreads, updateSeq, rEngines[0]);
 #pragma omp parallel for
       for (int t = 0; t < maxThreads; t++) {
+        
         const auto& users = usersPart[updateSeq[t].first];
         const auto& items = itemsPart[updateSeq[t].second];
         for (const auto& u: users) {
@@ -238,7 +244,7 @@ void ModelPoissonDropout::train(const Data& data, Model &bestModel,
             //int lambda = std::ceil(isUMinFreq ? userRankMap[u]*(facDim-1) : itemRankMap[item]*(facDim-1));
             
             std::poisson_distribution<> pdis(lambda);
-            int updRank = pdis(mt);
+            int updRank = pdis(rEngines[t]);
             if (updRank > facDim) {
               updRank = facDim;
             }
