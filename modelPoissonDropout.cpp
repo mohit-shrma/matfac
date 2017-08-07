@@ -40,10 +40,10 @@ double ModelPoissonDropout::estRating(int user, int item) {
   //std::cout << "ModelPoissonDropout::estRating (" << user << "," << item << ") " << std::endl;
   double rat = 0;
   bool isUMinFreq = userFreq[user] < itemFreq[item];
-  double sigmPc = 1.0/(1.0+exp(-rhoRMS*(userRankMap[user]-alpha)));
-  if (!isUMinFreq) {
-    sigmPc = 1.0/(1.0+exp(-rhoRMS*(itemRankMap[item]-alpha)));
-  }
+  //double scaleFreq = isUMinFreq ? (userFreq[user] - minFreq) / (maxFreq - minFreq) : (itemFreq[item] - minFreq) / (maxFreq - minFreq);
+  double scaleFreq = isUMinFreq ? (userFreq[user] - meanFreq) / stdFreq : (itemFreq[item] - meanFreq) / stdFreq;
+  double sigmPc = 1.0/(1.0+exp(-rhoRMS*(scaleFreq-alpha)));
+  
   int updMinRank = std::ceil(sigmPc*((double)facDim));
   assert(updMinRank > 0);
 
@@ -64,10 +64,9 @@ double ModelPoissonDropout::estRating(int user, int item) {
   //std::cout << "ModelPoissonDropout::estRating (" << user << "," << item << ") " << std::endl;
   double rat = 0;
   bool isUMinFreq = userFreq[user] < itemFreq[item];
-  double sigmPc = 1.0/(1.0+exp(-rhoRMS*(userRankMap[user]-alpha)));
-  if (!isUMinFreq) {
-    sigmPc = 1.0/(1.0+exp(-rhoRMS*(itemRankMap[item]-alpha)));
-  }
+  //double scaleFreq = isUMinFreq ? (userFreq[user] - minFreq) / (maxFreq - minFreq) : (itemFreq[item] - minFreq) / (maxFreq - minFreq);
+  double scaleFreq = isUMinFreq ? (userFreq[user] - meanFreq) / stdFreq : (itemFreq[item] - meanFreq) / stdFreq;
+  double sigmPc = 1.0/(1.0+exp(-rhoRMS*(scaleFreq-alpha)));
 
   //no. of effective ranks
   int lambda = std::ceil(sigmPc*((double)facDim)); // facDim
@@ -210,6 +209,8 @@ void ModelPoissonDropout::train(const Data& data, Model &bestModel,
   std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " 
     << RMSE(data.trainMat, invalidUsers, invalidItems) << " Val RMSE: " 
     << bestValRMSE << std::endl;
+  std::cout << "minFreq: " << minFreq << " maxFreq: " << maxFreq << std::endl;
+  std::cout << "rhoRMS: " << rhoRMS << " alpha: " << alpha << std::endl;
 
   for (iter = 0; iter < maxIter; iter++) {  
     
@@ -229,13 +230,11 @@ void ModelPoissonDropout::train(const Data& data, Model &bestModel,
             if (items.count(item) == 0) {
               continue;
             }
-            
+
             bool isUMinFreq = userFreq[u] < itemFreq[item];
-            
-            double sigmPc = 1.0/(1.0+exp(-rhoRMS*(userRankMap[u]-alpha)));
-            if (!isUMinFreq) {
-              sigmPc = 1.0/(1.0+exp(-rhoRMS*(itemRankMap[item]-alpha)));
-            }
+            //double scaleFreq = isUMinFreq ? (userFreq[u] - minFreq) / (maxFreq - minFreq) : (itemFreq[item] - minFreq) / (maxFreq - minFreq);
+            double scaleFreq = isUMinFreq ? (userFreq[u] - meanFreq) / stdFreq : (itemFreq[item] - meanFreq) / stdFreq;
+            double sigmPc = 1.0/(1.0+exp(-rhoRMS*(scaleFreq-alpha)));
 
             //no. of effective ranks
             int lambda = std::ceil(sigmPc*((double)facDim)); // facDim
@@ -443,6 +442,7 @@ void ModelPoissonDropout::trainSigmoid(const Data& data, Model &bestModel,
     << RMSE(data.trainMat, invalidUsers, invalidItems) << " Val RMSE: " 
     << bestValRMSE << std::endl;
   std::cout << "rhoRMS: " << rhoRMS << " alpha: " << alpha << std::endl;
+  std::cout << "minFreq: " << minFreq << " maxFreq: " << maxFreq << std::endl;
   for (iter = 0; iter < maxIter; iter++) {  
     
     start = std::chrono::system_clock::now();
@@ -462,10 +462,10 @@ void ModelPoissonDropout::trainSigmoid(const Data& data, Model &bestModel,
             }
             
             bool isUMinFreq = userFreq[u] < itemFreq[item];
-            double sigmPc = 1.0/(1.0+exp(-rhoRMS*(userRankMap[u]-alpha)));
-            if (!isUMinFreq) {
-              sigmPc = 1.0/(1.0+exp(-rhoRMS*(itemRankMap[item]-alpha)));
-            }
+            //double scaleFreq = isUMinFreq ? (userFreq[u] - minFreq) / (maxFreq - minFreq) : (itemFreq[item] - minFreq) / (maxFreq - minFreq);
+            double scaleFreq = isUMinFreq ? (userFreq[u] - meanFreq) / stdFreq : (itemFreq[item] - meanFreq) / stdFreq;
+            double sigmPc = 1.0/(1.0+exp(-rhoRMS*(scaleFreq-alpha)));
+            
             int updMinRank = std::ceil(sigmPc*((double)facDim));
             if (updMinRank < EPS) {
               updMinRank = 1;

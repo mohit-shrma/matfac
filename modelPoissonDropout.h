@@ -10,7 +10,9 @@
 #include <string>
 #include <omp.h>
 #include <cmath>
+#include <algorithm>
 #include "io.h"
+#include "util.h"
 #include "model.h"
 #include "svdFrmsvdlib.h"
 
@@ -27,6 +29,10 @@ class ModelPoissonDropout : public Model {
     std::vector<double> itemFreq;
     std::vector<double> factorial;
     std::vector<double> fDimWt;
+    double minFreq;
+    double maxFreq;
+    double meanFreq;
+    double stdFreq;
 
     ModelPoissonDropout(const Params& params, std::vector<double>& userRankMap,
       std::vector<double>& itemRankMap, std::vector<double>& userFreq, 
@@ -39,6 +45,22 @@ class ModelPoissonDropout : public Model {
                                       factorial.push_back(factorial.back()*((double)i));
                                     }
                                     fDimWt = std::vector<double>(params.facDim, 0);
+                                    minFreq = minVec(userFreq);
+                                    maxFreq = maxVec(userFreq);
+                                    double temp = minVec(itemFreq);
+                                    if (minFreq > temp) {
+                                      minFreq = temp;
+                                    }
+                                    temp = maxVec(itemFreq);
+                                    if (maxFreq < temp) {
+                                      maxFreq = temp;
+                                    }
+                                    
+                                    std::vector<double> concatVec(userFreq.begin(), userFreq.end());
+                                    concatVec.insert(concatVec.end(), itemFreq.begin(), itemFreq.end());
+                                    auto meanStd = meanStdDev(concatVec);
+                                    meanFreq = meanStd.first;
+                                    stdFreq = meanStd.second;
                                  }
     ModelPoissonDropout(const Params& params, int seed, std::vector<double>& userRankMap,
       std::vector<double>& itemRankMap, std::vector<double>& userFreq, 
@@ -51,6 +73,21 @@ class ModelPoissonDropout : public Model {
                                       factorial.push_back(factorial.back()*((double)i));
                                     }
                                     fDimWt = std::vector<double>(params.facDim, 0);
+                                    minFreq = minVec(userFreq);
+                                    maxFreq = maxVec(userFreq);
+                                    double temp = minVec(itemFreq);
+                                    if (minFreq > temp) {
+                                      minFreq = temp;
+                                    }
+                                    temp = maxVec(itemFreq);
+                                    if (maxFreq < temp) {
+                                      maxFreq = temp;
+                                    }
+                                    std::vector<double> concatVec(userFreq.begin(), userFreq.end());
+                                    concatVec.insert(concatVec.end(), itemFreq.begin(), itemFreq.end());
+                                    auto meanStd = meanStdDev(concatVec);
+                                    meanFreq = meanStd.first;
+                                    stdFreq = meanStd.second;
                                  }
     ModelPoissonDropout(const Params& params, const char*uFacName, const char* iFacName, 
         int seed, std::vector<double>& userRankMap,
@@ -64,6 +101,21 @@ class ModelPoissonDropout : public Model {
                                       factorial.push_back(factorial.back()*((double)i));
                                     }
                                     fDimWt = std::vector<double>(params.facDim, 0);
+                                    minFreq = minVec(userFreq);
+                                    maxFreq = maxVec(userFreq);
+                                    double temp = minVec(itemFreq);
+                                    if (minFreq > temp) {
+                                      minFreq = temp;
+                                    }
+                                    temp = maxVec(itemFreq);
+                                    if (maxFreq < temp) {
+                                      maxFreq = temp;
+                                    }
+                                    std::vector<double> concatVec(userFreq.begin(), userFreq.end());
+                                    concatVec.insert(concatVec.end(), itemFreq.begin(), itemFreq.end());
+                                    auto meanStd = meanStdDev(concatVec);
+                                    meanFreq = meanStd.first;
+                                    stdFreq = meanStd.second;
                                  }
     ModelPoissonDropout(const Params& params, int seed) : Model(params, seed) {
                                     //intialize factorial table
@@ -72,6 +124,22 @@ class ModelPoissonDropout : public Model {
                                       factorial.push_back(factorial.back()*((double)i));
                                     }
                                     fDimWt = std::vector<double>(params.facDim, 0);
+                                    minFreq = minVec(userFreq);
+                                    maxFreq = maxVec(userFreq);
+                                    double temp = minVec(itemFreq);
+                                    if (minFreq > temp) {
+                                      minFreq = temp;
+                                    }
+                                    temp = maxVec(itemFreq);
+                                    if (maxFreq < temp) {
+                                      maxFreq = temp;
+                                    }
+                                    std::vector<double> concatVec(userFreq.begin(), userFreq.end());
+                                    concatVec.insert(concatVec.end(), itemFreq.begin(), itemFreq.end());
+                                    auto meanStd = meanStdDev(concatVec);
+                                    meanFreq = meanStd.first;
+                                    stdFreq = meanStd.second;
+                                    
     }
 
     virtual void train(const Data& data, Model &bestModel, 

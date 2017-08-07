@@ -314,23 +314,6 @@ double stddev(std::vector<double> v) {
 }
 
 
-//return a min element of a vector
-template<typename T>
-T minVec(std::vector<T> v) {
-  typename std::vector<T>::iterator result = std::min_element(std::begin(v), std::end(v));
-  int minInd = std::distance(std::begin(v), result); 
-  return v[minInd];
-}
-
-
-template<typename T>
-T maxVec(std::vector<T> v) {
-  typename std::vector<T>::iterator result = std::max_element(std::begin(v), std::end(v));
-  int maxInd = std::distance(std::begin(v), result); 
-  return v[maxInd];
-}
-
-
 //compute min ratngs per user/ item, also can pass set of ignored user-item
 //pairs
 void genStats(gk_csr_t *mat, 
@@ -758,6 +741,9 @@ bool descComp(std::pair<int, double>& a, std::pair<int, double>& b) {
   return a.second > b.second;
 }
 
+bool ascComp(std::pair<int, double>& a, std::pair<int, double>& b) {
+  return a.second <= b.second;
+}
 
 float sparseRowDotProd(gk_csr_t* mat1, int i, gk_csr_t* mat2, int j) {
   float sim = 0;

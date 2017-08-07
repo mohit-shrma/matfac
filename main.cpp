@@ -9,10 +9,14 @@
 #include "util.h"
 #include "datastruct.h"
 #include "modelMF.h"
+#include "modelMFBias.h"
 #include "confCompute.h"
 #include "topBucketComp.h"
 #include "longTail.h"
 #include "analyzeModels.h"
+#include "modelDropoutMF.h"
+#include "modelPoissonDropout.h"
+
 
 #include <gflags/gflags.h>
 DEFINE_uint64(maxiter, 5000, "number of iterations");
@@ -35,6 +39,7 @@ DEFINE_string(initufac, "", "initial user factors");
 DEFINE_string(initifac, "", "initial item factors");
 DEFINE_string(prefix, "", "prefix to prepend to logs n factors");
 DEFINE_string(method, "sgd", "sgd|sgdpar|sgdu|hogsgd|als|ccd|ccd++");
+
 
 Params parse_cmd_line(int argc, char *argv[]) {
  
@@ -169,7 +174,7 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
   }
   
 
-  std::vector<float> maxFreqs = {5, 10 , 15, 20, 30, 50, 75, 100, 150, 200};
+  std::vector<float> maxFreqs = {5, 10, 15, 20, 30, 50, 75, 100, 150, 200};
   for (auto&& maxFreq: maxFreqs) {
     std::unordered_set<int> freqItems, notFreqItems;
     for (auto&& pair: itemFreqPairs) {
@@ -185,7 +190,8 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
       << countNRMSE.second << " " << countNRMSE2.first << " " << countNRMSE2.second 
       << " " << countNRMSE.first + countNRMSE2.first << std::endl;
   }
-  
+ 
+  return ;
 
   auto itemsMeanVar = trainItemsMeanVar(data.trainMat);  
   double avgVar = 0;
@@ -375,6 +381,359 @@ void computeSampTopNFrmFullModel(Data& data, Params& params) {
 }
 
 
+void computeFreqRMSEs(Data& data, Params& params) {
+  
+  std::cout << "\nCreating full model...";
+  ModelMF fullModel(params, params.seed);
+  //svdFrmSvdlibCSR(data.trainMat, fullModel.facDim, fullModel.uFac, 
+  //    fullModel.iFac, false);
+  //load previously learned factors
+  fullModel.loadFacs(params.prefix);
+
+  //get number of ratings per user and item, i.e. frequency
+  auto rowColFreq = getRowColFreq(data.trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+ 
+  auto usersMeanStd = meanStdDev(userFreq);
+  auto itemsMeanStd = meanStdDev(itemFreq);
+
+  std::cout << "user freq mean: " << usersMeanStd.first << " std: " 
+    << usersMeanStd.second << std::endl;
+  std::cout << "item freq mean: " << itemsMeanStd.first << " std: " 
+    << itemsMeanStd.second << std::endl;
+
+  std::unordered_set<int> invalidUsers;
+  std::unordered_set<int> invalidItems;
+  std::string modelSign = fullModel.modelSignature();
+  std::cout << "\nModel sign: " << modelSign << std::endl;    
+  
+  std::string prefix = std::string(params.prefix) + "_" + modelSign + "_invalUsers.txt";
+  std::vector<int> invalUsersVec = readVector(prefix.c_str());
+  prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
+  std::vector<int> invalItemsVec = readVector(prefix.c_str());
+  
+  for (auto v: invalUsersVec) {
+    invalidUsers.insert(v);
+  }
+  
+  for (auto v: invalItemsVec) {
+    invalidItems.insert(v);
+  }
+
+  ModelMF bestModel(fullModel);
+  //std::cout << "\nStarting model train...";
+  //fullModel.train(data, bestModel, invalidUsers, invalidItems);
+  std::cout << "\nTrain RMSE: " << bestModel.RMSE(data.trainMat, invalidUsers, invalidItems);
+  std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, invalidItems);
+  std::cout << "\nVal RMSE: " << bestModel.RMSE(data.valMat, invalidUsers, invalidItems);
+  //std::cout << "\nFull RMSE: " << bestModel.fullLowRankErr(data, invalidUsers, invalidItems);
+  std::cout << std::endl;
+
+  std::cout << "No. of invalid users: " << invalidUsers.size() << std::endl;
+  std::cout << "No. of invalid items: " << invalidItems.size() << std::endl;
+
+  //order item in decreasing order of frequency 
+  std::vector<std::pair<int, double>> itemFreqPairs;
+  for (int i = 0; i < itemFreq.size(); i++) {
+    itemFreqPairs.push_back(std::make_pair(i, itemFreq[i]));
+  }
+  //comparison to sort in decreasing order
+  std::sort(itemFreqPairs.begin(), itemFreqPairs.end(), descComp);
+
+  int nSampUsers = 5000;
+  int nUsers = data.trainMat->nrows;
+  int nItems = data.trainMat->ncols;
+    
+  //get filtered items corresponding to head items
+  //auto headItems = getHeadItems(data.trainMat, 0.2); 
+  
+  std::vector<float> freqPcs = {1.0, 5.0, 10, 25, 50};
+  for (auto&& filtPc: freqPcs) {
+    std::unordered_set<int> filtItems, notFiltItems;
+    float filtSzThresh = (filtPc/100.0)*((float)itemFreqPairs.size());
+    //std::cout << "No. of top " << filtPc << " % freq items: " <<  filtSzThresh << std::endl;
+    for (auto&& pair: itemFreqPairs) {
+      if (filtItems.size() <= filtSzThresh) {
+        filtItems.insert(pair.first);
+      } else {
+        notFiltItems.insert(pair.first);
+      }
+    }
+    auto countNRMSE = bestModel.RMSE(data.testMat, filtItems, invalidUsers, invalidItems);
+    auto countNRMSE2 = bestModel.RMSE(data.testMat, notFiltItems, invalidUsers, invalidItems);
+    auto hiloNormFilt = bestModel.hiLoNorms(filtItems);
+    auto hiloNormNotFilt = bestModel.hiLoNorms(notFiltItems);
+    std::cout << "FiltPc: " << (int)filtPc << " " << countNRMSE.first << " " << countNRMSE.second 
+      << " " << countNRMSE2.first << " " <<countNRMSE2.second 
+      << " " << countNRMSE.first + countNRMSE2.first << std::endl;  
+    std::cout << "Filt norm hi: " << hiloNormFilt.first << " " << hiloNormFilt.second << std::endl;
+    std::cout << "Not-Filt norm hi: " << hiloNormNotFilt.first << " " << hiloNormNotFilt.second << std::endl;
+
+  }
+
+  std::vector<float> maxFreqs = {5, 10, 15, 20, 30, 50, 75, 100, 150, 200};
+  for (auto&& maxFreq: maxFreqs) {
+    std::unordered_set<int> freqItems, notFreqItems;
+    for (auto&& pair: itemFreqPairs) {
+      if (pair.second < maxFreq) {
+        notFreqItems.insert(pair.first);
+      } else {
+        freqItems.insert(pair.first);
+      }
+    }
+    auto countNRMSE = bestModel.RMSE(data.testMat, freqItems, invalidUsers, invalidItems);
+    auto countNRMSE2 = bestModel.RMSE(data.testMat, notFreqItems, invalidUsers, invalidItems);
+    std::cout << "MaxFreq: " << (int)maxFreq << " " << countNRMSE.first << " " 
+      << countNRMSE.second << " " << countNRMSE2.first << " " << countNRMSE2.second 
+      << " " << countNRMSE.first + countNRMSE2.first << std::endl;
+    auto hiloNormFreq = bestModel.hiLoNorms(freqItems);
+    auto hiloNormNotFreq = bestModel.hiLoNorms(notFreqItems);
+    std::cout << "Freq norm hi: " << hiloNormFreq.first << " " << hiloNormFreq.second << std::endl;
+    std::cout << "Not-Freq norm hi: " << hiloNormNotFreq.first << " " << hiloNormNotFreq.second << std::endl;
+  }
+ 
+}
+
+
+void diffRankRMSEs(Model& bestModel, const Data& data, 
+    std::vector<int>& userRankMap, std::vector<int>& itemRankMap,
+    std::unordered_set<int> invalidUsers, std::unordered_set<int> invalidItems) {
+
+  std::map<int, std::vector<int>> rankItems;
+  for (int item = 0; item < itemRankMap.size(); item++) {
+    if (!rankItems.count(itemRankMap[item])) {
+      rankItems[itemRankMap[item]] = std::vector<int>();
+    }
+    rankItems[itemRankMap[item]].push_back(item);
+  }
+
+  for (auto& p_rankItems: rankItems) {
+    auto rank = p_rankItems.first;
+    auto items = p_rankItems.second;
+    auto setItems = std::unordered_set<int>(items.begin(), items.end());
+    auto countNRMSE = bestModel.RMSE(data.testMat, setItems, invalidUsers, invalidItems);
+    std::cout << "Items Rank: " << rank << " " << countNRMSE.first << " " 
+      << countNRMSE.second << std::endl;
+  }
+
+  std::map<int, std::vector<int>> rankUsers;
+  for (int user = 0; user < userRankMap.size(); user++) {
+    if (!rankUsers.count(userRankMap[user])) {
+      rankUsers[userRankMap[user]] = std::vector<int>();
+    }
+    rankUsers[userRankMap[user]].push_back(user);
+  }
+
+  for (auto& p_rankUsers: rankUsers) {
+    auto rank = p_rankUsers.first;
+    auto users = p_rankUsers.second;
+    auto setUsers = std::unordered_set<int>(users.begin(), users.end());
+    auto countNRMSE = bestModel.RMSEU(data.testMat, setUsers, invalidUsers, invalidItems);
+    std::cout << "Users Rank: " << rank << " " << countNRMSE.first << " " 
+      << countNRMSE.second << std::endl;
+  }
+
+}
+
+
+void quartileRMSEs(Model& bestModel, const Data& data,  
+    std::vector<std::pair<int, std::vector<int>>> partItems, 
+    std::vector<std::pair<int, std::vector<int>>> partUsers,
+    std::unordered_set<int> invalidUsers, std::unordered_set<int> invalidItems) {
+
+  auto rowColFreq = getRowColFreq(data.trainMat);
+  auto userFreq   = rowColFreq.first;
+  auto itemFreq   = rowColFreq.second;
+  int nItems      = itemFreq.size();
+  int nUsers      = userFreq.size();
+ 
+  std::cout << std::endl;
+  std::cout << "Train RMSE: " << bestModel.RMSE(data.trainMat, invalidUsers, 
+      invalidItems) << std::endl;
+  std::cout << "Test RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
+      invalidItems) << std::endl;
+  std::cout << "Val RMSE: " << bestModel.RMSE(data.valMat, invalidUsers, 
+      invalidItems) << std::endl;
+ 
+
+  std::cout << "Items Part: "; 
+  for (auto& pItems: partItems) {
+    int partInd = pItems.first;
+    auto filtItems = std::unordered_set<int>(pItems.second.begin(), pItems.second.end());
+    auto countNRMSE = bestModel.RMSE(data.testMat, filtItems, invalidUsers, invalidItems);
+    std::cout << countNRMSE.first << " " << countNRMSE.second << " ";
+  }
+  std::cout << std::endl;
+
+  
+  std::cout << "Users Part: "; 
+  for (auto& pUsers: partUsers) {
+    int partInd = pUsers.first;
+    auto filtUsers = std::unordered_set<int>(pUsers.second.begin(), pUsers.second.end());
+    auto countNRMSE = bestModel.RMSEU(data.testMat, filtUsers, invalidUsers, invalidItems);
+    std::cout << countNRMSE.first << " " << countNRMSE.second << " ";
+  }
+  std::cout << std::endl;
+}
+
+
+void computeFreqRMSEsAdapRank(Data& data, Params& params, 
+    std::vector<int>& userRankMap, std::vector<int>& itemRankMap) {
+  
+  std::cout << "\nCreating full model...";
+  ModelMF fullModel(params, params.seed);
+  //ModelMFBias fullModel(params, params.seed);
+  //ModelDropoutMFBias fullModel(params, params.seed);
+  //svdFrmSvdlibCSR(data.trainMat, fullModel.facDim, fullModel.uFac, 
+  //    fullModel.iFac, false);
+  
+  //load previously learned factors
+  fullModel.loadFacs(params.prefix);
+  //fullModel.load(params.prefix);
+
+  //get number of ratings per user and item, i.e. frequency
+  auto rowColFreq = getRowColFreq(data.trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+ 
+  auto usersMeanStd = meanStdDev(userFreq);
+  auto itemsMeanStd = meanStdDev(itemFreq);
+
+  std::cout << "user freq mean: " << usersMeanStd.first << " std: " 
+    << usersMeanStd.second << std::endl;
+  std::cout << "item freq mean: " << itemsMeanStd.first << " std: " 
+    << itemsMeanStd.second << std::endl;
+
+  std::unordered_set<int> invalidUsers;
+  std::unordered_set<int> invalidItems;
+  std::string modelSign = fullModel.modelSignature();
+  std::cout << "\nModel sign: " << modelSign << std::endl;    
+  
+  std::string prefix = std::string(params.prefix) + "_" + modelSign + "_invalUsers.txt";
+  std::vector<int> invalUsersVec = readVector(prefix.c_str());
+  prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
+  std::vector<int> invalItemsVec = readVector(prefix.c_str());
+  
+  for (auto v: invalUsersVec) {
+    invalidUsers.insert(v);
+  }
+  
+  for (auto v: invalItemsVec) {
+    invalidItems.insert(v);
+  }
+
+  //ModelMFBias bestModel(fullModel);
+  Model& bestModel = fullModel;
+
+  //std::cout << "\nStarting model train...";
+  //fullModel.train(data, bestModel, invalidUsers, invalidItems);
+  std::cout << "\nTrain RMSE: " << bestModel.RMSE(data.trainMat, invalidUsers, invalidItems);
+  std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, invalidItems);
+  std::cout << "\nVal RMSE: " << bestModel.RMSE(data.valMat, invalidUsers, invalidItems);
+  //std::cout << "\nFull RMSE: " << bestModel.fullLowRankErr(data, invalidUsers, invalidItems);
+  std::cout << std::endl;
+
+  std::cout << "No. of invalid users: " << invalidUsers.size() << std::endl;
+  std::cout << "No. of invalid items: " << invalidItems.size() << std::endl;
+
+  //order item in decreasing order of frequency 
+  std::vector<std::pair<int, double>> itemFreqPairs;
+  for (int i = 0; i < itemFreq.size(); i++) {
+    itemFreqPairs.push_back(std::make_pair(i, itemFreq[i]));
+  }
+  //comparison to sort in decreasing order
+  std::sort(itemFreqPairs.begin(), itemFreqPairs.end(), descComp);
+
+  int nSampUsers = 5000;
+  int nUsers = data.trainMat->nrows;
+  int nItems = data.trainMat->ncols;
+    
+  //get filtered items corresponding to head items
+  //auto headItems = getHeadItems(data.trainMat, 0.2); 
+  
+  std::vector<float> freqPcs = {1.0, 5.0, 10, 25, 50};
+  for (auto&& filtPc: freqPcs) {
+    std::unordered_set<int> filtItems, notFiltItems;
+    float filtSzThresh = (filtPc/100.0)*((float)itemFreqPairs.size());
+    //std::cout << "No. of top " << filtPc << " % freq items: " <<  filtSzThresh << std::endl;
+    for (auto&& pair: itemFreqPairs) {
+      if (filtItems.size() <= filtSzThresh) {
+        filtItems.insert(pair.first);
+      } else {
+        notFiltItems.insert(pair.first);
+      }
+    }
+    auto countNRMSE = bestModel.RMSE(data.testMat, filtItems, invalidUsers, invalidItems);
+    auto countNRMSE2 = bestModel.RMSE(data.testMat, notFiltItems, invalidUsers, invalidItems);
+    auto hiloNormFilt = bestModel.hiLoNorms(filtItems);
+    auto hiloNormNotFilt = bestModel.hiLoNorms(notFiltItems);
+    std::cout << "FiltPc: " << (int)filtPc << " " << countNRMSE.first << " " << countNRMSE.second 
+      << " " << countNRMSE2.first << " " <<countNRMSE2.second 
+      << " " << countNRMSE.first + countNRMSE2.first << std::endl;  
+    std::cout << "Filt norm hi: " << hiloNormFilt.first << " " << hiloNormFilt.second << std::endl;
+    std::cout << "Not-Filt norm hi: " << hiloNormNotFilt.first << " " << hiloNormNotFilt.second << std::endl;
+
+  }
+
+  std::vector<float> maxFreqs = {5, 10, 15, 20, 30, 50, 75, 100, 150, 200};
+  for (auto&& maxFreq: maxFreqs) {
+    std::unordered_set<int> freqItems, notFreqItems;
+    for (auto&& pair: itemFreqPairs) {
+      if (pair.second < maxFreq) {
+        notFreqItems.insert(pair.first);
+      } else {
+        freqItems.insert(pair.first);
+      }
+    }
+    auto countNRMSE = bestModel.RMSE(data.testMat, freqItems, invalidUsers, invalidItems);
+    auto countNRMSE2 = bestModel.RMSE(data.testMat, notFreqItems, invalidUsers, invalidItems);
+    std::cout << "MaxFreq: " << (int)maxFreq << " " << countNRMSE.first << " " 
+      << countNRMSE.second << " " << countNRMSE2.first << " " << countNRMSE2.second 
+      << " " << countNRMSE.first + countNRMSE2.first << std::endl;
+    auto hiloNormFreq = bestModel.hiLoNorms(freqItems);
+    auto hiloNormNotFreq = bestModel.hiLoNorms(notFreqItems);
+    std::cout << "Freq norm hi: " << hiloNormFreq.first << " " << hiloNormFreq.second << std::endl;
+    std::cout << "Not-Freq norm hi: " << hiloNormNotFreq.first << " " << hiloNormNotFreq.second << std::endl;
+  }
+
+  std::map<int, std::vector<int>> rankItems;
+  for (int item = 0; item < itemRankMap.size(); item++) {
+    if (!rankItems.count(itemRankMap[item])) {
+      rankItems[itemRankMap[item]] = std::vector<int>();
+    }
+    rankItems[itemRankMap[item]].push_back(item);
+  }
+
+  for (auto& p_rankItems: rankItems) {
+    auto rank = p_rankItems.first;
+    auto items = p_rankItems.second;
+    auto setItems = std::unordered_set<int>(items.begin(), items.end());
+    auto countNRMSE = bestModel.RMSE(data.testMat, setItems, invalidUsers, invalidItems);
+    std::cout << "Items Rank: " << rank << " " << countNRMSE.first << " " 
+      << countNRMSE.second << std::endl;
+  }
+
+  std::map<int, std::vector<int>> rankUsers;
+  for (int user = 0; user < userRankMap.size(); user++) {
+    if (!rankUsers.count(userRankMap[user])) {
+      rankUsers[userRankMap[user]] = std::vector<int>();
+    }
+    rankUsers[userRankMap[user]].push_back(user);
+  }
+
+  for (auto& p_rankUsers: rankUsers) {
+    auto rank = p_rankUsers.first;
+    auto users = p_rankUsers.second;
+    auto setUsers = std::unordered_set<int>(users.begin(), users.end());
+    auto countNRMSE = bestModel.RMSEU(data.testMat, setUsers, invalidUsers, invalidItems);
+    std::cout << "Users Rank: " << rank << " " << countNRMSE.first << " " 
+      << countNRMSE.second << std::endl;
+  }
+
+}
+
+
 void transformBinData(Data& data, Params& params) {
   std::cout << "\nCreating original model to transform binary ratings..." << std::endl;
   ModelMF origModel(params, params.origUFacFile, params.origIFacFile, 
@@ -386,6 +745,107 @@ void transformBinData(Data& data, Params& params) {
   origModel.updateMatWRatingsGaussianNoise(data.valMat);
   gk_csr_CreateIndex(data.valMat, GK_CSR_COL);
 }
+
+
+void setAdapRank(std::vector<int>& rankMap, 
+    std::vector<std::pair<int, std::vector<int>>>& partItems,
+    std::vector<std::pair<int, double>>& freqPairs, int facDim) {
+  int nItems = freqPairs.size();
+  int currFac = facDim;
+  int i = 0, partInd = 0;
+  while (i < nItems) {
+    int endItem = i + 0.25*((float)nItems);
+    if (endItem > nItems || partInd == 3) {
+      endItem = nItems;
+    }
+    std::cout << "start: " << i << " end: " << endItem << " currFac: " 
+      << currFac << std::endl;
+    std::vector<int> pItems;
+    for (int item = i; item < endItem; item++) {
+      rankMap[freqPairs[item].first] = currFac;
+      pItems.push_back(freqPairs[item].first);
+    }
+    partItems.push_back(make_pair(partInd, pItems));
+    currFac = currFac/2;
+    if (0 == currFac) {
+      currFac = 1;
+    }
+    i = endItem;
+    partInd++;
+  }
+}
+
+
+void getUserItemRankMap(
+    const Data& data, const Params& params, 
+    std::vector<std::pair<int, std::vector<int>>>& partItems,
+    std::vector<std::pair<int, std::vector<int>>>& partUsers,
+    std::vector<int>& itemRank, std::vector<int>& userRank) {
+
+  auto rowColFreq = getRowColFreq(data.trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+  int nItems = itemFreq.size();
+  int nUsers = userFreq.size();
+  userRank = std::vector<int>(nUsers, 0); 
+  itemRank = std::vector<int>(nItems, 0);
+
+  //order item in decreasing order of frequency 
+  std::vector<std::pair<int, double>> itemFreqPairs;
+  for (int i = 0; i < nItems; i++) {
+    itemFreqPairs.push_back(std::make_pair(i, itemFreq[i]));
+  }
+  //comparison to sort in decreasing order
+  std::sort(itemFreqPairs.begin(), itemFreqPairs.end(), descComp);
+  setAdapRank(itemRank, partItems, itemFreqPairs, params.facDim);
+
+  //order users in decreasing order of frequency 
+  std::vector<std::pair<int, double>> userFreqPairs;
+  for (int i = 0; i < nUsers; i++) {
+    userFreqPairs.push_back(std::make_pair(i, userFreq[i]));
+  }
+  //comparison to sort in decreasing order
+  std::sort(userFreqPairs.begin(), userFreqPairs.end(), descComp);
+  setAdapRank(userRank, partUsers, userFreqPairs, params.facDim);
+  
+} 
+
+
+void setPc(std::vector<double>& indFreq, std::vector<double>& indRank) {
+ 
+  //order item in decreasing order of frequency 
+  std::vector<std::pair<int, double>> indFreqPairs;
+  for (int i = 0; i < indFreq.size(); i++) {
+    indFreqPairs.push_back(std::make_pair(i, indFreq[i]));
+  }
+  //comparison to sort in decreasing order
+  std::sort(indFreqPairs.begin(), indFreqPairs.end(), descComp);
+
+  for (int i = 0; i < indFreq.size(); i++) {
+    int item = indFreqPairs[i].first;
+    double pc = double(indFreq.size() - i)/double(indFreq.size());
+    indRank[item] = pc;
+  }
+ 
+}
+
+
+void getUserItemRankMapPc(
+    const Data& data, const Params& params, 
+    std::vector<double>& itemRank, std::vector<double>& userRank) {
+
+  auto rowColFreq = getRowColFreq(data.trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+  int nItems = itemFreq.size();
+  int nUsers = userFreq.size();
+  userRank = std::vector<double>(nUsers, 0); 
+  itemRank = std::vector<double>(nItems, 0);
+
+  setPc(userFreq, userRank);
+  setPc(itemFreq, itemRank);
+} 
+
 
 
 int main(int argc , char* argv[]) {
@@ -524,20 +984,42 @@ int main(int argc , char* argv[]) {
     return 0;
   }
   */
+
+  //get number of ratings per user and item, i.e. frequency
+  std::vector<std::pair<int, std::vector<int>>> partItems, partUsers;
+  std::vector<int> userRankMap, itemRankMap;
+  std::vector<double> userRankPc, itemRankPc;
+
+  getUserItemRankMap(data, params, partItems, partUsers, itemRankMap, 
+      userRankMap);
+  getUserItemRankMapPc(data, params, itemRankPc, userRankPc);
+  std::vector<int> ranks = {1, params.facDim};  
+
+  auto rowColFreq = getRowColFreq(data.trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
   
-  ModelMF mfModel(params, params.seed);
+  //ModelMF mfModel(params, params.seed);
+  //ModelMFBias mfModel(params, params.seed);
+  //ModelDropoutMF mfModel(params, params.seed, userRankMap, itemRankMap, ranks);
+  ModelPoissonDropout mfModel(params, params.seed, userRankPc, itemRankPc, 
+      userFreq, itemFreq);
+
   //initialize model with svd
-  //svdFrmSvdlibCSREig(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
+  svdFrmSvdlibCSREig(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
+  
   //initialize MF model with last learned model if any
-  mfModel.loadFacs(params.prefix);
+  //mfModel.initInfreqFactors(params, data);
+  //mfModel.loadFacs(params.prefix);
 
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
-  
+ 
+  /* 
   ModelMF bestModel(mfModel);
   std::cout << "\nStarting model train...";
   if (FLAGS_method == "ccd++") { 
-    mfModel.trainCCDPP(data, bestModel, invalidUsers, invalidItems);
+    mfModel.trainCCDPPFreqAdap(data, bestModel, invalidUsers, invalidItems);
   } else if (FLAGS_method == "ccd") {
     if (isUISorted) {
       mfModel.trainCCD(data, bestModel, invalidUsers, invalidItems);
@@ -552,17 +1034,31 @@ int main(int argc , char* argv[]) {
     mfModel.trainUShuffle(data, bestModel, invalidUsers, invalidItems); 
   } else if (FLAGS_method == "sgdpar") {
     mfModel.trainSGDPar(data, bestModel, invalidUsers, invalidItems); 
+  } else if (FLAGS_method == "sgdparsvd") {
+    mfModel.trainSGDParSVD(data, bestModel, invalidUsers, invalidItems); 
   } else {
     mfModel.train(data, bestModel, invalidUsers, invalidItems);
   }
-
+  */
+  
+  //ModelDropoutMF bestModel(mfModel);
+  ModelPoissonDropout bestModel(mfModel);
+  //ModelDropoutMFBias bestModel(mfModel);
+  //ModelMFBias bestModel(mfModel);
+  
+  //mfModel.trainSigmoid(data, bestModel, invalidUsers, invalidItems);
+  //mfModel.trainSGDProbOrderedPar(data, bestModel, invalidUsers, invalidItems);
+  //mfModel.trainSGDProbPar(data, bestModel, invalidUsers, invalidItems);
+  //mfModel.trainSGDOnlyOrderedPar(data, bestModel, invalidUsers, invalidItems);
+  mfModel.train(data, bestModel, invalidUsers, invalidItems);
+  
   std::cout << "\nTrain RMSE: " << bestModel.RMSE(data.trainMat, invalidUsers, 
       invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
       invalidItems);
   std::cout << "\nValidation RMSE: " << bestModel.RMSE(data.valMat, invalidUsers, 
       invalidItems);
-  
+   
   std::string modelSign = bestModel.modelSignature();
 
   //write out invalid users
@@ -575,12 +1071,20 @@ int main(int argc , char* argv[]) {
   std::cout << std::endl << "**** Model parameters ****" << std::endl;
   mfModel.display();
 
-  //computeSampTopNFrmFullModel(data, params);  
+  /*
   if (!FLAGS_origufac.empty()) {
     std::cout << "\nFull RMSE: " << 
       bestModel.fullLowRankErr(data, invalidUsers, invalidItems) << std::endl;
   }
-  
+  */
+
+  std::cout << std::endl;
+  Model& bestModel2 = bestModel;
+  //diffRankRMSEs(bestModel, data, userRankMap, itemRankMap, invalidUsers, invalidItems);
+  quartileRMSEs(bestModel2, data, partItems, partUsers, invalidUsers, invalidItems);
+
+  //computeSampTopNFrmFullModel(data, params);  
+  //computeFreqRMSEsAdapRank(data, params, userRankMap, itemRankMap);
 
   //testTailLocRec(data, params);
   //testTailRec(data, params);
@@ -589,7 +1093,9 @@ int main(int argc , char* argv[]) {
   
   //analyzeAccuracy(data, params);
   //analyzeAccuracySingleOrigModel(data, params);
+  //compJaccSimAccuMeth(data, params);
   //compJaccSimAccuSingleOrigModel(data, params);
+  //averageModels(data, params);
   //meanAndVarSameGroundAllUsers(data, params);
   //convertToBin(data, params);
 

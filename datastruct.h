@@ -55,6 +55,7 @@ class Params {
       std::cout << "facDim: " << facDim << " svdFacDim: " << svdFacDim << std::endl;
       std::cout << "maxIter: " << maxIter << std::endl;
       std::cout << "uReg: " << uReg << " iReg: " << iReg << std::endl;
+      std::cout << "rhoRMS: " << rhoRMS << " alpha: " << alpha << std::endl;
       std::cout << "learnRate: " << learnRate << std::endl;
       std::cout << "trainMat: " << trainMatFile << std::endl;
       std::cout << "testMat: " << testMatFile << std::endl;

@@ -15,20 +15,21 @@ double ModelMFBias::objective(const Data& data) {
       diff = itemRat - estRating(u, item);
       rmse += diff*diff;
     }
-    uRegErr += dotProd(uFac[u], uFac[u], facDim);
+    uRegErr += uFac.row(u).dot(uFac.row(u));
     uBiasReg += uBias[u]*uBias[u];
   }
   uRegErr = uRegErr*uReg;
   uBiasReg = uBiasReg*uReg;
 
   for (item = 0; item < nItems; item++) {
-    iRegErr += dotProd(iFac[item], iFac[item], facDim);
+    iRegErr += iFac.row(item).dot(iFac.row(item));
     iBiasReg += iBias[item]*iBias[item];
   }
   iRegErr = iRegErr*iReg;
   iBiasReg = iBiasReg*iReg;
   
-  obj = rmse + uRegErr + iRegErr + uBiasReg + iBiasReg;
+  //obj = rmse + uRegErr + iRegErr + uBiasReg + iBiasReg;
+  obj = rmse + uBiasReg + iBiasReg;
     
   //std::cout <<"\nrmse: " << std::scientific << rmse << " uReg: " << uRegErr << " iReg: " << iRegErr ; 
 
@@ -64,7 +65,7 @@ double ModelMFBias::objective(const Data& data, std::unordered_set<int>& invalid
       diff = itemRat - estRating(u, item);
       rmse += diff*diff;
     }
-    uRegErr += dotProd(uFac[u], uFac[u], facDim);
+    uRegErr += uFac.row(u).dot(uFac.row(u));
     uBiasReg += uBias[u]*uBias[u];
   }
   uRegErr = uRegErr*uReg;
@@ -77,43 +78,26 @@ double ModelMFBias::objective(const Data& data, std::unordered_set<int>& invalid
       //found and skip
       continue;
     }
-    iRegErr += dotProd(iFac[item], iFac[item], facDim);
+    iRegErr += iFac.row(item).dot(iFac.row(item));
     iBiasReg += iBias[item]*iBias[item];
   }
   iRegErr = iRegErr*iReg;
   iBiasReg = iBiasReg*iReg;
   
-  obj = rmse + uRegErr + iRegErr + uBiasReg + iBiasReg;
+  //obj = rmse + uRegErr + iRegErr + uBiasReg + iBiasReg;
+  obj = rmse + uBiasReg + iBiasReg;
     
   return obj;
 }
 
 
 double ModelMFBias::estRating(int user, int item) {
-  double rating = mu + uBias[user] + iBias[item] + 
-    dotProd(uFac[user], iFac[item], facDim);
+  double rating = uBias[user] + iBias[item];
+  //double rating = mu + uBias[user] + iBias[item] + 
+  //  dotProd(uFac[user], iFac[item], facDim);
   return rating;
 }
 
-
-void ModelMFBias::computeUGrad(int user, int item, float r_ui, 
-    double r_ui_est, std::vector<double> &uGrad) {
-
-  double diff = r_ui - r_ui_est;
-  for (int i = 0; i < facDim; i++) {
-    uGrad[i] = -2.0*diff*iFac[item][i] + 2.0*uReg*uFac[user][i];
-  }
-}
-
-
-void ModelMFBias::computeIGrad(int user, int item, float r_ui, 
-    double r_ui_est, std::vector<double> &iGrad) {
-
-  double diff = r_ui - r_ui_est;
-  for (int i = 0; i < facDim; i++) {
-    iGrad[i] = -2.0*diff*uFac[user][i] + 2.0*iReg*iFac[item][i];
-  }
-}
 
 
 void ModelMFBias::train(const Data& data, Model& bestModel, 
@@ -121,7 +105,6 @@ void ModelMFBias::train(const Data& data, Model& bestModel,
     std::unordered_set<int>& invalidItems) {
 
   std::cout << "\nModelMFBias::train trainSeed: " << trainSeed;
-  
 
   //global bias
   mu = meanRating(data.trainMat);
@@ -135,13 +118,7 @@ void ModelMFBias::train(const Data& data, Model& bestModel,
     << " Train nnz: " << nnz << std::endl;
   
   std::chrono::time_point<std::chrono::system_clock> startSVD, endSVD;
-  startSVD = std::chrono::system_clock::now();
-  //initialization with svd of the passed matrix
-  svdFrmSvdlibCSR(data.trainMat, facDim, uFac, iFac, false); 
-  
-  endSVD = std::chrono::system_clock::now();
-  std::chrono::duration<double> durationSVD =  (endSVD - startSVD) ;
-  std::cout << "\nsvd duration: " << durationSVD.count();
+  std::chrono::duration<double> durationSVD ;
 
   int u, item, iter, bestIter;
   float itemRat;
@@ -153,19 +130,30 @@ void ModelMFBias::train(const Data& data, Model& bestModel,
   //array to hold user and item gradients
   std::vector<double> uGrad (facDim, 0);
   std::vector<double> iGrad (facDim, 0);
-  
-  prevObj = objective(data);
-  std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " << RMSE(data.trainMat);
-
-  std::chrono::time_point<std::chrono::system_clock> start, end;
+   std::chrono::time_point<std::chrono::system_clock> start, end;
   
   std::vector<std::unordered_set<int>> uISet(nUsers);
   genStats(trainMat, uISet, std::to_string(trainSeed));
   getInvalidUsersItems(trainMat, uISet, invalidUsers, invalidItems);
-  
+  for (int u = trainMat->nrows; u < data.nUsers; u++) {
+    invalidUsers.insert(u);
+  }
+  for (int item = trainMat->ncols; item < data.nItems; item++) {
+    invalidItems.insert(item);
+  }
+   
+  prevObj = objective(data, invalidUsers, invalidItems);
+  bestObj = prevObj;
+  bestValRMSE = prevValRMSE = RMSE(data.valMat, invalidUsers, invalidItems);
+  std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " << RMSE(data.trainMat);
+
+
   std::cout << "\nModelMFBias::train trainSeed: " << trainSeed 
     << " invalidUsers: " << invalidUsers.size()
     << " invalidItems: " << invalidItems.size() << std::endl;
+
+  std::cout << "ubias norm: " << uBias.norm() << " iBias norm: " << iBias.norm() << std::endl;
+
 
   //random engine
   std::mt19937 mt(trainSeed);
@@ -192,22 +180,18 @@ void ModelMFBias::train(const Data& data, Model& bestModel,
       //get difference with actual rating
       diff = itemRat - r_ui_est;
 
-      //compute user gradient
-      computeUGrad(u, item, itemRat, r_ui_est, uGrad);
-
       //update user
       //updateAdaptiveFac(uFac[u], uGrad, uGradsAcc[u]); 
-      updateFac(uFac[u], uGrad); 
+      //updateFac(uFac[u], uGrad); 
 
       //update user bias
       uBias[u] -= learnRate*(-2.0*diff + 2.0*uReg*uBias[u]);
 
       //compute item gradient
-      computeIGrad(u, item, itemRat, r_ui_est, iGrad);
 
       //update item
       //updateAdaptiveFac(iFac[item], iGrad, iGradsAcc[item]);
-      updateFac(iFac[item], iGrad);
+      //updateFac(iFac[item], iGrad);
 
       //update item bias
       iBias[item] -= learnRate*(-2.0*diff + 2.0*iReg*iBias[item]);
@@ -220,16 +204,23 @@ void ModelMFBias::train(const Data& data, Model& bestModel,
             invalidUsers, invalidItems)) {
         break; 
       }
-      std::cout << "\nModelMFBias::train trainSeed: " << trainSeed
+      if (iter % DISP_ITER == 0) {
+        std::chrono::duration<double> duration =  (end - start) ;
+        std::cout << "ModelMFBias::train trainSeed: " << trainSeed
                 << " Iter: " << iter << " Objective: " << std::scientific << prevObj 
                 << " Train RMSE: " << RMSE(data.trainMat, invalidUsers, invalidItems) 
-                << " Val RMSE: " <<  prevValRMSE
+                << " Val RMSE: " <<  prevValRMSE << " dur: " << duration.count() 
+                << " uBias: " << uBias.norm() << " iBias: " << iBias.norm()
+                << " best uBias: " << bestModel.uBias.norm() 
+                << " best iBias: " << bestModel.iBias.norm()
                 << std::endl;
-      std::chrono::duration<double> duration =  (end - start) ;
-      std::cout << "\nsub duration: " << duration.count() << std::endl;
-      //save best model found till now
-      std::string modelFName = std::string(data.prefix);
-      bestModel.save(modelFName);
+      }
+      
+      if (iter % SAVE_ITER == 0 || iter == maxIter - 1) {
+        //save best model found till now
+        std::string modelFName = std::string(data.prefix);
+        bestModel.save(modelFName);
+      }
     }
   }
 

@@ -1,6 +1,7 @@
 #include "svdFrmsvdlib.h"
 
 
+//compute SVD of matrix and copy to vector<vector<double>>
 void svdFrmSvdlibCSR(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& uFac,
                 std::vector<std::vector<double>>& iFac, bool pureSVD) {
   int nnz = 0;
@@ -64,10 +65,13 @@ void svdFrmSvdlibCSR(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& 
 }
 
 
-void svdFrmSvdlibCSREig(gk_csr_t *mat, int rank, Eigen::MatrixXf& uFac,
+//compute SVD of matrix and copy to Eigen::MatrixXf
+Eigen::VectorXf svdFrmSvdlibCSREig(gk_csr_t *mat, int rank, Eigen::MatrixXf& uFac,
                 Eigen::MatrixXf& iFac, bool pureSVD) {
   int nnz = 0;
   int u, i, j, item, jj;
+  Eigen::VectorXf singularVals(rank);
+
   for (u = 0; u < mat->nrows; u++) {
     nnz += mat->rowptr[u+1] - mat->rowptr[u];
   }
@@ -99,6 +103,7 @@ void svdFrmSvdlibCSREig(gk_csr_t *mat, int rank, Eigen::MatrixXf& uFac,
   std::cout << "\nDimensionality: " << svd->d;
   std::cout << "\nSingular values: ";
   for (i = 0; i < rank; i++) {
+    singularVals[i] = svd->S[i];
     std::cout << svd->S[i]  << " ";
   }
   
@@ -124,9 +129,12 @@ void svdFrmSvdlibCSREig(gk_csr_t *mat, int rank, Eigen::MatrixXf& uFac,
   
   //free svdrec
   svdFreeSVDRec(svd);
+
+  return singularVals;
 }
 
 
+//compute SVD of sparsity structure and copy to vector<vector<double>> 
 void svdFrmSvdlibCSRSparsity(gk_csr_t *mat, int rank, std::vector<std::vector<double>>& uFac,
                 std::vector<std::vector<double>>& iFac, bool pureSVD) {
   int nnz = 0;
@@ -190,6 +198,7 @@ void svdFrmSvdlibCSRSparsity(gk_csr_t *mat, int rank, std::vector<std::vector<do
 }
 
 
+//compute SVD of the sparsity structure and copy to Eigen::MatrixXf
 void svdFrmSvdlibCSRSparsityEig(gk_csr_t *mat, int rank, Eigen::MatrixXf& uFac,
                 Eigen::MatrixXf& iFac, bool pureSVD) {
   int nnz = 0;

@@ -65,15 +65,6 @@ class ModelDropoutMF : public Model {
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems);
     virtual double estRating(int user, int item) override;
-    virtual double estRating(int user, int item, int minRank);
-    bool isTerminateModel(ModelDropoutMF& bestModel, const Data& data, int iter,
-      int& bestIter, double& bestObj, double& prevObj, double& bestValRMSE,
-      double& prevValRMSE, std::unordered_set<int>& invalidUsers, 
-      std::unordered_set<int>& invalidItems, int minRank);
-    virtual double objective(const Data& data, std::unordered_set<int>& invalidUsers,
-        std::unordered_set<int>& invalidItems, int minRank);
-    double RMSE(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
-        std::unordered_set<int>& invalidItems, int minRank);
 };
 
 #endif

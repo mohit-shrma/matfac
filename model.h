@@ -27,7 +27,8 @@ class Model {
     int trainSeed;
     float origLearnRate;
     float learnRate;
-    float rhoRMS;
+    float rhoRMS; //poissonDrop: sigmoid -> k or steepness e.g. 20
+    float alpha; //poissonDrop: alpha -> center e.g. 0.5
     int maxIter;
     float uReg;
     float iReg;
@@ -115,6 +116,8 @@ class Model {
       int iStart, int iEnd); 
     double RMSE(gk_csr_t* mat);
     std::pair<int, double> RMSE(gk_csr_t* mat, std::unordered_set<int>& filtItems,
+        std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems);
+    std::pair<int, double> RMSEU(gk_csr_t* mat, std::unordered_set<int>& filtItems,
         std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems);
     double RMSE(gk_csr_t* mat, std::unordered_set<int>& invalidUsers,
       std::unordered_set<int>& invalidItems);

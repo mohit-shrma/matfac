@@ -50,6 +50,7 @@ std::vector<std::tuple<int, int, float>> getUIRatings(gk_csr_t* mat,
     std::unordered_set<int>& invalidItems);
 double normVec(std::vector<double>& vec);
 bool descComp(std::pair<int, double>& a, std::pair<int, double>& b);
+bool ascComp(std::pair<int, double>& a, std::pair<int, double>& b);
 std::pair<double, double> getMeanVar(std::vector<std::vector<double>> uFac,
     std::vector<std::vector<double>> iFac, int facDim, int nUsers, int nItems);
 void getUserStats(std::vector<int>& users, gk_csr_t* mat, 
@@ -83,5 +84,21 @@ float adapDotProd(Eigen::MatrixXf& uFac, Eigen::MatrixXf& iFac,
    int u, int item, int minRank);
 void sgdUpdateBlockSeq(int dim, std::vector<std::pair<int, int>>& updateSeq, 
     std::mt19937& mt);
+
+//return a min element of a vector
+template<typename T>
+T minVec(std::vector<T> v) {
+  typename std::vector<T>::iterator result = std::min_element(std::begin(v), std::end(v));
+  int minInd = std::distance(std::begin(v), result); 
+  return v[minInd];
+}
+
+template<typename T>
+T maxVec(std::vector<T> v) {
+  typename std::vector<T>::iterator result = std::max_element(std::begin(v), std::end(v));
+  int maxInd = std::distance(std::begin(v), result); 
+  return v[maxInd];
+}
+
 #endif
 

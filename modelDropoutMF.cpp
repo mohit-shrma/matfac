@@ -3,15 +3,25 @@
 
 double ModelDropoutMF::estRating(int user, int item) {
   double rat = 0;
-  int minRank = std::min(userRankMap[user], itemRankMap[item]);
-  for (int k = 0; k < minRank; k++) {
+  int updMinRank = std::min(userRankMap[user], itemRankMap[item]);
+  int candFacDim = ((float)facDim/8.0);
+  candFacDim = candFacDim > 0 ? candFacDim: 1;
+  //updMinRank = std::min(updMinRank, candFacDim);
+  for (int k = 0; k < candFacDim; k++) {
     rat += uFac(user, k)*iFac(item, k);
+  }
+  for (int k = candFacDim; k < updMinRank; k++) {
+    rat += 0.5*uFac(user, k)*iFac(item, k);
+  }
+  for (int k = updMinRank; k < facDim; k++) {
+    rat += 0.15*uFac(user, k)*iFac(item, k);
   }
   return rat;
 }
 
 
 //have objective corresponding to this
+/*
 double ModelDropoutMF::estRating(int user, int item, int minRank) {
   double rat = 0;
   minRank = std::min(minRank, std::min(userRankMap[user], itemRankMap[item]));
@@ -20,7 +30,6 @@ double ModelDropoutMF::estRating(int user, int item, int minRank) {
   }
   return rat;
 }
-
 
 double ModelDropoutMF::RMSE(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems, int minRank) {
@@ -114,8 +123,9 @@ double ModelDropoutMF::objective(const Data& data, std::unordered_set<int>& inva
 
   return obj;
 }
+*/
 
-
+/*
 bool ModelDropoutMF::isTerminateModel(ModelDropoutMF& bestModel, const Data& data, int iter,
     int& bestIter, double& bestObj, double& prevObj, double& bestValRMSE,
     double& prevValRMSE, std::unordered_set<int>& invalidUsers, 
@@ -180,13 +190,13 @@ bool ModelDropoutMF::isTerminateModel(ModelDropoutMF& bestModel, const Data& dat
     ret = true;
   }
   */
-
+/*
   prevObj = currObj;
   prevValRMSE = currValRMSE;
 
   return ret;
 }
-
+*/
 
 void ModelDropoutMF::trainSGDAdapPar(const Data &data, ModelDropoutMF &bestModel, 
     std::unordered_set<int>& invalidUsers,
@@ -301,12 +311,12 @@ void ModelDropoutMF::trainSGDAdapPar(const Data &data, ModelDropoutMF &bestModel
   for (int rankInd = 0; rankInd < ranks.size(); rankInd++) {
     int minRank = ranks[rankInd];
     
-    prevObj = objective(data, invalidUsers, invalidItems, minRank);
+    prevObj = objective(data, invalidUsers, invalidItems);
     bestObj = prevObj;
-    bestValRMSE = prevValRMSE = RMSE(data.valMat, invalidUsers, invalidItems, minRank);
+    bestValRMSE = prevValRMSE = RMSE(data.valMat, invalidUsers, invalidItems);
     
     std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " 
-      << RMSE(data.trainMat, invalidUsers, invalidItems, minRank) << " Val RMSE: " 
+      << RMSE(data.trainMat, invalidUsers, invalidItems) << " Val RMSE: " 
       << bestValRMSE;
     std::cout << "minRank: " << minRank << std::endl; 
 
@@ -365,7 +375,7 @@ void ModelDropoutMF::trainSGDAdapPar(const Data &data, ModelDropoutMF &bestModel
         
         if (GK_CSR_IS_VAL) {
           if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
-                bestValRMSE, prevValRMSE, invalidUsers, invalidItems, minRank)) {
+                bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
             break; 
           }
         } else {
@@ -383,7 +393,7 @@ void ModelDropoutMF::trainSGDAdapPar(const Data &data, ModelDropoutMF &bestModel
         if (iter % DISP_ITER == 0) {
           std::cout << "trainSGDAdapPar " 
                     << " Iter: " << iter << " Obj: " << std::scientific << prevObj 
-                    << " Train: " << RMSE(data.trainMat, invalidUsers, invalidItems, minRank)
+                    << " Train: " << RMSE(data.trainMat, invalidUsers, invalidItems)
                     << " Val: " << prevValRMSE
                     << " subIterDur: " << subIterDuration
                     << std::endl;
@@ -406,7 +416,7 @@ void ModelDropoutMF::trainSGDAdapPar(const Data &data, ModelDropoutMF &bestModel
   bestModel.saveFacs(modelFName);
 
   std::cout << "\nBest model validation RMSE: " << bestModel.RMSE(data.valMat, 
-      invalidUsers, invalidItems, ranks[ranks.size()-1]);
+      invalidUsers, invalidItems);
 }
 
 
@@ -524,13 +534,13 @@ void ModelDropoutMF::trainSGDProbPar(const Data &data, ModelDropoutMF &bestModel
 
   std::vector<std::pair<int, int>> updateSeq;
 
-  prevObj = objective(data, invalidUsers, invalidItems, facDim);
+  prevObj = objective(data, invalidUsers, invalidItems);
   bestObj = prevObj;
   bestValRMSE = prevValRMSE = RMSE(data.valMat, invalidUsers,
-      invalidItems, facDim);
+      invalidItems);
     
   std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " 
-    << RMSE(data.trainMat, invalidUsers, invalidItems, facDim) << " Val RMSE: " 
+    << RMSE(data.trainMat, invalidUsers, invalidItems) << " Val RMSE: " 
     << bestValRMSE << std::endl;
 
   if (rhoRMS < EPS) {
@@ -594,7 +604,7 @@ void ModelDropoutMF::trainSGDProbPar(const Data &data, ModelDropoutMF &bestModel
       
       if (GK_CSR_IS_VAL) {
         if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
-              bestValRMSE, prevValRMSE, invalidUsers, invalidItems, facDim)) {
+              bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
           break; 
         }
       } else {
@@ -612,7 +622,7 @@ void ModelDropoutMF::trainSGDProbPar(const Data &data, ModelDropoutMF &bestModel
       if (iter % DISP_ITER == 0) {
         std::cout << "trainSGDProbPar " 
                   << " Iter: " << iter << " Obj: " << std::scientific << prevObj 
-                  << " Train: " << RMSE(data.trainMat, invalidUsers, invalidItems, facDim)
+                  << " Train: " << RMSE(data.trainMat, invalidUsers, invalidItems)
                   << " Val: " << prevValRMSE
                   << " subIterDur: " << subIterDuration
                   << std::endl;
@@ -633,7 +643,7 @@ void ModelDropoutMF::trainSGDProbPar(const Data &data, ModelDropoutMF &bestModel
   bestModel.saveFacs(modelFName);
 
   std::cout << "\nBest model validation RMSE: " << bestModel.RMSE(data.valMat, 
-      invalidUsers, invalidItems, facDim);
+      invalidUsers, invalidItems);
 }
 
 
@@ -751,13 +761,13 @@ void ModelDropoutMF::trainSGDProbOrderedPar(const Data &data, ModelDropoutMF &be
 
   std::vector<std::pair<int, int>> updateSeq;
 
-  prevObj = objective(data, invalidUsers, invalidItems, facDim);
+  prevObj = objective(data, invalidUsers, invalidItems);
   bestObj = prevObj;
   bestValRMSE = prevValRMSE = RMSE(data.valMat, invalidUsers,
-      invalidItems, facDim);
+      invalidItems);
     
   std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " 
-    << RMSE(data.trainMat, invalidUsers, invalidItems, facDim) << " Val RMSE: " 
+    << RMSE(data.trainMat, invalidUsers, invalidItems) << " Val RMSE: " 
     << bestValRMSE << std::endl;
 
   if (rhoRMS < EPS) {
@@ -828,7 +838,7 @@ void ModelDropoutMF::trainSGDProbOrderedPar(const Data &data, ModelDropoutMF &be
       
       if (GK_CSR_IS_VAL) {
         if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
-              bestValRMSE, prevValRMSE, invalidUsers, invalidItems, facDim)) {
+              bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
           break; 
         }
       } else {
@@ -846,7 +856,7 @@ void ModelDropoutMF::trainSGDProbOrderedPar(const Data &data, ModelDropoutMF &be
       if (iter % DISP_ITER == 0) {
         std::cout << "trainSGDProbOrderedPar " 
                   << " Iter: " << iter << " Obj: " << std::scientific << prevObj 
-                  << " Train: " << RMSE(data.trainMat, invalidUsers, invalidItems, facDim)
+                  << " Train: " << RMSE(data.trainMat, invalidUsers, invalidItems)
                   << " Val: " << prevValRMSE
                   << " subIterDur: " << subIterDuration
                   << std::endl;
@@ -867,7 +877,7 @@ void ModelDropoutMF::trainSGDProbOrderedPar(const Data &data, ModelDropoutMF &be
   bestModel.saveFacs(modelFName);
 
   std::cout << "\nBest model validation RMSE: " << bestModel.RMSE(data.valMat, 
-      invalidUsers, invalidItems, facDim);
+      invalidUsers, invalidItems);
 }
 
 
@@ -985,13 +995,13 @@ void ModelDropoutMF::trainSGDOnlyOrderedPar(const Data &data, ModelDropoutMF &be
 
   std::vector<std::pair<int, int>> updateSeq;
 
-  prevObj = objective(data, invalidUsers, invalidItems, facDim);
+  prevObj = objective(data, invalidUsers, invalidItems);
   bestObj = prevObj;
   bestValRMSE = prevValRMSE = RMSE(data.valMat, invalidUsers,
-      invalidItems, facDim);
+      invalidItems);
     
   std::cout << "\nObj aftr svd: " << prevObj << " Train RMSE: " 
-    << RMSE(data.trainMat, invalidUsers, invalidItems, facDim) << " Val RMSE: " 
+    << RMSE(data.trainMat, invalidUsers, invalidItems) << " Val RMSE: " 
     << bestValRMSE << std::endl;
 
   if (rhoRMS < EPS) {
@@ -1062,7 +1072,7 @@ void ModelDropoutMF::trainSGDOnlyOrderedPar(const Data &data, ModelDropoutMF &be
       
       if (GK_CSR_IS_VAL) {
         if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
-              bestValRMSE, prevValRMSE, invalidUsers, invalidItems, facDim)) {
+              bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
           break; 
         }
       } else {
@@ -1080,7 +1090,7 @@ void ModelDropoutMF::trainSGDOnlyOrderedPar(const Data &data, ModelDropoutMF &be
       if (iter % DISP_ITER == 0) {
         std::cout << "trainSGDOnlyOrderedPar " 
                   << " Iter: " << iter << " Obj: " << std::scientific << prevObj 
-                  << " Train: " << RMSE(data.trainMat, invalidUsers, invalidItems, facDim)
+                  << " Train: " << RMSE(data.trainMat, invalidUsers, invalidItems)
                   << " Val: " << prevValRMSE
                   << " subIterDur: " << subIterDuration
                   << std::endl;
@@ -1101,5 +1111,5 @@ void ModelDropoutMF::trainSGDOnlyOrderedPar(const Data &data, ModelDropoutMF &be
   bestModel.saveFacs(modelFName);
 
   std::cout << "\nBest model validation RMSE: " << bestModel.RMSE(data.valMat, 
-      invalidUsers, invalidItems, facDim);
+      invalidUsers, invalidItems);
 }

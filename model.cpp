@@ -43,10 +43,13 @@ void Model::save(std::string prefix) {
   //save user bias
   std::string uBFName = prefix + "_uBias_" + modelSign + ".vec";
   writeVector(uBias, uBFName.c_str());
+  std::cout << "user bias norm: " << uBias.norm() << std::endl;
+
 
   //save item bias
   std::string iBFName = prefix + "_iBias_" + modelSign + ".vec";
   writeVector(iBias, iBFName.c_str());
+  std::cout << "item bias norm: " << iBias.norm() << std::endl;
 
   //save global bias 
   std::vector<double> gBias = {mu};
@@ -68,10 +71,12 @@ void Model::load(std::string prefix) {
   //read user bias
   std::string uBFName = prefix + "_uBias_" + modelSign + ".vec";
   uBias = readEigVector(uBFName.c_str());
+  std::cout << "user bias norm: " << uBias.norm() << std::endl;
 
   //read item bias
   std::string iBFName = prefix + "_iBias_" + modelSign + ".vec";
   iBias = readEigVector(iBFName.c_str());
+  std::cout << "item bias norm: " << iBias.norm() << std::endl;
 
   //read global bias 
   std::vector<double> gBias;
@@ -82,19 +87,24 @@ void Model::load(std::string prefix) {
 
 
 void Model::saveFacs(std::string prefix) {
+  std::cout << "Not saving..." << std::endl; 
+  return;
   std::cout << "Saving model... " << prefix << std::endl;
   std::string modelSign = modelSignature();
   //save user latent factors
   std::string uFacName = prefix + "_uFac_" + modelSign + ".mat";
   writeMat(uFac, nUsers, facDim, uFacName.c_str());
+  std::cout << "uFac Norm: " << uFac.norm() << std::endl;
   
   //save item latent factors
   std::string iFacName = prefix + "_iFac_" + modelSign +  ".mat";
   writeMat(iFac, nItems, facDim, iFacName.c_str());
+  std::cout << "iFac Norm: " << iFac.norm() << std::endl;
 }
 
 
 void Model::loadFacs(std::string prefix) {
+  
   std::string modelSign = modelSignature();
   //read user latent factors
   std::string uFacName = prefix + "_uFac_" + modelSign + ".mat";
@@ -102,6 +112,7 @@ void Model::loadFacs(std::string prefix) {
   //load if file exists
   if (isFileExist(uFacName.c_str())) {
     readMat(uFac, nUsers, facDim, uFacName.c_str());
+    std::cout << "uFac Norm: " << uFac.norm() << std::endl;
   } else {
     std::cout << "File doesn't exist: " << uFacName << std::endl;
   }
@@ -111,6 +122,7 @@ void Model::loadFacs(std::string prefix) {
   std::cout << "Loading item factors: " << iFacName << std::endl;
   if (isFileExist(iFacName.c_str())) { 
     readMat(iFac, nItems, facDim, iFacName.c_str());
+    std::cout << "iFac Norm: " << iFac.norm() << std::endl;
   } else {
     std::cout << "File doesn't exist: " << iFacName << std::endl;
   }
@@ -292,6 +304,49 @@ std::pair<int, double> Model::RMSE(gk_csr_t *mat, std::unordered_set<int>& filtI
 
       if (filtItems.count(item) == 0) {
         //filtered item not found, skip
+        continue;
+      }
+
+      r_ui     = mat->rowval[ii];
+      r_ui_est = estRating(u, item);
+      diff     = r_ui - r_ui_est;
+      rmse     += diff*diff;
+      nnz++;
+
+    }
+
+  }
+ 
+  rmse = sqrt(rmse/nnz);
+  
+  return std::make_pair(nnz, rmse);
+}
+
+
+std::pair<int, double> Model::RMSEU(gk_csr_t *mat, std::unordered_set<int>& filtUsers,
+    std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems) {
+  
+  int nnz;
+  double r_ui, r_ui_est, diff, rmse;
+  
+  nnz = 0;
+  rmse = 0;
+
+#pragma omp parallel for reduction(+:rmse, nnz) private(r_ui, r_ui_est, diff)
+  for (int u = 0; u < nUsers; u++) {
+    
+    //skip if invalid user and not in filtered user
+    if (invalidUsers.count(u) > 0 || 0 == filtUsers.count(u)) {
+      continue;
+    }
+
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      
+      int item = mat->rowind[ii];
+      
+      //skip if invalid item
+      if (invalidItems.count(item) > 0 || item >= nItems) {
+        //found and skip
         continue;
       }
 
@@ -1484,11 +1539,12 @@ Model::Model(const Params& params) {
   learnRate = params.learnRate;
   origLearnRate = params.learnRate;
   rhoRMS    = params.rhoRMS;
+  alpha     = params.alpha;
   maxIter   = params.maxIter;
   trainSeed = -1;
 
   std::default_random_engine generator (params.seed);
-  float lb = 0, ub = 1;
+  float lb = -0.01, ub = 0.01;
   std::uniform_real_distribution<double> dist (lb, ub);
   std::cout << "lb = " << lb << " ub = " << ub << std::endl;
 
