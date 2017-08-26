@@ -22,17 +22,19 @@
 class ModelPoissonDropout : public Model {
 
   public:
-    
+       
     std::vector<double> userRankMap; 
     std::vector<double> itemRankMap;
     std::vector<double> userFreq;
     std::vector<double> itemFreq;
     std::vector<double> factorial;
     std::vector<double> fDimWt;
+    std::vector<int> cdfRanks;
     double minFreq;
     double maxFreq;
     double meanFreq;
     double stdFreq;
+
 
     ModelPoissonDropout(const Params& params, std::vector<double>& userRankMap,
       std::vector<double>& itemRankMap, std::vector<double>& userFreq, 
@@ -61,6 +63,7 @@ class ModelPoissonDropout : public Model {
                                     auto meanStd = meanStdDev(concatVec);
                                     meanFreq = meanStd.first;
                                     stdFreq = meanStd.second;
+                                    initCDFRanks();
                                  }
     ModelPoissonDropout(const Params& params, int seed, std::vector<double>& userRankMap,
       std::vector<double>& itemRankMap, std::vector<double>& userFreq, 
@@ -88,6 +91,7 @@ class ModelPoissonDropout : public Model {
                                     auto meanStd = meanStdDev(concatVec);
                                     meanFreq = meanStd.first;
                                     stdFreq = meanStd.second;
+                                    initCDFRanks();
                                  }
     ModelPoissonDropout(const Params& params, const char*uFacName, const char* iFacName, 
         int seed, std::vector<double>& userRankMap,
@@ -116,6 +120,7 @@ class ModelPoissonDropout : public Model {
                                     auto meanStd = meanStdDev(concatVec);
                                     meanFreq = meanStd.first;
                                     stdFreq = meanStd.second;
+                                    initCDFRanks();
                                  }
     ModelPoissonDropout(const Params& params, int seed) : Model(params, seed) {
                                     //intialize factorial table
@@ -139,6 +144,7 @@ class ModelPoissonDropout : public Model {
                                     auto meanStd = meanStdDev(concatVec);
                                     meanFreq = meanStd.first;
                                     stdFreq = meanStd.second;
+                                    initCDFRanks();
                                     
     }
 
@@ -149,6 +155,7 @@ class ModelPoissonDropout : public Model {
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems);
     virtual double estRating(int user, int item) override;
+    void initCDFRanks();
 };
 
 #endif

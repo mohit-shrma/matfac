@@ -74,21 +74,37 @@ double ModelPoissonDropout::estRating(int user, int item) {
 
   int k = 0;
   double cdf = 0, wt = 0, lowerRat = 0;
-  
-  //cdf for effective rank 0
-  cdf = std::exp(-lambda)*(std::pow(lambda, 0) / factorial[0]);
-
-  for (k = 0; k < facDim; k++) {
-    wt = std::exp(-lambda)*(std::pow(lambda, k+1) / factorial[k+1]);
-    cdf += wt;
+  for (k = 0; k <= cdfRanks[lambda-1] && k < facDim; k++) {
     lowerRat += uFac(user, k)*iFac(item, k);
-    if (cdf >= 0.99) {
-      break;
-    }
   }
   rat = lowerRat;
 
   return rat;
+}
+
+
+void ModelPoissonDropout::initCDFRanks() {
+  cdfRanks = std::vector<int>(facDim, 0); 
+  double cdf = 0, wt = 0;
+  for (int lambda = 1; lambda <= facDim; lambda++) {
+    //cdf for effective rank 0
+    cdf = std::exp(-lambda)*(std::pow(lambda, 0) / factorial[0]);
+    int k = 0;
+    for (k = 0; k < facDim; k++) {
+      wt = std::exp(-lambda)*(std::pow(lambda, k+1) / factorial[k+1]);
+      cdf += wt;
+      if (cdf >= 0.99) {
+        break;
+      }
+    }
+    cdfRanks[lambda-1] = k; //end index of rank to be use for update
+    if (k == facDim) {
+      cdfRanks[lambda-1] = k-1; //end index of rank to be use for update
+    }
+    std::cout << "cdfRank: " << lambda-1 << " " << cdfRanks[lambda-1] << std::endl;
+    
+  }
+  
 }
 
 
@@ -282,6 +298,7 @@ void ModelPoissonDropout::train(const Data& data, Model &bestModel,
     //check objective
     if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
       
+      start = std::chrono::system_clock::now();
       if (GK_CSR_IS_VAL) {
         if (isTerminateModel(bestModel, data, iter, bestIter, bestObj, prevObj,
               bestValRMSE, prevValRMSE, invalidUsers, invalidItems)) {
@@ -297,14 +314,17 @@ void ModelPoissonDropout::train(const Data& data, Model &bestModel,
           break; 
         }
         */
-      }
-       
+      } 
+      end = std::chrono::system_clock::now();  
+      duration =  end - start;
+
       if (iter % DISP_ITER == 0) {
         std::cout << "trainPoisson " 
                   << " Iter: " << iter << " Obj: " << std::scientific << prevObj 
                   << " Train: " << RMSE(data.trainMat, invalidUsers, invalidItems)
                   << " Val: " << prevValRMSE
-                  << " subIterDur: " << subIterDuration
+                  << " subIterDur: " << subIterDuration 
+                  << " objDur: " << duration.count()
                   << std::endl;
       }
 
