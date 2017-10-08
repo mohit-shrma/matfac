@@ -253,6 +253,79 @@ double Model::RMSE(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
 }
 
 
+double Model::RMSEUser(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems, int u) {
+  int nnz;
+  double r_ui, r_ui_est, diff, rmse;
+
+  nnz = 0;
+  rmse = 0;
+ 
+  //skip if invalid user 
+  if (invalidUsers.count(u) > 0 || u >= mat->nrows) {
+    //found and skip
+    //std::cout << "RMSEUser: invalid user " << u << std::endl;
+    return -1.0;
+  }
+
+  for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+    
+    int item = mat->rowind[ii];
+    //skip if invalid item
+    if (invalidItems.count(item) > 0 || item >= nItems) {
+      //found and skip
+      continue;
+    }
+    
+    r_ui     = mat->rowval[ii];
+    r_ui_est = estRating(u, item);
+    diff     = r_ui - r_ui_est;
+    rmse     += diff*diff;
+    nnz++;
+  }
+
+  rmse = sqrt(rmse/nnz);
+  return rmse;
+}
+
+
+double Model::RMSEItem(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems, int item) {
+  int nnz;
+  double r_ui, r_ui_est, diff, rmse;
+
+  nnz = 0;
+  rmse = 0;
+    
+  //skip if invalid user
+  if (invalidItems.count(item) > 0 || item >= mat->ncols) {
+    //found and skip
+    //std::cout << "RMSEItem: invalid item " << item << std::endl;
+    return -1.0;
+  }
+
+  for (int uu = mat->colptr[item]; uu < mat->colptr[item+1]; uu++) {
+
+    int u = mat->colind[uu];
+    //skip if invalid item
+    if (invalidUsers.count(u) > 0 || u >= nUsers) {
+      //found and skip
+      continue;
+    }
+    
+    r_ui     = mat->colval[uu];
+    r_ui_est = estRating(u, item);
+    diff     = r_ui - r_ui_est;
+    rmse     += diff*diff;
+    nnz++;
+  }
+
+  rmse = sqrt(rmse/nnz);
+  
+  return rmse;
+}
+
+
 std::pair<double, double> Model::hiLoNorms(std::unordered_set<int>& items) {
 
   int count = 0;

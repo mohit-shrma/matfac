@@ -121,6 +121,10 @@ class Model {
         std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems);
     double RMSE(gk_csr_t* mat, std::unordered_set<int>& invalidUsers,
       std::unordered_set<int>& invalidItems);
+    double RMSEItem(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems, int item);
+    double RMSEUser(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems, int item);
     double RMSE(std::vector<std::tuple<int, int, float>>& trainRatings);
     double RMSE(gk_csr_t *mat, std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems, Model& origModel);
