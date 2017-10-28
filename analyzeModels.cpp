@@ -185,8 +185,7 @@ void compJaccSimAccuSingleOrigModel(Data& data, Params& params) {
       params.seed);
 
   for (int i = 1; i <= 10; i++) {
-    std::string prefix = std::string(params.prefix) + "_"  
-      + std::to_string(params.facDim) + "_" + std::to_string(i);
+    std::string prefix = std::string(params.prefix) + "_" + std::to_string(i);
     ModelMF fullModel(params, params.seed);
     fullModel.loadFacs(prefix.c_str());
     mfModels.push_back(fullModel);
@@ -199,10 +198,10 @@ void compJaccSimAccuSingleOrigModel(Data& data, Params& params) {
   std::string modelSign = mfModels[0].modelSignature();
   std::cout << "\nModel sign: " << modelSign << std::endl;    
   std::string prefix = std::string(params.prefix) + "_" + 
-    std::to_string(params.facDim) + "_1_" + modelSign + "_invalUsers.txt";
+    std::to_string(params.facDim) + "_" + modelSign + "_invalUsers.txt";
   std::vector<int> invalUsersVec = readVector(prefix.c_str());
   prefix = std::string(params.prefix) + "_" + 
-    std::to_string(params.facDim) + "_1_" + modelSign + "_invalItems.txt";
+    std::to_string(params.facDim) + "_" + modelSign + "_invalItems.txt";
   std::vector<int> invalItemsVec = readVector(prefix.c_str());
   for (auto v: invalUsersVec) {
     invalidUsers.insert(v);
@@ -336,33 +335,37 @@ void compJaccSimAccuSingleOrigModel(Data& data, Params& params) {
 }
 
 
-void compJaccSimAccuMeth(Data& data, Params& params) {
+void averageModels(Data& data, Params& params) {
 
   ModelMF origModel(params, params.origUFacFile, params.origIFacFile,
       params.seed);
-  ModelMF sgdModel(params, params.seed);
-  ModelMF alsModel(params, params.seed);
-  ModelMF ccdModel(params, params.seed);
-  
-  //std::string prefix = "sgdpar_20_" + std::to_string(params.facDim) + "_1";
-  std::string prefix = "sgdpar_20";
-  sgdModel.loadFacs(prefix.c_str());
 
-  //prefix = "als_20_" + std::to_string(params.facDim) + "_1";
-  prefix = "als_20";
-  alsModel.loadFacs(prefix.c_str());
+  ModelMF alsModel(params, 
+      "als_0_1_uFac_229060X26779_20_0.010000_0.010000_0.001000.mat", 
+      "als_0_1_iFac_229060X26779_20_0.010000_0.010000_0.001000.mat",
+      params.seed
+      );
 
-  //prefix = "ccd++_20_" + std::to_string(params.facDim) + "_1"; 
-  prefix = "ccd++_20"; 
-  ccdModel.loadFacs(prefix.c_str());
+  ModelMF ccdppModel(params, 
+      "ccd++_0_1_uFac_229060X26779_20_0.010000_0.010000_0.001000.mat",
+      "ccd++_0_1_iFac_229060X26779_20_0.010000_0.010000_0.001000.mat",
+      params.seed
+      );
+
+  ModelMF sgdModel(params, 
+      "sgdpar_0_1_uFac_229060X26779_20_0.010000_0.010000_0.001000.mat",
+      "sgdpar_0_1_iFac_229060X26779_20_0.010000_0.010000_0.001000.mat",
+      params.seed
+      );
+
 
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
-  std::string modelSign = sgdModel.modelSignature();
+  std::string modelSign = alsModel.modelSignature();
   std::cout << "\nModel sign: " << modelSign << std::endl;    
-  prefix = "sgdpar_20_" + modelSign + "_invalUsers.txt";
+  std::string prefix = "sgdpar_20_1_" + modelSign + "_invalUsers.txt";
   std::vector<int> invalUsersVec = readVector(prefix.c_str());
-  prefix = "sgdpar_20_" + modelSign + "_invalItems.txt";
+  prefix = "sgdpar_20_1_" + modelSign + "_invalItems.txt";
   std::vector<int> invalItemsVec = readVector(prefix.c_str());
   for (auto v: invalUsersVec) {
     invalidUsers.insert(v);
@@ -370,7 +373,10 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
   for (auto v: invalItemsVec) {
     invalidItems.insert(v);
   }
-  
+ 
+  std::cout << "No. of invalid users : " << invalidUsers.size() << std::endl;
+  std::cout << "No. of invalid items : " << invalidItems.size() << std::endl;
+
   std::cout << "SGD model: " << std::endl;
   std::cout << "Train RMSE: " << sgdModel.RMSE(data.trainMat, invalidUsers,
       invalidItems, origModel) << std::endl;
@@ -380,7 +386,9 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
       invalidItems, origModel) << std::endl;
   std::cout << "Full RMSE: " << sgdModel.fullLowRankErr(data, invalidUsers, 
       invalidItems, origModel) << std::endl;
-  
+  std::cout << "Objective: " << sgdModel.objective(data, invalidUsers, invalidItems)
+    << std::endl;
+
   std::cout << "ALS model: " << std::endl;
   std::cout << "Train RMSE: " << alsModel.RMSE(data.trainMat, invalidUsers,
       invalidItems, origModel) << std::endl;
@@ -390,6 +398,313 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
       invalidItems, origModel) << std::endl;
   std::cout << "Full RMSE: " << alsModel.fullLowRankErr(data, invalidUsers, 
       invalidItems, origModel) << std::endl;
+  std::cout << "Objective: " << alsModel.objective(data, invalidUsers, invalidItems)
+    << std::endl;
+
+  std::cout << "CCD++ model: " << std::endl;
+  std::cout << "Train RMSE: " << ccdppModel.RMSE(data.trainMat, invalidUsers,
+      invalidItems, origModel) << std::endl;
+  std::cout << "Test RMSE: " << ccdppModel.RMSE(data.testMat, invalidUsers, 
+      invalidItems, origModel) << std::endl;
+  std::cout << "Val RMSE: " << ccdppModel.RMSE(data.valMat, invalidUsers,
+      invalidItems, origModel) << std::endl;
+  std::cout << "Full RMSE: " << ccdppModel.fullLowRankErr(data, invalidUsers, 
+      invalidItems, origModel) << std::endl;
+  std::cout << "Objective: " << ccdppModel.objective(data, invalidUsers, invalidItems)
+    << std::endl;
+  
+
+  float epsilon = 0.25;
+  int nUsers     = data.trainMat->nrows;
+  int nItems     = data.trainMat->ncols;
+
+  std::vector<int> itemFreq(nItems, 0);
+  std::vector<int> userFreq(nUsers, 0);
+
+#pragma omp parallel for
+  for (int item = 0; item < nItems; item++) {
+    itemFreq[item] = (data.trainMat->colptr[item+1] - 
+        data.trainMat->colptr[item]);
+  }
+
+#pragma omp parallel for
+  for (int u = 0; u < nUsers; u++) {
+    userFreq[u] = data.trainMat->rowptr[u+1] - data.trainMat->rowptr[u];
+  }
+
+  double rmse = 0;
+  unsigned long int count = 0;
+#pragma omp parallel for reduction(+:rmse,count)  
+  for (int item = 0; item < nItems; item++) {
+
+    if (invalidItems.count(item) > 0) {
+      continue;
+    }
+    
+    std::vector<bool> ratedUsers(nUsers, false);
+    
+    for (int uu = data.trainMat->colptr[item]; 
+        uu < data.trainMat->colptr[item+1]; uu++) {
+      ratedUsers[data.trainMat->colind[uu]] = true;
+    }
+    
+    for (int user = 0; user < nUsers; user++) {
+      
+      if (invalidUsers.count(user) > 0) {
+        continue;
+      }
+
+      if (ratedUsers[user]) {
+        continue;
+      }
+      
+      float r_ui       = origModel.estRating(user, item);
+      float r_ui_sgd   = sgdModel.estRating(user, item);
+      float r_ui_als   = alsModel.estRating(user, item);
+      float r_ui_ccdpp = ccdppModel.estRating(user, item);
+      float r_ui_est   = 0;
+
+      r_ui_est = (r_ui_sgd + r_ui_als + r_ui_ccdpp)/3; 
+      /*
+      if (itemFreq[user] <= 30 || userFreq[user] <= 30) {
+        r_ui_est = (r_ui_sgd + r_ui_als + r_ui_ccdpp)/3; 
+      } else {
+        r_ui_est = r_ui_ccdpp;
+      }
+      */
+
+      float diff = (r_ui - r_ui_est);
+      rmse  += diff*diff;
+      count += 1;
+    } 
+  }
+  
+  std::cout << "Averaged RMSE: " << sqrt(rmse/count) << " " << rmse << " " 
+    << count << std::endl;
+
+}
+
+
+
+void compareModels(Data& data, Params& params) {
+
+  ModelMF origModel(params, params.origUFacFile, params.origIFacFile,
+      params.seed);
+
+  ModelMF firstModel(params, 
+      "als_0_1_uFac_229060X26779_20_0.010000_0.010000_0.001000.mat", 
+      "als_0_1_iFac_229060X26779_20_0.010000_0.010000_0.001000.mat",
+      params.seed
+      );
+  
+  ModelMF secondModel(params, 
+      "ccd++_0_1_uFac_229060X26779_20_0.010000_0.010000_0.001000.mat",
+      "ccd++_0_1_iFac_229060X26779_20_0.010000_0.010000_0.001000.mat",
+      params.seed
+      );
+
+  std::unordered_set<int> invalidUsers;
+  std::unordered_set<int> invalidItems;
+  std::string modelSign = firstModel.modelSignature();
+  std::cout << "\nModel sign: " << modelSign << std::endl;    
+  std::string prefix = "sgdpar_20_1_" + modelSign + "_invalUsers.txt";
+  std::vector<int> invalUsersVec = readVector(prefix.c_str());
+  prefix = "sgdpar_20_1_" + modelSign + "_invalItems.txt";
+  std::vector<int> invalItemsVec = readVector(prefix.c_str());
+  for (auto v: invalUsersVec) {
+    invalidUsers.insert(v);
+  }
+  for (auto v: invalItemsVec) {
+    invalidItems.insert(v);
+  }
+ 
+  std::cout << "No. of invalid users : " << invalidUsers.size() << std::endl;
+  std::cout << "No. of invalid itemd : " << invalidItems.size() << std::endl;
+
+  std::cout << "First model: " << std::endl;
+  std::cout << "Train RMSE: " << firstModel.RMSE(data.trainMat, invalidUsers,
+      invalidItems, origModel) << std::endl;
+  std::cout << "Test RMSE: " << firstModel.RMSE(data.testMat, invalidUsers, 
+      invalidItems, origModel) << std::endl;
+  std::cout << "Val RMSE: " << firstModel.RMSE(data.valMat, invalidUsers,
+      invalidItems, origModel) << std::endl;
+  std::cout << "Full RMSE: " << firstModel.fullLowRankErr(data, invalidUsers, 
+      invalidItems, origModel) << std::endl;
+  std::cout << "Objective: " << firstModel.objective(data, invalidUsers, invalidItems)
+    << std::endl;
+
+  std::cout << "Second model: " << std::endl;
+  std::cout << "Train RMSE: " << secondModel.RMSE(data.trainMat, invalidUsers,
+      invalidItems, origModel) << std::endl;
+  std::cout << "Test RMSE: " << secondModel.RMSE(data.testMat, invalidUsers, 
+      invalidItems, origModel) << std::endl;
+  std::cout << "Val RMSE: " << secondModel.RMSE(data.valMat, invalidUsers,
+      invalidItems, origModel) << std::endl;
+  std::cout << "Full RMSE: " << secondModel.fullLowRankErr(data, invalidUsers, 
+      invalidItems, origModel) << std::endl;
+  std::cout << "Objective: " << secondModel.objective(data, invalidUsers, invalidItems)
+    << std::endl;
+
+  float epsilon = 0.25;
+  int nUsers     = data.trainMat->nrows;
+  int nItems     = data.trainMat->ncols;
+
+  std::vector<unsigned long int> bothModelsAccuCount(nItems, 0);
+  std::vector<unsigned long int> bothModelsInaccuCount(nItems, 0);
+  std::vector<unsigned long int> firstModelAccuCount(nItems, 0);
+  std::vector<unsigned long int> firstModelInaccuCount(nItems, 0);
+  std::vector<unsigned long int> secondModelAccuCount(nItems, 0);
+  std::vector<unsigned long int> secondModelInaccuCount(nItems, 0);
+
+#pragma omp parallel for
+  for (int item = 0; item < nItems; item++) {
+    
+    if (invalidItems.count(item) > 0) {
+      continue;
+    }
+    
+    std::vector<bool> ratedUsers(nUsers, false);
+    
+    for (int uu = data.trainMat->colptr[item]; 
+        uu < data.trainMat->colptr[item+1]; uu++) {
+      ratedUsers[data.trainMat->colind[uu]] = true;
+    }
+
+    for (int user = 0; user < nUsers; user++) {
+      
+      if (invalidUsers.count(user) > 0) {
+        continue;
+      }
+      
+      if (ratedUsers[user]) {
+        continue;
+      }
+      
+      float r_ui        = origModel.estRating(user, item);
+      float r_ui_first  = firstModel.estRating(user, item);
+      float r_ui_second = secondModel.estRating(user, item);
+
+      float firstDiff  = fabs(r_ui - r_ui_first);
+      float secondDiff = fabs(r_ui - r_ui_second);
+     
+      if (firstDiff <= epsilon) {
+        firstModelAccuCount[item] += 1;
+      } else {
+        firstModelInaccuCount[item] += 1;
+      }
+      
+      if (secondDiff <= epsilon) {
+        secondModelAccuCount[item] += 1;
+      } else {
+        secondModelInaccuCount[item] += 1;
+      }
+
+      if (firstDiff <= epsilon && secondDiff <= epsilon) {
+        bothModelsAccuCount[item] += 1;
+      } else if (firstDiff > epsilon && secondDiff > epsilon) {
+        bothModelsInaccuCount[item] += 1;
+      }
+
+    }
+
+  }
+
+  std::string opFName = std::string(params.prefix) + "_firstSecAccuCount.txt"; 
+  std::ofstream opFile(opFName.c_str());
+  for (int item = 0; item < nItems; item++) {
+    if (invalidItems.count(item) == 0) {
+      opFile << item << " " << firstModelAccuCount[item] << " " 
+        << secondModelAccuCount[item] << " " << bothModelsAccuCount[item] << " "
+        << firstModelInaccuCount[item] << " " << secondModelInaccuCount[item] 
+        << " " << bothModelsInaccuCount[item] << std::endl;
+    }  
+  }
+  opFile.close();
+
+}
+
+
+void compJaccSimAccuMeth(Data& data, Params& params) {
+
+  ModelMF origModel(params, params.origUFacFile, params.origIFacFile,
+      params.seed);
+  ModelMF sgdModel(params, params.seed), alsModel(params, params.seed), ccdModel(params, params.seed);
+ 
+  /*
+  ModelMF sgdModel(params, 
+      "sgd_10_1_uFac_229060X26779_10_0.010000_0.010000_0.001000.mat", 
+      "sgd_10_1_iFac_229060X26779_10_0.010000_0.010000_0.001000.mat",
+      params.seed
+      );
+  ModelMF alsModel(params, 
+      "als_10_1_uFac_229060X26779_10_0.010000_0.010000_0.001000.mat", 
+      "als_10_1_iFac_229060X26779_10_0.010000_0.010000_0.001000.mat",
+      params.seed
+      );
+  ModelMF ccdModel(params, 
+      "ccd++_10_1_uFac_229060X26779_10_0.010000_0.010000_0.001000.mat", 
+      "ccd++_10_1_iFac_229060X26779_10_0.010000_0.010000_0.001000.mat",
+      params.seed
+      );
+  
+  std::string prefix;
+  */
+  
+  //std::string prefix = "sgdpar_20";// + std::to_string(params.facDim) + "_1";
+  std::string prefix = "sgdpar_20_1";
+  sgdModel.loadFacs(prefix.c_str());
+
+  //prefix = "als2_20";// + std::to_string(params.facDim) + "_1";
+  prefix = "als_20_1";
+  alsModel.loadFacs(prefix.c_str());
+
+  //prefix = "ccd++_20";// + std::to_string(params.facDim) + "_1"; 
+  prefix = "ccd++_20_1"; 
+  ccdModel.loadFacs(prefix.c_str());
+  
+
+  std::unordered_set<int> invalidUsers;
+  std::unordered_set<int> invalidItems;
+  std::string modelSign = sgdModel.modelSignature();
+  std::cout << "\nModel sign: " << modelSign << std::endl;    
+  prefix = "sgdpar_20_1_" + modelSign + "_invalUsers.txt";
+  std::vector<int> invalUsersVec = readVector(prefix.c_str());
+  prefix = "sgdpar_20_1_" + modelSign + "_invalItems.txt";
+  std::vector<int> invalItemsVec = readVector(prefix.c_str());
+  for (auto v: invalUsersVec) {
+    invalidUsers.insert(v);
+  }
+  for (auto v: invalItemsVec) {
+    invalidItems.insert(v);
+  }
+ 
+  std::cout << "No. of invalid users : " << invalidUsers.size() << std::endl;
+  std::cout << "No. of invalid itemd : " << invalidItems.size() << std::endl;
+
+
+  std::cout << "SGD model: " << std::endl;
+  std::cout << "Train RMSE: " << sgdModel.RMSE(data.trainMat, invalidUsers,
+      invalidItems, origModel) << std::endl;
+  std::cout << "Test RMSE: " << sgdModel.RMSE(data.testMat, invalidUsers, 
+      invalidItems, origModel) << std::endl;
+  std::cout << "Val RMSE: " << sgdModel.RMSE(data.valMat, invalidUsers,
+      invalidItems, origModel) << std::endl;
+  std::cout << "Full RMSE: " << sgdModel.fullLowRankErr(data, invalidUsers, 
+      invalidItems, origModel) << std::endl;
+  std::cout << "Objective: " << sgdModel.objective(data, invalidUsers, invalidItems)
+    << std::endl;
+
+  std::cout << "ALS model: " << std::endl;
+  std::cout << "Train RMSE: " << alsModel.RMSE(data.trainMat, invalidUsers,
+      invalidItems, origModel) << std::endl;
+  std::cout << "Test RMSE: " << alsModel.RMSE(data.testMat, invalidUsers, 
+      invalidItems, origModel) << std::endl;
+  std::cout << "Val RMSE: " << alsModel.RMSE(data.valMat, invalidUsers,
+      invalidItems, origModel) << std::endl;
+  std::cout << "Full RMSE: " << alsModel.fullLowRankErr(data, invalidUsers, 
+      invalidItems, origModel) << std::endl;
+  std::cout << "Objective: " << alsModel.objective(data, invalidUsers, invalidItems)
+    << std::endl;
   
   std::cout << "CCD++ model: " << std::endl;
   std::cout << "Train RMSE: " << ccdModel.RMSE(data.trainMat, invalidUsers,
@@ -400,6 +715,8 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
       invalidItems, origModel) << std::endl;
   std::cout << "Full RMSE: " << ccdModel.fullLowRankErr(data, invalidUsers, 
       invalidItems, origModel) << std::endl;
+  std::cout << "Objective: " << ccdModel.objective(data, invalidUsers, invalidItems)
+    << std::endl;
 
   std::vector<double> epsilons = {0.1, 0.25, 0.5, 1.0};
   //std::vector<double> epsilons = {0.5};
@@ -440,8 +757,12 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
     std::vector<std::vector<float>> itemAccuCount(nItems);
     std::vector<std::vector<float>> itemPearsonCorr(nItems);
     std::vector<float> sgdItemsAvgRMSE(nItems, 0);
+    std::vector<float> sgdItemsAvgPred(nItems, 0);
     std::vector<float> alsItemsAvgRMSE(nItems, 0);
+    std::vector<float> alsItemsAvgPred(nItems, 0);
     std::vector<float> ccdItemsAvgRMSE(nItems, 0);
+    std::vector<float> ccdItemsAvgPred(nItems, 0);
+    std::vector<float> allMethItemsAvgRMSE(nItems, 0);
     
     float rmseAvg = 0;
     unsigned long int nnz = 0;
@@ -459,6 +780,8 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
       std::vector<float> sgdErr, alsErr, ccdErr;
       float sgdErrMean = 0, alsErrMean = 0, ccdErrMean = 0;
       float sgdItemAvgRMSE = 0, alsItemAvgRMSE = 0, ccdItemAvgRMSE = 0;
+      float sgdItemAvgPred = 0, alsItemAvgPred = 0, ccdItemAvgPred = 0;
+      float allMethItemAvgRMSE = 0;
       std::vector<bool> ratedUsers(nUsers, false);
       unsigned long int count = 0;
 
@@ -486,8 +809,11 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
         rmseAvg += (r_ui - r_ui_avg)*(r_ui - r_ui_avg);
         nnz++;
         
+        allMethItemAvgRMSE += (r_ui - r_ui_avg)*(r_ui - r_ui_avg);
+
         float sgdDiff  = fabs(r_ui - r_ui_sgd);
         sgdItemAvgRMSE += sgdDiff*sgdDiff;
+        sgdItemAvgPred += fabs(r_ui_sgd);
         sgdErrMean += sgdDiff; 
         sgdErr.push_back(sgdDiff);
         if (sgdDiff <= epsilon) {
@@ -496,6 +822,7 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
         
         float alsDiff = fabs(r_ui - r_ui_als);
         alsItemAvgRMSE += alsDiff*alsDiff;
+        alsItemAvgPred += fabs(r_ui_als);
         alsErrMean += alsDiff;
         alsErr.push_back(alsDiff);
         if (alsDiff <= epsilon) {
@@ -504,6 +831,7 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
 
         float ccdDiff = fabs(r_ui - r_ui_ccd);
         ccdItemAvgRMSE += ccdDiff*ccdDiff;
+        ccdItemAvgPred += fabs(r_ui_ccd);
         ccdErrMean += ccdDiff;
         ccdErr.push_back(ccdDiff);
         if (ccdDiff <= epsilon) {
@@ -520,6 +848,11 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
       sgdItemsAvgRMSE[item] = std::sqrt(sgdItemAvgRMSE/count);
       alsItemsAvgRMSE[item] = std::sqrt(alsItemAvgRMSE/count);
       ccdItemsAvgRMSE[item] = std::sqrt(ccdItemAvgRMSE/count);
+      allMethItemsAvgRMSE[item] = std::sqrt(allMethItemAvgRMSE/count);
+
+      sgdItemsAvgPred[item] = sgdItemAvgPred/count; 
+      alsItemsAvgPred[item] = alsItemAvgPred/count; 
+      ccdItemsAvgPred[item] = ccdItemAvgPred/count; 
 
       itemAccuCount[item].push_back(sgdAccuItems.size()); 
       itemAccuCount[item].push_back(alsAccuItems.size()); 
@@ -591,9 +924,15 @@ void compJaccSimAccuMeth(Data& data, Params& params) {
       }
       opFile2 << std::endl;
       
-      opFile3 << item << " " << sgdItemsAvgRMSE[item] << " " << 
-        alsItemsAvgRMSE[item] << " " << ccdItemsAvgRMSE[item] <<
-        std::endl;
+      if (invalidItems.count(item) == 0) {
+        opFile3 << item << " " 
+          << sgdItemsAvgRMSE[item] << " " << sgdItemsAvgPred[item] << " " 
+          << alsItemsAvgRMSE[item] << " " << alsItemsAvgPred[item] << " " 
+          << ccdItemsAvgRMSE[item] << " " << ccdItemsAvgPred[item] << " "
+          << allMethItemsAvgRMSE[item] << " "
+          << std::endl;
+      }
+
     }
 
     opFile.close();
@@ -774,7 +1113,7 @@ void analyzeAccuracySingleOrigModel(Data& data, Params& params) {
   ModelMF origModel(params, params.origUFacFile, params.origIFacFile,
       params.seed);
 
-  for (int i = 1; i <= 3; i++) {
+  for (int i = 1; i <= 10; i++) {
     std::string prefix = std::string(params.prefix) + "_" + std::to_string(i);
     ModelMF fullModel(params, params.seed);
     fullModel.loadFacs(prefix.c_str());
@@ -1031,7 +1370,7 @@ void meanAndVarSameGroundAllUsers(Data& data, Params& params) {
   std::vector<ModelMF> mfModels;
 
   for (int i = 1; i <= 10; i++) {
-    std::string prefix = "als_10_" + std::to_string(i);
+    std::string prefix = "ccd++_01_seed_" + std::to_string(i);
     ModelMF fullModel(params, params.seed);
     fullModel.loadFacs(prefix.c_str());
     mfModels.push_back(fullModel);
@@ -1052,9 +1391,9 @@ void meanAndVarSameGroundAllUsers(Data& data, Params& params) {
   std::unordered_set<int> invalidItems;
   std::string modelSign = mfModels[0].modelSignature();
   std::cout << "\nModel sign: " << modelSign << std::endl;    
-  std::string prefix = std::string(params.prefix) + "_10_1_" + modelSign + "_invalUsers.txt";
+  std::string prefix = "ccd++_01_seed_1_" + modelSign + "_invalUsers.txt";
   std::vector<int> invalUsersVec = readVector(prefix.c_str());
-  prefix = std::string(params.prefix) + "_10_1_" + modelSign + "_invalItems.txt";
+  prefix = "ccd++_01_seed_1_" + modelSign + "_invalItems.txt";
   std::vector<int> invalItemsVec = readVector(prefix.c_str());
   for (auto v: invalUsersVec) {
     invalidUsers.insert(v);

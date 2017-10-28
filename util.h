@@ -41,6 +41,8 @@ void getInvalidUsersItems(gk_csr_t *mat,
     std::unordered_set<int>& uSet,
     std::unordered_set<int>& itemSet);
 std::pair<std::vector<double>, std::vector<double>> getRowColFreq(gk_csr_t *mat);
+std::pair<std::unordered_set<int>, std::unordered_set<int>> getNZUserItem(
+    gk_csr_t *mat);
 std::vector<std::pair<int, int>> getUIPairs(gk_csr_t *mat, 
     std::unordered_set<int>& invalidUsers, 
     std::unordered_set<int>& invalidItems);

@@ -396,6 +396,55 @@ std::pair<int, double> Model::RMSE(gk_csr_t *mat, std::unordered_set<int>& filtI
 }
 
 
+std::pair<int, double> Model::SE(gk_csr_t *mat, std::unordered_set<int>& filtItems,
+    std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems) {
+  
+  int nnz;
+  double r_ui, r_ui_est, diff, rmse;
+  
+  nnz = 0;
+  rmse = 0;
+
+#pragma omp parallel for reduction(+:rmse, nnz) private(r_ui, r_ui_est, diff)
+  for (int u = 0; u < nUsers; u++) {
+    
+    //skip if invalid user
+    if (invalidUsers.count(u) > 0) {
+      //found and skip
+      continue;
+    }
+
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      
+      int item = mat->rowind[ii];
+      
+      //skip if invalid item
+      if (invalidItems.count(item) > 0 || item >= nItems) {
+        //found and skip
+        continue;
+      }
+
+      if (filtItems.count(item) == 0) {
+        //filtered item not found, skip
+        continue;
+      }
+
+      r_ui     = mat->rowval[ii];
+      r_ui_est = estRating(u, item);
+      diff     = r_ui - r_ui_est;
+      rmse     += diff*diff;
+      nnz++;
+
+    }
+
+  }
+ 
+  //rmse = sqrt(rmse/nnz);
+  
+  return std::make_pair(nnz, rmse);
+}
+
+
 std::pair<int, double> Model::RMSEU(gk_csr_t *mat, std::unordered_set<int>& filtUsers,
     std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems) {
   
@@ -692,8 +741,8 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
 
   if (iter - bestIter >= CHANCE_ITER) {
     //can't go lower than best objective after 500 iterations
-    printf("\nNOT CONVERGED: bestIter:%d bestObj: %.10e"
-        " currIter:%d currObj: %.10e", bestIter, bestObj, iter, currObj);
+    //printf("\nNOT CONVERGED: bestIter:%d bestObj: %.10e"
+    //    " currIter:%d currObj: %.10e", bestIter, bestObj, iter, currObj);
     ret = true;
   }
   
@@ -1597,6 +1646,10 @@ void Model::initInfreqFactors(const Params& params, const Data& data) {
   }
 
 }
+
+
+Model::Model(int nUsers, int nItems, int facDim) : nUsers(nUsers), 
+  nItems(nItems), facDim(facDim) {}
 
 
 //define constructor

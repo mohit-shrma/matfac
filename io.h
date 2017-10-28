@@ -79,6 +79,10 @@ void writeTailTestMat(gk_csr_t *mat, const char* testFileName,
 void writeRandMatCSR(const char* opFileName,
     std::vector<std::vector<double>>& uFac, 
     std::vector<std::vector<double>>& iFac, int facDim, int seed, int nnz);
+void writeFiltRandMatCSR(const char* opFileName, std::vector<std::vector<double>>& uFac,
+    std::vector<std::vector<double>>& iFac, int facDim, int seed, 
+    std::unordered_set<int>&  filtUsers,
+    std::unordered_set<int>& filtItems, int nnz);
 void writeMatBin(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
     const char *opFileName);
 void writeMatBin(Eigen::MatrixXf& mat, int nrows, int ncols, 

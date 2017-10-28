@@ -21,7 +21,7 @@ typedef Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic> MatrixXb;
 class ModelMF : public Model {
 
   public:
-
+    ModelMF(int nUsers, int nItems, int facDim) : Model(nUsers, nItems, facDim) {}
     ModelMF(const Params& params) : Model(params) {}
     ModelMF(const Params& params, int seed) : Model(params, seed) {}
     ModelMF(const Params& params, const char*uFacName, const char* iFacName, 

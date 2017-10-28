@@ -42,6 +42,7 @@ class Model {
 
     //declare constructor
     Model(const Params& params);
+    Model(int nUsers, int nItems, int facDim);
     Model(int nUsers, int nItems, const Params& params);
     Model(const Params& params, int seed);
     Model(const Params& params, const char*uFacName, const char* iFacName, 
@@ -167,5 +168,7 @@ class Model {
     void loadBinFacs(std::string prefix);
     void initInfreqFactors(const Params& params, const Data& data);
     std::pair<double, double> hiLoNorms(std::unordered_set<int>& items);
+  std::pair<int, double> SE(gk_csr_t *mat, std::unordered_set<int>& filtItems,
+      std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems);
 };
 #endif

@@ -569,6 +569,26 @@ std::pair<std::vector<double>, std::vector<double>> getRowColFreq(gk_csr_t *mat)
 }
 
 
+std::pair<std::unordered_set<int>, std::unordered_set<int>> getNZUserItem(
+    gk_csr_t *mat) {
+  std::unordered_set<int> users, items;
+  
+  for (int u = 0; u < mat->nrows; u++) {
+    if (mat->rowptr[u+1] - mat->rowptr[u] > 0) {
+      users.insert(u);
+    }
+  }
+  
+  for (int item = 0; item < mat->ncols; item++) {
+    if (mat->colptr[item+1] - mat->colptr[item] > 0 ) {
+      items.insert(item);
+    }
+  }
+
+  return std::make_pair(users, items);
+}
+
+
 std::vector<double> getColFreq(gk_csr_t *mat, 
     std::unordered_set<int> sampUsers) {
   

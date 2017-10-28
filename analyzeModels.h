@@ -5,6 +5,8 @@
 #include "datastruct.h"
 #include <iomanip>
 
+void compareModels(Data& data, Params& params);
+void averageModels(Data& data, Params& params);
 void compJaccSimAccu(Data& data, Params& params);
 void compJaccSimAccuMeth(Data& data, Params& params);
 void compJaccSimAccuSingleOrigModel(Data& data, Params& params);

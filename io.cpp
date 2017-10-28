@@ -91,6 +91,8 @@ void readMat(Eigen::MatrixXf& mat, int nrows, int ncols,
   int i, j; 
   size_t pos;
 
+  mat = Eigen::MatrixXf(nrows, ncols);
+
   if (inFile.is_open()) {
     i = 0;
     while (getline(inFile, line) && i < nrows) {
@@ -109,7 +111,7 @@ void readMat(Eigen::MatrixXf& mat, int nrows, int ncols,
      }
     inFile.close();
   } else {
-    std::cout << "\nCan't open file: " << fileName;
+    std::cout << "\nCan't open file: " << fileName << std::endl;
    }
   
 } 
@@ -560,6 +562,73 @@ void writeRandMatCSR(const char* opFileName,
 
     opFile.close();
   } 
+}
+
+
+void writeFiltRandMatCSR(const char* opFileName, 
+    std::vector<std::vector<double>>& uFac,
+    std::vector<std::vector<double>>& iFac, int facDim, int seed, 
+    std::unordered_set<int>&  filtUsers,
+    std::unordered_set<int>& filtItems, int nnz) {
+  
+  int nUsers = uFac.size();
+  int nItems = iFac.size();
+ 
+  int nFiltUsers = filtUsers.size();
+  int nFiltItems = filtItems.size();
+
+  std::vector<std::unordered_set<int>> uItemSet(nUsers);
+  
+  std::mt19937 mt(seed);
+  std::vector<int> filtUVec(filtUsers.begin(), filtUsers.end());
+  std::vector<int> filtIVec(filtItems.begin(), filtItems.end());
+  
+  std::uniform_int_distribution<int> uIndDist(0, nFiltUsers-1);
+  std::uniform_int_distribution<int> itemIndDist(0, nFiltItems-1);
+
+  int nPairs = 0;
+  
+  while (nPairs < nnz) {
+    //sample user
+    int user = filtUVec[uIndDist(mt)];
+    //sample item
+    int item = filtIVec[itemIndDist(mt)];
+    if (uItemSet[user].count(item) == 0) {
+      uItemSet[user].insert(item);
+      nPairs++;
+    }
+  }
+  
+  //write as CSR for the sampled entries
+  std::ofstream opFile(opFileName);
+  
+  if (opFile.is_open()) {
+    
+    for (int u = 0; u < nUsers; u++) {
+
+      if (filtUsers.count(u) == 0) {
+        opFile << std::endl;
+        continue;
+      }
+
+      auto uSet = uItemSet[u];
+      std::vector<int> items(uSet.begin(), uSet.end());
+
+      std::sort(items.begin(), items.end());
+      for (auto&& item: items) {
+        if (GK_CSR_IS_VAL) {
+          opFile << item << " " <<  dotProd(uFac[u], iFac[item], facDim) << " ";
+        } else {
+          opFile << item << " ";
+        }
+      }
+
+      opFile << std::endl;
+    }
+
+    opFile.close();
+  }
+
 }
 
 

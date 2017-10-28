@@ -16,7 +16,7 @@
 #include "analyzeModels.h"
 #include "modelDropoutMF.h"
 #include "modelPoissonDropout.h"
-
+#include "modelIncrement.h"
 
 #include <gflags/gflags.h>
 DEFINE_uint64(maxiter, 5000, "number of iterations");
@@ -536,7 +536,6 @@ void diffRankRMSEs(Model& bestModel, const Data& data,
 
 }
 
-
 void quartileRMSEs(Model& bestModel, const Data& data,  
     std::vector<std::pair<int, std::vector<int>>> partItems, 
     std::vector<std::pair<int, std::vector<int>>> partUsers,
@@ -555,8 +554,8 @@ void quartileRMSEs(Model& bestModel, const Data& data,
       invalidItems) << std::endl;
   std::cout << "Val RMSE: " << bestModel.RMSE(data.valMat, invalidUsers, 
       invalidItems) << std::endl;
- 
 
+  std::cout << "Test RMSE: " << std::endl;
   std::cout << "Items Part: "; 
   for (auto& pItems: partItems) {
     int partInd = pItems.first;
@@ -566,7 +565,6 @@ void quartileRMSEs(Model& bestModel, const Data& data,
   }
   std::cout << std::endl;
 
-  
   std::cout << "Users Part: "; 
   for (auto& pUsers: partUsers) {
     int partInd = pUsers.first;
@@ -575,7 +573,153 @@ void quartileRMSEs(Model& bestModel, const Data& data,
     std::cout << countNRMSE.first << " " << countNRMSE.second << " ";
   }
   std::cout << std::endl;
+
+  std::cout << "Validation RMSE: " << std::endl;
+  std::cout << "Items Part: "; 
+  for (auto& pItems: partItems) {
+    int partInd = pItems.first;
+    auto filtItems = std::unordered_set<int>(pItems.second.begin(), pItems.second.end());
+    auto countNRMSE = bestModel.RMSE(data.valMat, filtItems, invalidUsers, invalidItems);
+    std::cout << countNRMSE.first << " " << countNRMSE.second << " ";
+  }
+  std::cout << std::endl;
+
+  std::cout << "Users Part: "; 
+  for (auto& pUsers: partUsers) {
+    int partInd = pUsers.first;
+    auto filtUsers = std::unordered_set<int>(pUsers.second.begin(), pUsers.second.end());
+    auto countNRMSE = bestModel.RMSEU(data.valMat, filtUsers, invalidUsers, invalidItems);
+    std::cout << countNRMSE.first << " " << countNRMSE.second << " ";
+  }
+  std::cout << std::endl;
+
 }
+
+
+ModelMF loadModel(int nUsers, int nItems, int rank, std::string modelPref) {
+  std::cout << "\nmodelPref: " << modelPref << std::endl;
+  ModelMF m1(nUsers, nItems, rank);
+  std::string uFacName = modelPref + ".umat";
+  std::string iFacName = modelPref + ".imat";
+  std::cout << "uFac: " << uFacName.c_str() << " iFac: " << iFacName.c_str() << std::endl; 
+  readMat(m1.uFac, nUsers, rank, uFacName.c_str());
+  readMat(m1.iFac, nItems, rank, iFacName.c_str());
+  return m1;
+}
+
+
+void diffModelRMSEs(int nUsers, int nItems, std::vector<int>& ranks,
+    std::vector<std::string> modelPrefs,
+    const Data& data, 
+    std::vector<std::pair<int, std::vector<int>>> partItems, 
+    std::vector<std::pair<int, std::vector<int>>> partUsers,
+    std::unordered_set<int> invalidUsers, std::unordered_set<int> invalidItems) {
+ 
+  std::cout << "nusers: " << nUsers << " nItems: " << nItems << std::endl;
+
+  std::vector<ModelMF> iModels;
+  ModelMF m1 = loadModel(nUsers, nItems, ranks[0], modelPrefs[0]);
+  iModels.push_back(m1);
+  ModelMF m2 = loadModel(nUsers, nItems, ranks[1], modelPrefs[1]);
+  iModels.push_back(m2);
+  ModelMF m3 = loadModel(nUsers, nItems, ranks[2], modelPrefs[2]);
+  iModels.push_back(m3);
+  ModelMF m4 = loadModel(nUsers, nItems, ranks[3], modelPrefs[3]);
+  iModels.push_back(m4);
+
+  std::vector<ModelMF> uModels;
+  ModelMF m5 = loadModel(nUsers, nItems, ranks[4], modelPrefs[4]);
+  uModels.push_back(m5);
+  ModelMF m6 = loadModel(nUsers, nItems, ranks[5], modelPrefs[5]);
+  uModels.push_back(m6);
+  ModelMF m7 = loadModel(nUsers, nItems, ranks[6], modelPrefs[6]);
+  uModels.push_back(m7);
+  ModelMF m8 = loadModel(nUsers, nItems, ranks[7], modelPrefs[7]);
+  uModels.push_back(m8);
+
+  quartileRMSEs(m1, data, partItems, partUsers, invalidUsers, invalidItems);
+
+  double se = 0; 
+  int nnz = 0;
+  
+  auto trainMat = data.trainMat;
+  auto testMat = data.testMat;
+  auto rowColFreq = getRowColFreq(data.trainMat);
+  auto userFreq = rowColFreq.first;
+  auto itemFreq = rowColFreq.second;
+   
+  std::map<int, int> iPartMap, uPartMap;
+  for (int i = 0; i < partItems.size(); i++) {
+    int partInd = partItems[i].first;
+    for (auto& item: partItems[i].second) {
+      iPartMap[item] = partInd;
+    }
+  }
+
+  for (int i = 0; i < partUsers.size(); i++) {
+    int partInd = partUsers[i].first;
+    for (auto& user: partUsers[i].second) {
+      uPartMap[user] = partInd;
+    }
+  }
+
+  std::vector<double> itemSE(4, 0), userSE(4, 0);
+  std::vector<int> itemCount(4, 0), userCount(4, 0);
+
+
+  for (int u = 0; u < testMat->nrows; u++) {
+    
+    if (invalidUsers.count(u) > 0) { continue; }
+
+    for (int ii = testMat->rowptr[u]; ii < testMat->rowptr[u+1]; ii++) {
+      int item = testMat->rowind[ii];
+      if (item >= trainMat->ncols || invalidItems.count(item) > 0) {
+        continue;
+      }
+      float rating = testMat->rowval[ii];
+      double diff = 0;
+      if (userFreq[u] < itemFreq[item]) {
+        float rat_est = uModels[3 - uPartMap[u]].estRating(u, item);
+        diff = (rat_est - rating)*(rat_est - rating);
+      } else {
+        float rat_est = iModels[3 - iPartMap[item]].estRating(u, item);
+        diff = (rat_est - rating)*(rat_est - rating);
+      }
+      se += diff;
+      itemSE[iPartMap[item]] += diff;
+      itemCount[iPartMap[item]] += 1;
+      userSE[uPartMap[u]] += diff;
+      userCount[uPartMap[u]] += 1;
+      nnz++;
+    }
+  }
+  
+  std::cout << "overall RMSE: " << std::sqrt(se/nnz) << std::endl;
+  std::cout << "item RMSEs: " << std::endl;
+  for (int i = 0; i < 4; i++) {
+    std::cout << std::sqrt(itemSE[i]/itemCount[i]) << " ";
+  }
+  std::cout << std::endl;
+  
+  std::cout << "item count: " << std::endl;
+  for (int i = 0; i < 4; i++) {
+    std::cout << itemCount[i] << " ";
+  }
+  std::cout << std::endl;
+
+  std::cout << "user RMSEs: " << std::endl;
+  for (int i = 0; i < 4; i++) {
+    std::cout << std::sqrt(userSE[i]/userCount[i]) << " ";
+  }
+  std::cout << std::endl;
+  for (int i = 0; i < 4; i++) {
+    std::cout << userCount[i] << " ";
+  }
+  std::cout << std::endl;
+
+}
+
+
 
 
 void computeFreqRMSEsAdapRank(Data& data, Params& params, 
@@ -847,14 +991,44 @@ void getUserItemRankMapPc(
 } 
 
 
+gk_csr_t** splitValMat(gk_csr_t* valMat, int seed) {
+  
+  int nnz = getNNZ(valMat);
+  int* color = (int*) malloc(sizeof(int)*nnz);
+  memset(color, 0, sizeof(int)*nnz);
+
+  std::mt19937 mt(seed);
+  std::uniform_int_distribution<int> nnzDist(0, nnz-1);
+
+  int k;
+  int sumColor = 0;
+  while (sumColor < nnz/2) {
+    k = nnzDist(mt);
+    if (!color[k]) {
+      color[k] = 1;
+      sumColor++;
+    }
+  }
+
+  //split the matrix based on color
+  gk_csr_t** mats = gk_csr_Split(valMat, color);
+
+  int sampNNZ = getNNZ(mats[1]);
+  std::cout << "\nmats[0] NNZ: " << getNNZ(mats[0]) 
+    << " mats[1] NNZ: " << getNNZ(mats[1]) << std::endl;
+
+  free(color);
+  return mats;
+} 
+
+
 
 int main(int argc , char* argv[]) {
  
-
   //partition the given matrix into train test val
   /*
-  gk_csr_t *mat = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, 1, 0);
-  writeTrainTestValMat(mat, argv[2], argv[3], argv[4], 0.2, 0.2, atoi(argv[5]));  
+  gk_csr_t *mat = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, GK_CSR_IS_VAL, 0);
+  writeTrainTestValMat(mat, argv[2], argv[3], argv[4], 0.1, 0.1, atoi(argv[5]));  
   return 0;
   */
 
@@ -890,7 +1064,18 @@ int main(int argc , char* argv[]) {
   params.nUsers = data.nUsers;
   params.nItems = data.nItems;
   params.display();
-  
+ 
+  /*
+  auto nzUsersItems = getNZUserItem(data.trainMat);
+  int nnz = getNNZ(data.trainMat);
+  std::cout << "nUsers with ratings: " << nzUsersItems.first.size() << std::endl;
+  std::cout << "nItems with ratings: " << nzUsersItems.second.size() << std::endl;
+  std::cout << "nnz: " << nnz << std::endl;
+  writeFiltRandMatCSR("ranSubMat.csr", data.origUFac, data.origIFac, 
+      data.facDim, params.seed, nzUsersItems.first, nzUsersItems.second, nnz);
+  return 0;
+  */
+
   //initialize seed
   std::srand(params.seed);
   
@@ -998,15 +1183,68 @@ int main(int argc , char* argv[]) {
   auto rowColFreq = getRowColFreq(data.trainMat);
   auto userFreq = rowColFreq.first;
   auto itemFreq = rowColFreq.second;
+
+
+  std::vector<std::string> modelPrefs = {
+    "sgdpar_1_0.1_147612X48794_1_0.100000_0.100000_0.001000",
+    "sgdpar_1_0.1_147612X48794_1_0.100000_0.100000_0.001000",
+    "sgdpar_15_0.1_147612X48794_15_0.100000_0.100000_0.001000",
+    "sgdpar_15_0.1_147612X48794_15_0.100000_0.100000_0.001000",
+    
+    "sgdpar_1_0.1_147612X48794_1_0.100000_0.100000_0.001000",
+    "sgdpar_1_0.1_147612X48794_1_0.100000_0.100000_0.001000",
+    "sgdpar_1_0.1_147612X48794_1_0.100000_0.100000_0.001000",
+    "sgdpar_15_0.1_147612X48794_15_0.100000_0.100000_0.001000",
+  };
+  std::vector<std::string> modelPrefs2 = {
+    "sgdpar_1_0.1_147612X48794_1_0.100000_0.100000_0.001000",
+    "sgdpar_1_0.1_147612X48794_1_0.100000_0.100000_0.001000",
+    "sgdpar_1_0.1_147612X48794_1_0.100000_0.100000_0.001000",
+    "sgdpar_1_0.1_147612X48794_1_0.100000_0.100000_0.001000",
+    
+    "sgdpar_1_0.1_147612X48794_1_0.100000_0.100000_0.001000",
+    "sgdpar_1_0.1_147612X48794_1_0.100000_0.100000_0.001000",
+    "sgdpar_1_0.1_147612X48794_1_0.100000_0.100000_0.001000",
+    "sgdpar_1_0.1_147612X48794_1_0.100000_0.100000_0.001000"
+  };
   
-  //ModelMF mfModel(params, params.seed);
+  std::vector<int> ranks2 = {1, 1, 15, 15, 1, 1, 1, 15};
+  //std::vector<int> ranks2 = {1, 1, 1, 1, 1, 1, 1, 1};
+  
+  auto invalUVec = readVector("sgdpar_1_0.1_147612X48794_1_0.100000_0.100000_0.001000_invalUsers.txt");
+  std::unordered_set<int> invalidUsers2(invalUVec.begin(), invalUVec.end());
+
+  auto invalIVec  = readVector("sgdpar_1_0.1_147612X48794_1_0.100000_0.100000_0.001000_invalItems.txt");
+  std::unordered_set<int> invalidItems2(invalIVec.begin(), invalIVec.end());
+  
+  diffModelRMSEs(data.trainMat->nrows, data.trainMat->ncols, ranks2,
+      modelPrefs, data, partItems, partUsers, invalidUsers2, invalidItems2);
+
+  //quartileRMSEs(bestModel2, data, partItems, partUsers, invalidUsers, invalidItems);
+  return 0;
+
+  ModelMF mfModel(params, params.seed);
   //ModelMFBias mfModel(params, params.seed);
   //ModelDropoutMF mfModel(params, params.seed, userRankMap, itemRankMap, ranks);
-  ModelPoissonDropout mfModel(params, params.seed, userRankPc, itemRankPc, 
-      userFreq, itemFreq);
+ 
+  /*
+  ModelIncrement mfModel(params, params.seed);
+  gk_csr_t** mats = splitValMat(data.valMat, params.seed);
+  gk_csr_Free(&data.valMat);
+  data.valMat = mats[0];
+  gk_csr_CreateIndex(data.valMat, GK_CSR_COL); 
+  std::cout << "val nusers: " << data.valMat->nrows << " nItems: " << data.valMat->ncols << std::endl; 
+  data.graphMat = mats[1];
+  gk_csr_CreateIndex(data.graphMat, GK_CSR_COL);
+
+  std::cout << "graph nusers: " << data.graphMat->nrows << " nItems: " << data.graphMat->ncols << std::endl; 
+  */
+
+  //ModelPoissonDropout mfModel(params, params.seed, userRankPc, itemRankPc, 
+  //    userFreq, itemFreq);
 
   //initialize model with svd
-  svdFrmSvdlibCSREig(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
+  //svdFrmSvdlibCSREig(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
   
   //initialize MF model with last learned model if any
   //mfModel.initInfreqFactors(params, data);
@@ -1014,8 +1252,8 @@ int main(int argc , char* argv[]) {
 
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
- 
-  /* 
+  
+  
   ModelMF bestModel(mfModel);
   std::cout << "\nStarting model train...";
   if (FLAGS_method == "ccd++") { 
@@ -1039,10 +1277,11 @@ int main(int argc , char* argv[]) {
   } else {
     mfModel.train(data, bestModel, invalidUsers, invalidItems);
   }
-  */
-  
+
+  /*
   //ModelDropoutMF bestModel(mfModel);
-  ModelPoissonDropout bestModel(mfModel);
+  ModelIncrement bestModel(mfModel);
+  //ModelPoissonDropout bestModel(mfModel);
   //ModelDropoutMFBias bestModel(mfModel);
   //ModelMFBias bestModel(mfModel);
   
@@ -1052,6 +1291,10 @@ int main(int argc , char* argv[]) {
   //mfModel.trainSGDOnlyOrderedPar(data, bestModel, invalidUsers, invalidItems);
   mfModel.train(data, bestModel, invalidUsers, invalidItems);
   
+  bestModel.currRankMapU = mfModel.currRankMapU;
+  bestModel.currRankMapI = mfModel.currRankMapI;
+  */
+
   std::cout << "\nTrain RMSE: " << bestModel.RMSE(data.trainMat, invalidUsers, 
       invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
@@ -1063,20 +1306,18 @@ int main(int argc , char* argv[]) {
 
   //write out invalid users
   std::string prefix = std::string(params.prefix) + "_" + modelSign + "_invalUsers.txt";
-  writeContainer(begin(invalidUsers), end(invalidUsers), prefix.c_str());
+  //writeContainer(begin(invalidUsers), end(invalidUsers), prefix.c_str());
 
   //write out invalid items
   prefix = std::string(params.prefix) + "_" + modelSign + "_invalItems.txt";
-  writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
+  //writeContainer(begin(invalidItems), end(invalidItems), prefix.c_str());
   std::cout << std::endl << "**** Model parameters ****" << std::endl;
   mfModel.display();
-
-  /*
+  
   if (!FLAGS_origufac.empty()) {
     std::cout << "\nFull RMSE: " << 
       bestModel.fullLowRankErr(data, invalidUsers, invalidItems) << std::endl;
   }
-  */
 
   std::cout << std::endl;
   Model& bestModel2 = bestModel;
