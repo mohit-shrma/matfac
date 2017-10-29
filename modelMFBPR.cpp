@@ -16,7 +16,10 @@ std::vector<std::tuple<int, int, float>> ModelMFBPR::getBPRUIRatings(gk_csr_t* m
 }
 
 
-int ModelMFBPR::sampleNegItem(int u, const gk_csr_t* trainMat) const {
+int ModelMFBPR::sampleNegItem(int u, const gk_csr_t* trainMat, 
+    std::unordered_set<int>& trainItems, 
+    std::unordered_set<int>& testItems, 
+    std::unordered_set<int>& valItems) const {
   
   int j = -1, jj;
   int nUserItems, start, end;
@@ -81,19 +84,42 @@ void ModelMFBPR::train(const Data& data, Model& bestModel,
 
   int u, pI, nI;
   float itemRat, r_ui_est, r_uj_est;
+  double bestRecall, valRecall;
+  double bestHR, valHR;
 
   std::cout << "\nModelMFBPR::train trainSeed: " << trainSeed << std::endl;
   std::chrono::time_point<std::chrono::system_clock> start, end;
-
  
   //random engine
   std::mt19937 mt(trainSeed);
   
   //get non-zero ratings from training data
-  const auto uiratings = getBPRUIRatings(data.trainMat); 
+  const auto uiRatings = getBPRUIRatings(data.trainMat); 
   //index to above uiRatings pair
   std::vector<size_t> uiRatingInds(uiRatings.size());
   std::iota(uiRatingInds.begin(), uiRatingInds.end(), 0);
+
+  gk_csr_t *mat = data.trainMat;
+  std::unordered_set<int> trainItems, testItems, valItems;
+  for (int item = 0; item < mat->ncols; item++) {
+    if (mat->colptr[item+1] - mat->colptr[item] > 0) {
+      trainItems.insert(item);
+    }
+  }
+
+  mat = data.testMat;
+  for (int item = 0; item < mat->ncols; item++) {
+    if (mat->colptr[item+1] - mat->colptr[item] > 0) {
+      testItems.insert(item);
+    }
+  }
+
+  mat = data.valMat;
+  for (int item = 0; item < mat->ncols; item++) {
+    if (mat->colptr[item+1] - mat->colptr[item] > 0) {
+      valItems.insert(item);
+    }
+  }
 
   for (int iter = 0; iter < maxIter; iter++) {
     
@@ -112,7 +138,7 @@ void ModelMFBPR::train(const Data& data, Model& bestModel,
       r_ui_est = uFac.row(u).dot(iFac.row(pI));
       
       //sample -ve item
-      nI = sampleNegItem(u, trainMat);
+      nI = sampleNegItem(u, data.trainMat, trainItems, testItems, valItems);
       if (-1 == nI) {
         //failed to sample negativ item
         continue;
@@ -121,9 +147,20 @@ void ModelMFBPR::train(const Data& data, Model& bestModel,
       r_uj_est = uFac.row(u).dot(iFac.row(nI));
        
       double r_uij = r_ui_est - r_uj_est;
-      double expCoeff = 1.0 /(1.0 + exp(r_uij));
+      double expCoeff = -1.0 /(1.0 + exp(r_uij));
       
-      
+      //update user
+      for (int i = 0; i < facDim; i++) {
+        uFac(u, i) -= learnRate*(expCoeff*(iFac.row(pI, i) - iFac.row(nI, i))
+                                  + 2.0*uReg*(uFac(u, i)));
+      } 
+            
+      //update item
+      for (int i = 0; i < facDim; i++) {
+        iFac(pI, i) -= learnRate*(expCoeff*uFac.row(u, i) + 2.0*iReg*iFac(pI, i));
+        iFac(nI, i) -= learnRate*(-expCoeff*uFac.row(u,i) + 2.0*iReg*iFac(nI, i));
+      }
+
 
     }
 

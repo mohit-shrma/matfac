@@ -759,6 +759,62 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
 }
 
 
+double Model::hitRate(const Data& data, std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems) {
+  
+  gk_csr_t* mat = data.trainMat;
+
+  for (int u = 0; u < mat->nrows; u++) {
+    if (invalidUsers.count(u) > 0 || (mat->rowptr[u+1] - mat->rowptr[u]) > 0) {
+
+    }
+    for () {
+    }
+  } 
+
+}
+
+
+bool Model::isTerminateModelHR(Model& bestModel, const Data& data, int iter,
+    int& bestIter, double& bestHR, double& prevHR, 
+    std::unordered_set<int>& invalidUsers, 
+    std::unordered_set<int>& invalidItems) {
+  bool ret = false;
+  double currHR = hitRate(data, invalidUsers, invalidItems);
+
+  if (currHR < bestHR) {
+    bestModel = *this;
+    bestHR = currHR;
+    bestIter = iter;
+  }
+
+  if (iter - bestIter >= 100) {
+    //half the learning rate
+    if (learnRate > 1e-5) {
+      learnRate = learnRate/2;
+    }
+  }
+
+  if (iter - bestIter >= CHANCE_ITER) {
+    //can't go lower than best objective after 500 iterations
+    //printf("\nNOT CONVERGED: bestIter:%d bestObj: %.10e"
+    //    " currIter:%d currObj: %.10e", bestIter, bestObj, iter, currObj);
+    ret = true;
+  }
+  
+  if (fabs(prevHR - currHR) < EPS) {
+    //convergence
+    printf("\nConverged in iteration: %d prevHR: %.10e currHR: %.10e", iter,
+            prevHR, currHR); 
+    ret = true;
+  }
+
+  prevHR = currHR;
+
+  return ret;
+}
+
+
 bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
     int& bestIter, double& bestObj, double& prevObj, 
     std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems,

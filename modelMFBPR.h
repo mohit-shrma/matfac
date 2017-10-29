@@ -1,6 +1,12 @@
 #ifndef _MODELMFBPR_H_
 #define _MODELMFBPR_H_
 
+#include <iostream>
+#include <vector>
+
+#include "model.h"
+
+
 class ModelMFBPR : public Model {
   
   public:
@@ -11,6 +17,11 @@ class ModelMFBPR : public Model {
     void train(const Data& data, Model& bestModel,
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems) ;
+    std::vector<std::tuple<int, int, float>> getBPRUIRatings(gk_csr_t* mat); 
+    int sampleNegItem(int u, const gk_csr_t* trainMat,
+        std::unordered_set<int>& trainItems,
+        std::unordered_set<int>& valItems,
+        std::unordered_set<int>& testItems) const;
 };
 
 
