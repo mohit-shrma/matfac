@@ -170,5 +170,11 @@ class Model {
     std::pair<double, double> hiLoNorms(std::unordered_set<int>& items);
   std::pair<int, double> SE(gk_csr_t *mat, std::unordered_set<int>& filtItems,
       std::unordered_set<int>& invalidUsers, std::unordered_set<int>& invalidItems);
+  double hitRate(const Data& data, std::unordered_set<int>& invalidUsers,
+      std::unordered_set<int>& invalidItems, gk_csr_t* testMat);
+  bool isTerminateModelHR(Model& bestModel, const Data& data, int iter,
+    int& bestIter, double& bestHR, double& prevHR, 
+    std::unordered_set<int>& invalidUsers, 
+    std::unordered_set<int>& invalidItems);
 };
 #endif

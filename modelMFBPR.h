@@ -19,9 +19,7 @@ class ModelMFBPR : public Model {
         std::unordered_set<int>& invalidItems) ;
     std::vector<std::tuple<int, int, float>> getBPRUIRatings(gk_csr_t* mat); 
     int sampleNegItem(int u, const gk_csr_t* trainMat,
-        std::unordered_set<int>& trainItems,
-        std::unordered_set<int>& valItems,
-        std::unordered_set<int>& testItems) const;
+        std::unordered_set<int>& trainItems) const;
 };
 
 

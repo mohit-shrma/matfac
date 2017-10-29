@@ -17,6 +17,7 @@
 #include "modelDropoutMF.h"
 #include "modelPoissonDropout.h"
 #include "modelIncrement.h"
+#include "modelMFBPR.h"
 
 #include <gflags/gflags.h>
 DEFINE_uint64(maxiter, 5000, "number of iterations");
@@ -1184,7 +1185,7 @@ int main(int argc , char* argv[]) {
   auto userFreq = rowColFreq.first;
   auto itemFreq = rowColFreq.second;
 
-
+  /*
   std::vector<std::string> modelPrefs = {
     "sgdpar_1_0.1_147612X48794_1_0.100000_0.100000_0.001000",
     "sgdpar_1_0.1_147612X48794_1_0.100000_0.100000_0.001000",
@@ -1222,8 +1223,9 @@ int main(int argc , char* argv[]) {
 
   //quartileRMSEs(bestModel2, data, partItems, partUsers, invalidUsers, invalidItems);
   return 0;
+  */
 
-  ModelMF mfModel(params, params.seed);
+  ModelMFBPR mfModel(params, params.seed);
   //ModelMFBias mfModel(params, params.seed);
   //ModelDropoutMF mfModel(params, params.seed, userRankMap, itemRankMap, ranks);
  
@@ -1253,7 +1255,7 @@ int main(int argc , char* argv[]) {
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
   
-  
+  /*
   ModelMF bestModel(mfModel);
   std::cout << "\nStarting model train...";
   if (FLAGS_method == "ccd++") { 
@@ -1277,10 +1279,11 @@ int main(int argc , char* argv[]) {
   } else {
     mfModel.train(data, bestModel, invalidUsers, invalidItems);
   }
+  */
 
-  /*
+  ModelMFBPR bestModel(mfModel);
   //ModelDropoutMF bestModel(mfModel);
-  ModelIncrement bestModel(mfModel);
+  //ModelIncrement bestModel(mfModel);
   //ModelPoissonDropout bestModel(mfModel);
   //ModelDropoutMFBias bestModel(mfModel);
   //ModelMFBias bestModel(mfModel);
@@ -1290,11 +1293,18 @@ int main(int argc , char* argv[]) {
   //mfModel.trainSGDProbPar(data, bestModel, invalidUsers, invalidItems);
   //mfModel.trainSGDOnlyOrderedPar(data, bestModel, invalidUsers, invalidItems);
   mfModel.train(data, bestModel, invalidUsers, invalidItems);
-  
+
+  std::cout << "Test hit rate: " 
+    << bestModel.hitRate(data, invalidUsers, invalidItems, data.testMat) 
+    << std::endl;
+
+
+  /*
   bestModel.currRankMapU = mfModel.currRankMapU;
   bestModel.currRankMapI = mfModel.currRankMapI;
   */
 
+  /*
   std::cout << "\nTrain RMSE: " << bestModel.RMSE(data.trainMat, invalidUsers, 
       invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers, 
@@ -1323,6 +1333,7 @@ int main(int argc , char* argv[]) {
   Model& bestModel2 = bestModel;
   //diffRankRMSEs(bestModel, data, userRankMap, itemRankMap, invalidUsers, invalidItems);
   quartileRMSEs(bestModel2, data, partItems, partUsers, invalidUsers, invalidItems);
+  */
 
   //computeSampTopNFrmFullModel(data, params);  
   //computeFreqRMSEsAdapRank(data, params, userRankMap, itemRankMap);

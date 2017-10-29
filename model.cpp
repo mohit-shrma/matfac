@@ -760,18 +760,58 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
 
 
 double Model::hitRate(const Data& data, std::unordered_set<int>& invalidUsers,
-    std::unordered_set<int>& invalidItems) {
+    std::unordered_set<int>& invalidItems, gk_csr_t* testMat) {
   
-  gk_csr_t* mat = data.trainMat;
-
-  for (int u = 0; u < mat->nrows; u++) {
-    if (invalidUsers.count(u) > 0 || (mat->rowptr[u+1] - mat->rowptr[u]) > 0) {
-
+  gk_csr_t* trainMat = data.trainMat;
+  int N  = 10;
+  int nHits = 0, nValUsers = 0;
+#pragma omp parallel for reduction(+:nHits, nValUsers)
+  for (int u = 0; u < trainMat->nrows; u++) {
+    
+    if (invalidUsers.count(u) > 0) {
+      continue;
     }
-    for () {
-    }
-  } 
 
+    int testItem = testMat->rowind[testMat->rowptr[u]];
+    std::unordered_set<int> uTrItems;
+    std::vector<std::pair<int, double>> topNItemRat;
+
+    for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u+1]; ii++) {
+      int item = trainMat->rowind[ii];
+      uTrItems.insert(item);
+    }
+
+    std::make_heap(topNItemRat.begin(), topNItemRat.end(), descComp);
+    
+    for (int item = 0; item < trainMat->ncols; item++) {
+      if (uTrItems.count(item) || invalidItems.count(item) > 0) {
+        continue;
+      }
+      topNItemRat.push_back(std::make_pair(item, estRating(u, item))); 
+      std::push_heap(topNItemRat.begin(), topNItemRat.end(), descComp);
+      
+      if (topNItemRat.size() > N) {
+        std::pop_heap(topNItemRat.begin(), topNItemRat.end(), descComp);
+        topNItemRat.pop_back();
+      }
+    }
+    
+    std::sort(topNItemRat.begin(), topNItemRat.end(), descComp);
+    
+    for (int pos = 0; pos < topNItemRat.size(); pos++) {
+      if (testItem == topNItemRat[pos].first) {
+        //hit
+        nHits++;
+        break;
+      }    
+    }
+
+    nValUsers++;
+  }
+  
+  std::cout << "nHits: " << nHits << " nValUsers: " << nValUsers << std::endl;
+
+  return (double)nHits/(double)nValUsers;
 }
 
 
@@ -780,9 +820,9 @@ bool Model::isTerminateModelHR(Model& bestModel, const Data& data, int iter,
     std::unordered_set<int>& invalidUsers, 
     std::unordered_set<int>& invalidItems) {
   bool ret = false;
-  double currHR = hitRate(data, invalidUsers, invalidItems);
+  double currHR = hitRate(data, invalidUsers, invalidItems, data.valMat);
 
-  if (currHR < bestHR) {
+  if (currHR > bestHR) {
     bestModel = *this;
     bestHR = currHR;
     bestIter = iter;
@@ -802,12 +842,15 @@ bool Model::isTerminateModelHR(Model& bestModel, const Data& data, int iter,
     ret = true;
   }
   
+  
+  /*
   if (fabs(prevHR - currHR) < EPS) {
     //convergence
     printf("\nConverged in iteration: %d prevHR: %.10e currHR: %.10e", iter,
             prevHR, currHR); 
     ret = true;
   }
+  */
 
   prevHR = currHR;
 
