@@ -18,6 +18,7 @@
 #include "modelPoissonDropout.h"
 #include "modelIncrement.h"
 #include "modelMFBPR.h"
+#include "modelBPRPoissonDropout.h"
 
 #include <gflags/gflags.h>
 DEFINE_uint64(maxiter, 5000, "number of iterations");
@@ -1225,7 +1226,6 @@ int main(int argc , char* argv[]) {
   return 0;
   */
 
-  ModelMFBPR mfModel(params, params.seed);
   //ModelMFBias mfModel(params, params.seed);
   //ModelDropoutMF mfModel(params, params.seed, userRankMap, itemRankMap, ranks);
  
@@ -1244,6 +1244,8 @@ int main(int argc , char* argv[]) {
 
   //ModelPoissonDropout mfModel(params, params.seed, userRankPc, itemRankPc, 
   //    userFreq, itemFreq);
+  ModelBPRPoissonDropout mfModel(params, params.seed, userRankPc, itemRankPc,
+      userFreq, itemFreq);
 
   //initialize model with svd
   //svdFrmSvdlibCSREig(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
@@ -1281,7 +1283,7 @@ int main(int argc , char* argv[]) {
   }
   */
 
-  ModelMFBPR bestModel(mfModel);
+  ModelBPRPoissonDropout bestModel(mfModel);
   //ModelDropoutMF bestModel(mfModel);
   //ModelIncrement bestModel(mfModel);
   //ModelPoissonDropout bestModel(mfModel);
@@ -1292,6 +1294,7 @@ int main(int argc , char* argv[]) {
   //mfModel.trainSGDProbOrderedPar(data, bestModel, invalidUsers, invalidItems);
   //mfModel.trainSGDProbPar(data, bestModel, invalidUsers, invalidItems);
   //mfModel.trainSGDOnlyOrderedPar(data, bestModel, invalidUsers, invalidItems);
+  std::cout << "Begin train..." << std::endl;
   mfModel.train(data, bestModel, invalidUsers, invalidItems);
 
   std::cout << "Test hit rate: " 
