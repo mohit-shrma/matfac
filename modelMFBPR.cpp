@@ -134,7 +134,6 @@ void ModelMFBPR::train(const Data& data, Model& bestModel,
 
   for (int iter = 0; iter < maxIter; iter++) {
 
-
     start = std::chrono::system_clock::now();
 
     if (iter % 10 == 0) {

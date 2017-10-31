@@ -35,6 +35,7 @@ double ModelPoissonDropout::estRating(int user, int item) {
 }
 */
 
+
 /*
 double ModelPoissonDropout::estRating(int user, int item) {
   //std::cout << "ModelPoissonDropout::estRating (" << user << "," << item << ") " << std::endl;
@@ -353,7 +354,7 @@ void ModelPoissonDropout::trainSigmoid(const Data& data, Model &bestModel,
     std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems) {
 
-  std::cout << "\nModelPoissonDropout ::train trainSeed: " << trainSeed;
+  std::cout << "\nModelPoissonDropout ::trainSigmoid trainSeed: " << trainSeed;
   
   int nnz = data.trainNNZ;
   
