@@ -4,7 +4,6 @@
 #include <chrono>
 #include <thread>
 
-
 #include "io.h"
 #include "util.h"
 #include "datastruct.h"
@@ -1030,9 +1029,11 @@ int main(int argc , char* argv[]) {
   //partition the given matrix into train test val
   /*
   gk_csr_t *mat = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, GK_CSR_IS_VAL, 0);
-  writeTrainTestValMat(mat, argv[2], argv[3], argv[4], 0.1, 0.1, atoi(argv[5]));  
+  //writeTrainTestValMat(mat, argv[2], argv[3], argv[4], 0.1, 0.1, atoi(argv[5]));  
+  writeBinarizedTrainValTest(mat, atoi(argv[2]), std::string(argv[3]),
+      atoi(argv[4]));
   return 0;
-  */
+  */ 
 
   /* 
   gk_csr_t *mat1 = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, 1, 0);

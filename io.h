@@ -93,4 +93,6 @@ void readMatBin(Eigen::MatrixXf& mat, int nrows, int ncols,
     const char *opFileName);
 Eigen::VectorXf readEigVector(const char *ipFileName) ;
 void writeTriplets(gk_csr_t *mat, const char *fName);
+void writeBinarizedTrainValTest(gk_csr_t* mat, int ratThresh, 
+    std::string opFilePref, int seed);
 #endif

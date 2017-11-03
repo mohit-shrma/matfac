@@ -183,6 +183,74 @@ void writeMatBin(Eigen::MatrixXf& mat, int nrows, int ncols,
 }
 
 
+void writeBinarizedTrainValTest(gk_csr_t* mat, int ratThresh, 
+    std::string opFilePref, int seed) {
+
+  std::mt19937 mt(seed);
+  
+  std::string opFTrStr = opFilePref + ".rank.train.mat";
+  std::string opFTeStr = opFilePref + ".rank.test.mat";
+  std::string opFVaStr = opFilePref + ".rank.val.mat";
+
+  std::ofstream opFileTrain(opFTrStr);
+  std::ofstream opFileTest(opFTeStr);
+  std::ofstream opFileVal(opFVaStr);
+
+  if (opFileTrain.is_open()) {
+    for (int u = 0; u < mat->nrows; u++) {
+      
+      std::vector<int> uItems;
+      for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+        int item = mat->rowind[ii];
+        float val = mat->rowval[ii];
+        if (val > ratThresh) {
+          uItems.push_back(item);
+        }
+      }
+      
+      if (uItems.size() > 3) {
+        std::uniform_int_distribution<> dis(0, uItems.size()-1);
+        int valI = uItems[dis(mt)];
+        int testI = uItems[dis(mt)];
+        int nTry = 0;
+        
+        while (valI == testI && nTry++ < 500) {
+          testI = uItems[dis(mt)];
+        }
+
+        if (testI != valI) {
+          opFileTest << testI << " " << 1;
+          opFileVal << valI << " " << 1;
+          for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+            int item = mat->rowind[ii];
+            float val = mat->rowval[ii];
+            if (val > ratThresh) {
+              if (item != valI && item != testI) {
+                opFileTrain << item << " " << 1 << " ";
+              }
+            } else {
+              opFileTrain << item << " " << 0 << " ";
+            }
+          }
+        }
+
+      }
+
+      opFileTrain << std::endl;
+      opFileTest << std::endl;
+      opFileVal << std::endl;
+    }
+    
+    opFileTrain.close();
+    opFileTest.close();
+    opFileVal.close();
+  } else {
+    std::cout << "Can't open file." << std::endl;
+  }
+
+}
+
+
 void readMatBin(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
     const char *opFileName) {
   std::ifstream ipFile(opFileName, std::ios::binary);
