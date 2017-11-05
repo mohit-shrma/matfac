@@ -221,16 +221,17 @@ void writeBinarizedTrainValTest(gk_csr_t* mat, int ratThresh,
         if (testI != valI) {
           opFileTest << testI << " " << 1;
           opFileVal << valI << " " << 1;
-          for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
-            int item = mat->rowind[ii];
-            float val = mat->rowval[ii];
-            if (val > ratThresh) {
-              if (item != valI && item != testI) {
-                opFileTrain << item << " " << 1 << " ";
-              }
-            } else {
-              opFileTrain << item << " " << 0 << " ";
+        }
+        
+        for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+          int item = mat->rowind[ii];
+          float val = mat->rowval[ii];
+          if (val > ratThresh) {
+            if (item != valI && item != testI) {
+              opFileTrain << item << " " << 1 << " ";
             }
+          } else {
+            opFileTrain << item << " " << 0 << " ";
           }
         }
 
