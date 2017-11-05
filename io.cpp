@@ -207,33 +207,32 @@ void writeBinarizedTrainValTest(gk_csr_t* mat, int ratThresh,
           uItems.push_back(item);
         }
       }
-      
+     
+      int testI = -1, valI = -1;
       if (uItems.size() > 3) {
         std::uniform_int_distribution<> dis(0, uItems.size()-1);
-        int valI = uItems[dis(mt)];
-        int testI = uItems[dis(mt)];
+        valI = uItems[dis(mt)];
+        testI = uItems[dis(mt)];
         int nTry = 0;
-        
         while (valI == testI && nTry++ < 500) {
           testI = uItems[dis(mt)];
         }
-
         if (testI != valI) {
           opFileTest << testI << " " << 1;
           opFileVal << valI << " " << 1;
-          for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
-            int item = mat->rowind[ii];
-            float val = mat->rowval[ii];
-            if (val > ratThresh) {
-              if (item != valI && item != testI) {
-                opFileTrain << item << " " << 1 << " ";
-              }
-            } else {
-              opFileTrain << item << " " << 0 << " ";
-            }
-          }
         }
-
+      }
+ 
+      for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+        int item = mat->rowind[ii];
+        float val = mat->rowval[ii];
+        if (val > ratThresh) {
+          if (item != valI && item != testI) {
+            opFileTrain << item << " " << 1 << " ";
+          }
+        } else {
+          opFileTrain << item << " " << 0 << " ";
+        }
       }
 
       opFileTrain << std::endl;
