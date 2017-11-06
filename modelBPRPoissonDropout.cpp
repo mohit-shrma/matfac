@@ -139,7 +139,8 @@ void ModelBPRPoissonDropout::train(const Data& data, Model &bestModel,
 
   valHR = hitRate(data, invalidUsers, invalidItems, data.valMat);
   std::cout << "\nValidation HR: " << valHR << std::endl;
-  
+  double trainLoss = 0;
+
   for (iter = 0; iter < maxIter; iter++) {  
     
     start = std::chrono::system_clock::now();
@@ -196,6 +197,7 @@ void ModelBPRPoissonDropout::train(const Data& data, Model &bestModel,
       }
 
       double r_uij = r_ui_est - r_uj_est;
+      trainLoss += std::log(1.0 + std::exp(-r_uij));
       double expCoeff = -1.0 /(1.0 + std::exp(r_uij));
 
       //update user
@@ -214,6 +216,9 @@ void ModelBPRPoissonDropout::train(const Data& data, Model &bestModel,
 
     end = std::chrono::system_clock::now();  
    
+    //decay learning rate
+    learnRate = learnRate*0.9;
+    
     duration =  end - start;
     subIterDuration = duration.count();
 
@@ -229,6 +234,7 @@ void ModelBPRPoissonDropout::train(const Data& data, Model &bestModel,
                 << " Iter: " << iter << " HR: " << std::scientific << valHR
                 << " best HR: " << bestHR
                 << " nTrainInversions: " << nTrainInversions
+                << " trainLoss: " << trainLoss
                 << " subIterDuration: " << subIterDuration
                 << std::endl;
     }
@@ -306,6 +312,11 @@ void ModelBPRPoissonDropout::trainSigmoid(const Data& data, Model &bestModel,
   std::cout << "minFreq: " << minFreq << " maxFreq: " << maxFreq << std::endl;
   std::cout << "rhoRMS: " << rhoRMS << " alpha: " << alpha << std::endl;
 
+  valHR = hitRate(data, invalidUsers, invalidItems, data.valMat);
+  std::cout << "\nValidation HR: " << valHR << std::endl;
+  
+  double trainLoss  = 0;
+  
   for (iter = 0; iter < maxIter; iter++) {  
     
     start = std::chrono::system_clock::now();
@@ -358,6 +369,7 @@ void ModelBPRPoissonDropout::trainSigmoid(const Data& data, Model &bestModel,
 
       double r_uij = r_ui_est - r_uj_est;
       double expCoeff = -1.0 /(1.0 + std::exp(r_uij));
+      trainLoss += std::log(1.0 + std::exp(-r_uij));
 
       //update user
       for (int i = 0; i < updMinRank; i++) {
@@ -375,6 +387,9 @@ void ModelBPRPoissonDropout::trainSigmoid(const Data& data, Model &bestModel,
 
     end = std::chrono::system_clock::now();  
    
+    //decay learning rate
+    learnRate = learnRate*0.9;
+    
     duration =  end - start;
     subIterDuration = duration.count();
 
@@ -390,6 +405,7 @@ void ModelBPRPoissonDropout::trainSigmoid(const Data& data, Model &bestModel,
                 << " Iter: " << iter << " HR: " << std::scientific << valHR
                 << " best HR: " << bestHR
                 << " nTrainInversions: " << nTrainInversions
+                << " trainLoss: " << trainLoss
                 << " subIterDuration: " << subIterDuration
                 << std::endl;
     }

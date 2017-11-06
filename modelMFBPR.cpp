@@ -361,7 +361,6 @@ void ModelMFBPR::train(const Data& data, Model& bestModel,
       
       double r_uij = r_ui_est - r_uj_est;
       trainLoss += std::log(1.0 + std::exp(-r_uij));
-      std::cout << r_uij << " " << std::log(1+exp(-r_uij)) << std::endl;
       double expCoeff = -1.0 /(1.0 + std::exp(r_uij));
 
       //update user
