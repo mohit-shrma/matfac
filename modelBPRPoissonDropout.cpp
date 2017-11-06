@@ -200,6 +200,12 @@ void ModelBPRPoissonDropout::train(const Data& data, Model &bestModel,
       trainLoss += std::log(1.0 + std::exp(-r_uij));
       double expCoeff = -1.0 /(1.0 + std::exp(r_uij));
 
+      if (!std::isfinite(expCoeff) || !std::isfinite(trainLoss)) {
+        std::cout << "Gradient/trainLoss is not finite (decrease learn rate): " 
+          << expCoeff << " " << trainLoss << std::endl;
+        exit(0);
+      }
+
       //update user
       for (int i = 0; i < updRank; i++) {
         uFac(u, i) -= learnRate*( (expCoeff*(iFac(pI, i) - iFac(nI, i)))
@@ -216,6 +222,11 @@ void ModelBPRPoissonDropout::train(const Data& data, Model &bestModel,
 
     end = std::chrono::system_clock::now();  
    
+    if (!std::isfinite(trainLoss)) {
+      std::cout << "Training loss is not finite (decrease learn rate): " << trainLoss << std::endl;
+      exit(0);
+    }
+    
     //decay learning rate
     learnRate = learnRate*0.9;
     
@@ -371,6 +382,12 @@ void ModelBPRPoissonDropout::trainSigmoid(const Data& data, Model &bestModel,
       double expCoeff = -1.0 /(1.0 + std::exp(r_uij));
       trainLoss += std::log(1.0 + std::exp(-r_uij));
 
+      if (!std::isfinite(expCoeff) || !std::isfinite(trainLoss)) {
+        std::cout << "Gradient/trainLoss is not finite (decrease learn rate): " 
+          << expCoeff << " " << trainLoss << std::endl;
+        exit(0);
+      }
+
       //update user
       for (int i = 0; i < updMinRank; i++) {
         uFac(u, i) -= learnRate*( (expCoeff*(iFac(pI, i) - iFac(nI, i)))
@@ -387,6 +404,11 @@ void ModelBPRPoissonDropout::trainSigmoid(const Data& data, Model &bestModel,
 
     end = std::chrono::system_clock::now();  
    
+    if (!std::isfinite(trainLoss)) {
+      std::cout << "Training loss is not finite (decrease learn rate): " << trainLoss << std::endl;
+      exit(0);
+    }
+    
     //decay learning rate
     learnRate = learnRate*0.9;
     
