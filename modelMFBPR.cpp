@@ -190,7 +190,7 @@ void ModelMFBPR::trainHog(const Data& data, Model& bestModel,
     nTrainInversions = 0;
     trainLoss = 0;
 
-#pragma omp parallel for reduce(+:trainLoss,nTrainInversions)
+#pragma omp parallel for reduction(+:trainLoss,nTrainInversions)
     for (int z = 0; z < uiRatingInds.size(); z++) {
       int ind = uiRatingInds[z];
       int u = std::get<0>(uiRatings[ind]);
