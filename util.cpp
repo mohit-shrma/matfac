@@ -1105,3 +1105,24 @@ void sgdUpdateBlockSeq(int dim, std::vector<std::pair<int, int>>& updateSeq,
   std::cout << std::endl;
   */
 }
+
+
+std::unordered_set<int> getColInd(gk_csr_t* mat) {
+  std::unordered_set<int> items;
+  for (int item = 0; item < mat->ncols; item++) {
+    if (mat->colptr[item+1] - mat->colptr[item] > 0) {
+      items.insert(item);
+    }
+  }
+  return items;
+}
+
+std::unordered_set<int> getRowInd(gk_csr_t* mat) {
+  std::unordered_set<int> users;
+  for (int u = 0; u < mat->nrows; u++) {
+    if (mat->rowptr[u+1] - mat->rowptr[u] > 0) {
+      users.insert(u);
+    }
+  }
+  return users;
+}

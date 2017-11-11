@@ -23,7 +23,6 @@ void ModelBPRPoissonDropout::initCDFRanks() {
 }
 
 
-/*
 //to be used with trainSigmoid 
 double ModelBPRPoissonDropout::estRating(int user, int item) {
   //std::cout << "ModelPoissonDropout::estRating (" << user << "," << item << ") " << std::endl;
@@ -46,9 +45,10 @@ double ModelBPRPoissonDropout::estRating(int user, int item) {
 
   return rat;
 }
-*/
+
 
 //to be used with train 
+/*
 double ModelBPRPoissonDropout::estRating(int user, int item) {
   //std::cout << "ModelPoissonDropout::estRating (" << user << "," << item << ") " << std::endl;
   double rat = 0;
@@ -70,6 +70,7 @@ double ModelBPRPoissonDropout::estRating(int user, int item) {
 
   return rat;
 }
+*/
 
 
 void ModelBPRPoissonDropout::train(const Data& data, Model &bestModel, 

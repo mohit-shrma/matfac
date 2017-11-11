@@ -102,5 +102,7 @@ T maxVec(std::vector<T> v) {
   return v[maxInd];
 }
 
+std::unordered_set<int> getColInd(gk_csr_t* mat);
+std::unordered_set<int> getRowInd(gk_csr_t* mat);
 #endif
 

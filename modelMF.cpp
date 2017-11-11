@@ -1,8 +1,6 @@
 #include "modelMF.h"
 
 
-
-
 void ModelMF::train(const Data &data, Model &bestModel, 
     std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems) {
@@ -68,7 +66,6 @@ void ModelMF::train(const Data &data, Model &bestModel,
   //index to above uiRatings pair
   std::vector<size_t> uiRatingInds(uiRatings.size());
   std::iota(uiRatingInds.begin(), uiRatingInds.end(), 0);
-
 
   std::cout << "\nTrain NNZ after removing invalid users and items: " 
     << uiRatings.size() << std::endl;
@@ -337,7 +334,7 @@ void ModelMF::trainSGDPar(const Data &data, Model &bestModel,
 
       if (iter % SAVE_ITER == 0 || iter == maxIter - 1) {
         std::string modelFName = std::string(data.prefix);
-        bestModel.saveFacs(modelFName);
+        //bestModel.saveFacs(modelFName);
       }
 
     }
@@ -346,7 +343,7 @@ void ModelMF::trainSGDPar(const Data &data, Model &bestModel,
       
   //save best model found till now
   std::string modelFName = std::string(data.prefix);
-  bestModel.saveFacs(modelFName);
+  //bestModel.saveFacs(modelFName);
 
   std::cout << "\nBest model validation RMSE: " << bestModel.RMSE(data.valMat, 
       invalidUsers, invalidItems);

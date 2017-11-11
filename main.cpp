@@ -537,6 +537,50 @@ void diffRankRMSEs(Model& bestModel, const Data& data,
 
 }
 
+
+void quartileHR(Model& bestModel, const Data& data,  
+    std::vector<std::pair<int, std::vector<int>>> partItems, 
+    std::vector<std::pair<int, std::vector<int>>> partUsers,
+    std::unordered_set<int> invalidUsers, std::unordered_set<int> invalidItems) {
+
+  auto rowColFreq = getRowColFreq(data.trainMat);
+  auto userFreq   = rowColFreq.first;
+  auto itemFreq   = rowColFreq.second;
+  int nItems      = itemFreq.size();
+  int nUsers      = userFreq.size();
+
+  auto testItems = getColInd(data.testMat);
+  auto testUsers = getRowInd(data.testMat);
+
+  std::cout << "Items Part: "; 
+  for (auto& pItems: partItems) {
+    int partInd = pItems.first;
+    auto filtItems = std::unordered_set<int>(pItems.second.begin(), pItems.second.end());
+    std::cout << "partInd: " << partInd << "testItems: " 
+      << setIntersect(testItems, filtItems) << std::endl;
+    auto countNHR = bestModel.hitRateI(data, filtItems, invalidUsers, invalidItems,
+                                        data.testMat);
+    std::cout << countNHR.first << " " << countNHR.second << " ";
+  }
+  std::cout << std::endl;
+  
+
+  std::cout << "Users Part: "; 
+  for (auto& pUsers: partUsers) {
+    int partInd = pUsers.first;
+    auto filtUsers = std::unordered_set<int>(pUsers.second.begin(), pUsers.second.end());
+    std::cout << "partInd: " << partInd << " testUsers: " 
+      << setIntersect(testUsers, filtUsers) << std::endl;
+    auto countNHR = bestModel.hitRateU(data, filtUsers, invalidUsers, 
+        invalidItems, data.testMat);
+    std::cout << countNHR.first << " " << countNHR.second << " ";
+  }
+  std::cout << std::endl;
+
+}
+
+
+
 void quartileRMSEs(Model& bestModel, const Data& data,  
     std::vector<std::pair<int, std::vector<int>>> partItems, 
     std::vector<std::pair<int, std::vector<int>>> partUsers,
@@ -719,8 +763,6 @@ void diffModelRMSEs(int nUsers, int nItems, std::vector<int>& ranks,
   std::cout << std::endl;
 
 }
-
-
 
 
 void computeFreqRMSEsAdapRank(Data& data, Params& params, 
@@ -1025,15 +1067,16 @@ gk_csr_t** splitValMat(gk_csr_t* valMat, int seed) {
 
 
 int main(int argc , char* argv[]) {
- 
-  //partition the given matrix into train test val
+
   /*
+  //partition the given matrix into train test val
   gk_csr_t *mat = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, GK_CSR_IS_VAL, 0);
   //writeTrainTestValMat(mat, argv[2], argv[3], argv[4], 0.1, 0.1, atoi(argv[5]));  
   writeBinarizedTrainValTest(mat, atoi(argv[2]), std::string(argv[3]),
       atoi(argv[4]));
   return 0;
-  */ 
+  */
+
 
   /* 
   gk_csr_t *mat1 = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, 1, 0);
@@ -1229,7 +1272,7 @@ int main(int argc , char* argv[]) {
 
   //ModelMFBias mfModel(params, params.seed);
   //ModelDropoutMF mfModel(params, params.seed, userRankMap, itemRankMap, ranks);
- 
+
   /*
   ModelIncrement mfModel(params, params.seed);
   gk_csr_t** mats = splitValMat(data.valMat, params.seed);
@@ -1243,10 +1286,12 @@ int main(int argc , char* argv[]) {
   std::cout << "graph nusers: " << data.graphMat->nrows << " nItems: " << data.graphMat->ncols << std::endl; 
   */
 
+  //ModelMFBPR mfModel(params, params.seed);
   //ModelPoissonDropout mfModel(params, params.seed, userRankPc, itemRankPc, 
   //    userFreq, itemFreq);
   ModelBPRPoissonDropout mfModel(params, params.seed, userRankPc, itemRankPc,
       userFreq, itemFreq);
+
 
   //initialize model with svd
   //svdFrmSvdlibCSREig(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
@@ -1284,24 +1329,28 @@ int main(int argc , char* argv[]) {
   }
   */
 
+ 
   ModelBPRPoissonDropout bestModel(mfModel);
+  //ModelMFBPR bestModel(mfModel);
   //ModelDropoutMF bestModel(mfModel);
   //ModelIncrement bestModel(mfModel);
   //ModelPoissonDropout bestModel(mfModel);
   //ModelDropoutMFBias bestModel(mfModel);
   //ModelMFBias bestModel(mfModel);
   
-  //mfModel.trainSigmoid(data, bestModel, invalidUsers, invalidItems);
+  std::cout << "Begin train..." << std::endl;
+  mfModel.trainSigmoid(data, bestModel, invalidUsers, invalidItems);
   //mfModel.trainSGDProbOrderedPar(data, bestModel, invalidUsers, invalidItems);
   //mfModel.trainSGDProbPar(data, bestModel, invalidUsers, invalidItems);
   //mfModel.trainSGDOnlyOrderedPar(data, bestModel, invalidUsers, invalidItems);
-  std::cout << "Begin train..." << std::endl;
-  mfModel.train(data, bestModel, invalidUsers, invalidItems);
+  //mfModel.train(data, bestModel, invalidUsers, invalidItems);
 
   std::cout << "Test hit rate: " 
     << bestModel.hitRate(data, invalidUsers, invalidItems, data.testMat) 
     << std::endl;
-
+  
+  quartileHR(bestModel, data, partItems, partUsers, invalidUsers, 
+      invalidItems);
 
   /*
   bestModel.currRankMapU = mfModel.currRankMapU;
