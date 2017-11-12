@@ -24,7 +24,8 @@ double ModelInvPopMF::objective(const Data& data, std::unordered_set<int>& inval
       if (itemFreq[item] > userFreq[u]) {
         wt = invPopU[u];
       }
-      wt = (1.0 + rhoRMS*wt);
+      //wt = (1.0 + rhoRMS*wt);
+      wt = (1.0/(1.0 + rhoRMS*wt));
 
       float itemRat = trainMat->rowval[ii];
       double diff = itemRat - estRating(u, item);
@@ -96,7 +97,7 @@ void ModelInvPopMF::train(const Data &data, Model &bestModel,
 
   double sumPopScore = 0;
   for (auto& u: trainUsers) {
-    invPopU[u] = ((double)nTrainItems)/userFreq[u];
+    invPopU[u] = userFreq[u]/((double)nTrainItems);//((double)nTrainItems)/userFreq[u];
     sumPopScore += invPopU[u];
   }
   for (auto& u: trainUsers) {
@@ -105,7 +106,7 @@ void ModelInvPopMF::train(const Data &data, Model &bestModel,
 
   sumPopScore = 0;
   for (auto& item: trainItems) {
-    invPopI[item] = ((double)nTrainUsers)/itemFreq[item];
+    invPopI[item] = itemFreq[item]/((double)nTrainUsers);//((double)nTrainUsers)/itemFreq[item];
     sumPopScore += invPopI[item];
   }
   for (auto& item: trainItems) {
@@ -163,7 +164,8 @@ void ModelInvPopMF::train(const Data &data, Model &bestModel,
       if (itemFreq[item] > userFreq[u]) {
         wt = invPopU[u];
       }
-      wt = (1.0 + rhoRMS*wt);
+      //wt = (1.0 + rhoRMS*wt);
+      wt = (1.0/(1.0 + rhoRMS*wt));
       
       //update user
       for (int i = 0; i < facDim; i++) {
@@ -265,7 +267,7 @@ void ModelInvPopMF::trainSGDPar(const Data &data, Model &bestModel,
 
   double sumPopScore = 0;
   for (auto& u: trainUsers) {
-    invPopU[u] = ((double)nTrainItems)/userFreq[u];
+    invPopU[u] = userFreq[u]/((double)nTrainItems);//((double)nTrainItems)/userFreq[u];
     sumPopScore += invPopU[u];
   }
   for (auto& u: trainUsers) {
@@ -274,7 +276,7 @@ void ModelInvPopMF::trainSGDPar(const Data &data, Model &bestModel,
 
   sumPopScore = 0;
   for (auto& item: trainItems) {
-    invPopI[item] = ((double)nTrainUsers)/itemFreq[item];
+    invPopI[item] = itemFreq[item]/((double)nTrainUsers);//((double)nTrainUsers)/itemFreq[item];
     sumPopScore += invPopI[item];
   }
   for (auto& item: trainItems) {
@@ -371,7 +373,8 @@ void ModelInvPopMF::trainSGDPar(const Data &data, Model &bestModel,
             if (itemFreq[item] > userFreq[u]) {
               wt = invPopU[u];
             }
-            wt = (1.0 + rhoRMS*wt);
+            //wt = (1.0 + rhoRMS*wt);
+            wt = (1.0/(1.0 + rhoRMS*wt));
 
             //update user
             for (int i = 0; i < facDim; i++) {
