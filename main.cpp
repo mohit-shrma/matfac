@@ -18,8 +18,9 @@
 #include "modelIncrement.h"
 #include "modelMFBPR.h"
 #include "modelBPRPoissonDropout.h"
-
+#include "modelInvPopMF.h"
 #include <gflags/gflags.h>
+
 DEFINE_uint64(maxiter, 5000, "number of iterations");
 DEFINE_uint64(facdim, 5, "dimension of factors");
 DEFINE_uint64(svdfacdim, 5, "dimension of factors");
@@ -1065,7 +1066,6 @@ gk_csr_t** splitValMat(gk_csr_t* valMat, int seed) {
 } 
 
 
-
 int main(int argc , char* argv[]) {
 
   /*
@@ -1289,9 +1289,9 @@ int main(int argc , char* argv[]) {
   //ModelMFBPR mfModel(params, params.seed);
   //ModelPoissonDropout mfModel(params, params.seed, userRankPc, itemRankPc, 
   //    userFreq, itemFreq);
-  ModelBPRPoissonDropout mfModel(params, params.seed, userRankPc, itemRankPc,
-      userFreq, itemFreq);
-
+  //ModelBPRPoissonDropout mfModel(params, params.seed, userRankPc, itemRankPc,
+  //    userFreq, itemFreq);
+  ModelInvPopMF mfModel(params, params.seed, userFreq, itemFreq); 
 
   //initialize model with svd
   //svdFrmSvdlibCSREig(data.trainMat, mfModel.facDim, mfModel.uFac, mfModel.iFac, false);
@@ -1329,8 +1329,8 @@ int main(int argc , char* argv[]) {
   }
   */
 
- 
-  ModelBPRPoissonDropout bestModel(mfModel);
+  ModelInvPopMF bestModel(mfModel);
+  //ModelBPRPoissonDropout bestModel(mfModel);
   //ModelMFBPR bestModel(mfModel);
   //ModelDropoutMF bestModel(mfModel);
   //ModelIncrement bestModel(mfModel);
@@ -1339,18 +1339,20 @@ int main(int argc , char* argv[]) {
   //ModelMFBias bestModel(mfModel);
   
   std::cout << "Begin train..." << std::endl;
-  mfModel.trainSigmoid(data, bestModel, invalidUsers, invalidItems);
+  mfModel.trainSGDPar(data, bestModel, invalidUsers, invalidItems);
   //mfModel.trainSGDProbOrderedPar(data, bestModel, invalidUsers, invalidItems);
   //mfModel.trainSGDProbPar(data, bestModel, invalidUsers, invalidItems);
   //mfModel.trainSGDOnlyOrderedPar(data, bestModel, invalidUsers, invalidItems);
   //mfModel.train(data, bestModel, invalidUsers, invalidItems);
 
+  /*
   std::cout << "Test hit rate: " 
     << bestModel.hitRate(data, invalidUsers, invalidItems, data.testMat) 
     << std::endl;
   
   quartileHR(bestModel, data, partItems, partUsers, invalidUsers, 
       invalidItems);
+  */
 
   /*
   bestModel.currRankMapU = mfModel.currRankMapU;
@@ -1385,8 +1387,8 @@ int main(int argc , char* argv[]) {
   std::cout << std::endl;
   Model& bestModel2 = bestModel;
   //diffRankRMSEs(bestModel, data, userRankMap, itemRankMap, invalidUsers, invalidItems);
-  quartileRMSEs(bestModel2, data, partItems, partUsers, invalidUsers, invalidItems);
   */
+  quartileRMSEs(bestModel, data, partItems, partUsers, invalidUsers, invalidItems);
 
   //computeSampTopNFrmFullModel(data, params);  
   //computeFreqRMSEsAdapRank(data, params, userRankMap, itemRankMap);
