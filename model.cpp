@@ -809,7 +809,7 @@ double Model::arhr(const Data& data, std::unordered_set<int>& invalidUsers,
       if (testItem == topNItemRat[pos].first) {
         //hit
         nHits++;
-        arhr += 1.0/pos;
+        arhr += 1.0/(pos+1);
         break;
       }    
     }
@@ -879,7 +879,7 @@ std::pair<int, double> Model::arhrI(const Data& data, std::unordered_set<int>& f
       if (testItem == topNItemRat[pos].first) {
         //hit
         nHits++;
-        arhr += 1.0/pos;
+        arhr += 1.0/(pos+1);
         break;
       }    
     }
@@ -944,7 +944,7 @@ std::pair<int, double> Model::arhrU(const Data& data, std::unordered_set<int>& f
       if (testItem == topNItemRat[pos].first) {
         //hit
         nHits++;
-        arhr += 1.0/pos;
+        arhr += 1.0/(pos+1);
         break;
       }    
     }
