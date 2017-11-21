@@ -927,10 +927,14 @@ std::pair<int, double> Model::arhrU(const Data& data, std::unordered_set<int>& f
       }
       topNItemRat.push_back(std::make_pair(item, estRating(u, item))); 
       std::push_heap(topNItemRat.begin(), topNItemRat.end(), descComp);
-      
+      /*
       if (topNItemRat.size() > N) {
         std::pop_heap(topNItemRat.begin(), topNItemRat.end(), descComp);
         topNItemRat.pop_back();
+      }
+      */
+      if (testItem == item) {
+        break;
       }
     }
     
