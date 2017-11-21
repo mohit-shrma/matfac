@@ -182,5 +182,13 @@ class Model {
   std::pair<int, double> hitRateI(const Data& data, std::unordered_set<int>& filtItems, 
       std::unordered_set<int>& invalidUsers,
       std::unordered_set<int>& invalidItems, gk_csr_t* testMat);
+  double arhr(const Data& data, std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems, gk_csr_t* testMat);
+  std::pair<int, double> arhrU(const Data& data, std::unordered_set<int>& filtUsers,
+      std::unordered_set<int>& invalidUsers,
+      std::unordered_set<int>& invalidItems, gk_csr_t* testMat);
+  std::pair<int, double> arhrI(const Data& data, std::unordered_set<int>& filtItems, 
+      std::unordered_set<int>& invalidUsers,
+      std::unordered_set<int>& invalidItems, gk_csr_t* testMat);
 };
 #endif
