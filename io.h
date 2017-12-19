@@ -14,17 +14,17 @@
 #include "const.h"
 #include <Eigen/Dense>
 
-void dispVector(std::vector<double>& vec); 
-void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
+void dispVector(std::vector<double>& vec);
+void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols,
     const char *fileName);
-void readMat(Eigen::MatrixXf& mat, int nrows, int ncols, 
+void readMat(Eigen::MatrixXf& mat, int nrows, int ncols,
     const char *fileName);
 void writeMat(std::vector<std::vector<double>>& mat, int nrows, int ncols,
               const char* opFileName);
 void writeMat(Eigen::MatrixXf& mat, int nrows, int ncols,
               const char* opFileName);
-void writeCSRWSparsityStructure(gk_csr_t *mat, const char *opFileName, 
-    std::vector<std::vector<double>> uFac, 
+void writeCSRWSparsityStructure(gk_csr_t *mat, const char *opFileName,
+    std::vector<std::vector<double>> uFac,
     std::vector<std::vector<double>> iFac, int facDim);
 void writeCSRWHalfSparsity(gk_csr_t *mat, const char *opFileName, int uStart,
     int uEnd, int iStart, int iEnd);
@@ -33,12 +33,12 @@ void writeVector(std::vector<double>& vec, std::ofstream& opFile);
 void writeVector(Eigen::VectorXf& vec, const char *opFileName);
 std::vector<int> readVector(const char *ipFileName);
 std::vector<double> readDVector(const char *ipFileName);
-void writeTrainTestMat(gk_csr_t *mat,  const char* trainFileName, 
+void writeTrainTestMat(gk_csr_t *mat,  const char* trainFileName,
      const char* testFileName, float testPc, int seed);
-void writeTrainTestValMat(gk_csr_t *mat,  const char* trainFileName, 
-    const char* testFileName, const char *valFileName, float testPc, 
+void writeTrainTestValMat(gk_csr_t *mat,  const char* trainFileName,
+    const char* testFileName, const char *valFileName, float testPc,
     float valPc, int seed);
-void writeSubSampledMat(gk_csr_t *mat,  const char* sampFileName, 
+void writeSubSampledMat(gk_csr_t *mat,  const char* sampFileName,
     float sampPc, int seed);
 bool isFileExist(const char *fileName);
 
@@ -61,38 +61,38 @@ void dispContainer(Iter it, Iter end) {
     }
 }
 
-void writeBlkDiagJoinedCSR(const char* mat1Name, const char* mat2Name, 
+void writeBlkDiagJoinedCSR(const char* mat1Name, const char* mat2Name,
     const char* opFileName);
 void writeItemSimMat(gk_csr_t *mat, const char* fName);
 void writeItemSimMatNonSymm(gk_csr_t *mat, const char* fName);
 void writeItemJaccSimMat(gk_csr_t *mat, const char *fName);
 void writeItemJaccSimMatPar(gk_csr_t *mat, const char *fName);
 void writeCoRatings(gk_csr_t *mat, const char *fName);
-void writeItemJaccSimFrmCorat(gk_csr_t *mat, gk_csr_t *coRatMat, 
+void writeItemJaccSimFrmCorat(gk_csr_t *mat, gk_csr_t *coRatMat,
     const char *fName);
 void readItemScores(std::vector<std::pair<int, double>>& itemScores,
     const char* fileName);
 void writeItemScores(std::vector<std::pair<int, double>>& itemScores,
     const char* fileName);
-void writeTailTestMat(gk_csr_t *mat, const char* testFileName, 
+void writeTailTestMat(gk_csr_t *mat, const char* testFileName,
     std::unordered_set<int>& headItems);
 void writeRandMatCSR(const char* opFileName,
-    std::vector<std::vector<double>>& uFac, 
+    std::vector<std::vector<double>>& uFac,
     std::vector<std::vector<double>>& iFac, int facDim, int seed, int nnz);
 void writeFiltRandMatCSR(const char* opFileName, std::vector<std::vector<double>>& uFac,
-    std::vector<std::vector<double>>& iFac, int facDim, int seed, 
+    std::vector<std::vector<double>>& iFac, int facDim, int seed,
     std::unordered_set<int>&  filtUsers,
     std::unordered_set<int>& filtItems, int nnz);
-void writeMatBin(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
+void writeMatBin(std::vector<std::vector<double>>& mat, int nrows, int ncols,
     const char *opFileName);
-void writeMatBin(Eigen::MatrixXf& mat, int nrows, int ncols, 
+void writeMatBin(Eigen::MatrixXf& mat, int nrows, int ncols,
     const char *opFileName);
-void readMatBin(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
+void readMatBin(std::vector<std::vector<double>>& mat, int nrows, int ncols,
     const char *opFileName);
-void readMatBin(Eigen::MatrixXf& mat, int nrows, int ncols, 
+void readMatBin(Eigen::MatrixXf& mat, int nrows, int ncols,
     const char *opFileName);
 Eigen::VectorXf readEigVector(const char *ipFileName) ;
 void writeTriplets(gk_csr_t *mat, const char *fName);
-void writeBinarizedTrainValTest(gk_csr_t* mat, int ratThresh, 
+void writeBinarizedTrainValTest(gk_csr_t* mat, int ratThresh,
     std::string opFilePref, int seed);
 #endif

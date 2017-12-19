@@ -759,15 +759,13 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
 }
 
 
-double Model::arhr(const Data& data, std::unordered_set<int>& invalidUsers,
+double Model::arHR(const Data& data, std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems, gk_csr_t* testMat) {
   
   gk_csr_t* trainMat = data.trainMat;
-  int N  = 10;
-  int nHits = 0, nValUsers = 0;
-  double arhr = 0.0;
-
-#pragma omp parallel for reduction(+:nHits, nValUsers, arhr)
+  int N  = 1000;
+  double nHits = 0, nValUsers = 0;
+#pragma omp parallel for reduction(+:nHits, nValUsers)
   for (int u = 0; u < trainMat->nrows; u++) {
     
     if (invalidUsers.count(u) > 0) {
@@ -792,14 +790,9 @@ double Model::arhr(const Data& data, std::unordered_set<int>& invalidUsers,
       topNItemRat.push_back(std::make_pair(item, estRating(u, item))); 
       std::push_heap(topNItemRat.begin(), topNItemRat.end(), descComp);
       
-      /*
       if (topNItemRat.size() > N) {
         std::pop_heap(topNItemRat.begin(), topNItemRat.end(), descComp);
         topNItemRat.pop_back();
-      }
-      */
-      if (item == testItem) {
-        break;
       }
     }
     
@@ -808,8 +801,7 @@ double Model::arhr(const Data& data, std::unordered_set<int>& invalidUsers,
     for (int pos = 0; pos < topNItemRat.size(); pos++) {
       if (testItem == topNItemRat[pos].first) {
         //hit
-        nHits++;
-        arhr += 1.0/(pos+1);
+        nHits += 1.0/(pos+1);
         break;
       }    
     }
@@ -819,20 +811,19 @@ double Model::arhr(const Data& data, std::unordered_set<int>& invalidUsers,
   
   //std::cout << "nHits: " << nHits << " nValUsers: " << nValUsers << std::endl;
 
-  return (double)arhr/(double)nValUsers;
+  return (double)nHits/(double)nValUsers;
 }
 
 
-std::pair<int, double> Model::arhrI(const Data& data, std::unordered_set<int>& filtItems, 
+std::pair<int, double> Model::arHRI(const Data& data, std::unordered_set<int>& filtItems, 
     std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems, gk_csr_t* testMat) {
   
   gk_csr_t* trainMat = data.trainMat;
-  int N  = 10;
-  int nHits = 0, nValUsers = 0, nValItems = 0;
-  double arhr = 0.0;
+  int N  = 1000;
+  double nHits = 0, nValUsers = 0;
 
-#pragma omp parallel for reduction(+:nHits, nValUsers, nValItems, arhr)
+#pragma omp parallel for reduction(+:nHits, nValUsers)
   for (int u = 0; u < trainMat->nrows; u++) {
     
     if (invalidUsers.count(u) > 0) {
@@ -840,6 +831,7 @@ std::pair<int, double> Model::arhrI(const Data& data, std::unordered_set<int>& f
     }
 
     int testItem = testMat->rowind[testMat->rowptr[u]];
+    //ignore if test item is not in items to be filtered
     if (filtItems.count(testItem) == 0) {
       continue;
     }
@@ -861,15 +853,9 @@ std::pair<int, double> Model::arhrI(const Data& data, std::unordered_set<int>& f
       topNItemRat.push_back(std::make_pair(item, estRating(u, item))); 
       std::push_heap(topNItemRat.begin(), topNItemRat.end(), descComp);
       
-      /*
       if (topNItemRat.size() > N) {
         std::pop_heap(topNItemRat.begin(), topNItemRat.end(), descComp);
         topNItemRat.pop_back();
-      }
-      */
-
-      if (item == testItem) {
-        break;
       }
     }
     
@@ -878,32 +864,29 @@ std::pair<int, double> Model::arhrI(const Data& data, std::unordered_set<int>& f
     for (int pos = 0; pos < topNItemRat.size(); pos++) {
       if (testItem == topNItemRat[pos].first) {
         //hit
-        nHits++;
-        arhr += 1.0/(pos+1);
+        nHits += 1.0/(pos+1);
         break;
       }    
     }
     
-    nValItems++;
     nValUsers++;
   }
   
   //std::cout << "nHits: " << nHits << " nValUsers: " << nValUsers << std::endl;
-  auto countHR = std::make_pair(nHits, (double)arhr/(double)nValItems);
+  auto countHR = std::make_pair(nHits, (double)nHits/(double)nValUsers);
   return countHR;
 }
 
 
-std::pair<int, double> Model::arhrU(const Data& data, std::unordered_set<int>& filtUsers,
+std::pair<int, double> Model::arHRU(const Data& data, std::unordered_set<int>& filtUsers,
     std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems, gk_csr_t* testMat) {
   
   gk_csr_t* trainMat = data.trainMat;
-  int N  = 10;
-  int nHits = 0, nValUsers = 0;
-  double arhr = 0.0;
+  int N  = 1000;
+  double nHits = 0, nValUsers = 0;
 
-#pragma omp parallel for reduction(+:nHits, nValUsers, arhr)
+#pragma omp parallel for reduction(+:nHits, nValUsers)
   for (int u = 0; u < trainMat->nrows; u++) {
     
     if (invalidUsers.count(u) > 0 || filtUsers.count(u) == 0) {
@@ -927,14 +910,10 @@ std::pair<int, double> Model::arhrU(const Data& data, std::unordered_set<int>& f
       }
       topNItemRat.push_back(std::make_pair(item, estRating(u, item))); 
       std::push_heap(topNItemRat.begin(), topNItemRat.end(), descComp);
-      /*
+      
       if (topNItemRat.size() > N) {
         std::pop_heap(topNItemRat.begin(), topNItemRat.end(), descComp);
         topNItemRat.pop_back();
-      }
-      */
-      if (testItem == item) {
-        break;
       }
     }
     
@@ -943,8 +922,7 @@ std::pair<int, double> Model::arhrU(const Data& data, std::unordered_set<int>& f
     for (int pos = 0; pos < topNItemRat.size(); pos++) {
       if (testItem == topNItemRat[pos].first) {
         //hit
-        nHits++;
-        arhr += 1.0/(pos+1);
+        nHits += 1.0/(pos+1);
         break;
       }    
     }
@@ -953,11 +931,9 @@ std::pair<int, double> Model::arhrU(const Data& data, std::unordered_set<int>& f
   }
   
   //std::cout << "nHits: " << nHits << " nValUsers: " << nValUsers << std::endl;
-  auto countHR = std::make_pair(nHits, (double)arhr/(double)nValUsers);
+  auto countHR = std::make_pair(nHits, (double)nHits/(double)nValUsers);
   return countHR;
 }
-
-
 
 
 double Model::hitRate(const Data& data, std::unordered_set<int>& invalidUsers,
