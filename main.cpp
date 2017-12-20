@@ -4,6 +4,8 @@
 #include <chrono>
 #include <thread>
 
+#define EIGEN_USE_MKL_ALL
+
 #include "io.h"
 #include "util.h"
 #include "datastruct.h"
