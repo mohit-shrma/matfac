@@ -10,7 +10,6 @@
 #include <tuple>
 #include <random>
 #include <numeric>
-#include <omp.h>
 #include <Eigen/Dense>
 #include "GKlib.h"
 
@@ -51,8 +50,8 @@ std::vector<std::tuple<int, int, float>> getUIRatings(gk_csr_t* mat,
     std::unordered_set<int>& invalidUsers, 
     std::unordered_set<int>& invalidItems);
 double normVec(std::vector<double>& vec);
-bool descComp(std::pair<int, double>& a, std::pair<int, double>& b);
-bool ascComp(std::pair<int, double>& a, std::pair<int, double>& b);
+bool descComp(const std::pair<int, double> a, const std::pair<int, double> b);
+bool ascComp(const std::pair<int, double> a, const std::pair<int, double> b);
 std::pair<double, double> getMeanVar(std::vector<std::vector<double>> uFac,
     std::vector<std::vector<double>> iFac, int facDim, int nUsers, int nItems);
 void getUserStats(std::vector<int>& users, gk_csr_t* mat, 

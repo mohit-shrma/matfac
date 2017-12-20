@@ -87,8 +87,6 @@ void Model::load(std::string prefix) {
 
 
 void Model::saveFacs(std::string prefix) {
-  std::cout << "Not saving..." << std::endl; 
-  return;
   std::cout << "Saving model... " << prefix << std::endl;
   std::string modelSign = modelSignature();
   //save user latent factors
@@ -815,7 +813,7 @@ double Model::arHR(const Data& data, std::unordered_set<int>& invalidUsers,
 }
 
 
-std::pair<int, double> Model::arHRI(const Data& data, std::unordered_set<int>& filtItems, 
+std::pair<double, double> Model::arHRI(const Data& data, std::unordered_set<int>& filtItems, 
     std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems, gk_csr_t* testMat) {
   
@@ -878,7 +876,7 @@ std::pair<int, double> Model::arHRI(const Data& data, std::unordered_set<int>& f
 }
 
 
-std::pair<int, double> Model::arHRU(const Data& data, std::unordered_set<int>& filtUsers,
+std::pair<double, double> Model::arHRU(const Data& data, std::unordered_set<int>& filtUsers,
     std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems, gk_csr_t* testMat) {
   
