@@ -20,8 +20,16 @@ class ModelMFBPR : public Model {
     void trainHog(const Data& data, Model& bestModel,
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems) ;
+    void trainHogPosNeg(const Data& data, Model& bestModel,
+        std::unordered_set<int>& invalidUsers,
+        std::unordered_set<int>& invalidItems) ;
     std::vector<std::tuple<int, int, float>> getBPRUIRatings(gk_csr_t* mat); 
     int sampleNegItem(int u, const gk_csr_t* trainMat,
+        std::unordered_set<int>& trainItems) const;
+    int sampleNegItem(int u, int posItem, float posRat, 
+        const gk_csr_t* trainMat,
+        std::unordered_set<int>& trainItems) const;
+    PosNegPair samplePosNegItem(int u, const gk_csr_t* trainMat,
         std::unordered_set<int>& trainItems) const;
     void gradCheck();
 };

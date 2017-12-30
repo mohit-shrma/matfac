@@ -539,6 +539,48 @@ void diffRankRMSEs(Model& bestModel, const Data& data,
 }
 
 
+void quartileNDCG(Model& bestModel, const Data& data,
+    std::vector<std::pair<int, std::vector<int>>> partItems,
+    std::vector<std::pair<int, std::vector<int>>> partUsers,
+    std::unordered_set<int> invalidUsers, std::unordered_set<int> invalidItems) {
+
+  auto rowColFreq = getRowColFreq(data.trainMat);
+  auto userFreq   = rowColFreq.first;
+  auto itemFreq   = rowColFreq.second;
+  int nItems      = itemFreq.size();
+  int nUsers      = userFreq.size();
+
+  auto testItems = getColInd(data.testMat);
+  auto testUsers = getRowInd(data.testMat);
+
+  std::cout << "Items Part: ";
+  for (auto& pItems: partItems) {
+    int partInd = pItems.first;
+    auto filtItems = std::unordered_set<int>(pItems.second.begin(), pItems.second.end());
+    std::cout << "partInd: " << partInd << " testItems: "
+      << setIntersect(testItems, filtItems) << " ";
+    auto countNndcg = bestModel.NDCGI(filtItems, invalidUsers, invalidItems,
+                                        data.testMat);
+    std::cout << countNndcg.first << " " << countNndcg.second << " " << std::endl;
+  }
+  std::cout << std::endl;
+
+
+  std::cout << "Users Part: ";
+  for (auto& pUsers: partUsers) {
+    int partInd = pUsers.first;
+    auto filtUsers = std::unordered_set<int>(pUsers.second.begin(), pUsers.second.end());
+    std::cout << "partInd: " << partInd << " testUsers: "
+      << setIntersect(testUsers, filtUsers) << " ";
+    auto countNndcg = bestModel.NDCGU(filtUsers, invalidUsers,
+        invalidItems, data.testMat);
+    std::cout << countNndcg.first << " " << countNndcg.second << " " << std::endl;
+  }
+  std::cout << std::endl;
+
+}
+
+
 void quartileARHR(Model& bestModel, const Data& data,
     std::vector<std::pair<int, std::vector<int>>> partItems,
     std::vector<std::pair<int, std::vector<int>>> partUsers,
@@ -1108,6 +1150,12 @@ gk_csr_t** splitValMat(gk_csr_t* valMat, int seed) {
 
 
 int main(int argc , char* argv[]) {
+  
+  /*
+  gk_csr_t* mat = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, 1, 0);
+  writeBinarizedMat(mat, 3, argv[2]);
+  return 0;
+  */
 
   /*
   //partition the given matrix into train test val
@@ -1117,7 +1165,6 @@ int main(int argc , char* argv[]) {
       atoi(argv[4]));
   return 0;
   */
-
 
   /*
   gk_csr_t *mat1 = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, 1, 0);
@@ -1384,7 +1431,7 @@ int main(int argc , char* argv[]) {
   //ModelMFBias bestModel(mfModel);
 
   std::cout << "Begin train..." << std::endl;
-  mfModel.trainHog(data, bestModel, invalidUsers, invalidItems);
+  mfModel.trainHogPosNeg(data, bestModel, invalidUsers, invalidItems);
  
   //mfModel.trainSGDProbOrderedPar(data, bestModel, invalidUsers, invalidItems);
   //mfModel.trainSGDProbPar(data, bestModel, invalidUsers, invalidItems);
@@ -1392,17 +1439,20 @@ int main(int argc , char* argv[]) {
   //mfModel.train(data, bestModel, invalidUsers, invalidItems);
 
  
-  std::cout << "Test hit rate: "
-    << bestModel.hitRate(data, invalidUsers, invalidItems, data.testMat)
+  std::cout << "Test NDCG: "
+    << bestModel.NDCG(invalidUsers, invalidItems, data.testMat)
     << std::endl;
 
+  quartileNDCG(bestModel, data, partItems, partUsers, invalidUsers,
+      invalidItems);
+  /*
   std::cout << "Test ar hit rate: "
     << bestModel.arHR(data, invalidUsers, invalidItems, data.testMat)
     << std::endl;
   
   quartileARHR(bestModel, data, partItems, partUsers, invalidUsers,
       invalidItems);
-  
+  */
 
   /*
   bestModel.currRankMapU = mfModel.currRankMapU;
