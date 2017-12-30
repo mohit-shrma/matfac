@@ -189,10 +189,10 @@ class Model {
       std::unordered_set<int>& invalidItems, gk_csr_t* testMat);
   double arHR(const Data& data, std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems, gk_csr_t* testMat);
-  std::pair<int, double> arHRU(const Data& data, std::unordered_set<int>& filtUsers,
+  std::pair<double, double> arHRU(const Data& data, std::unordered_set<int>& filtUsers,
       std::unordered_set<int>& invalidUsers,
       std::unordered_set<int>& invalidItems, gk_csr_t* testMat);
-  std::pair<int, double> arHRI(const Data& data, std::unordered_set<int>& filtItems, 
+  std::pair<double, double> arHRI(const Data& data, std::unordered_set<int>& filtItems, 
       std::unordered_set<int>& invalidUsers,
       std::unordered_set<int>& invalidItems, gk_csr_t* testMat);
   double NDCG(std::unordered_set<int>& invalidUsers,
