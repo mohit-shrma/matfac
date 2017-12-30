@@ -87,8 +87,6 @@ void Model::load(std::string prefix) {
 
 
 void Model::saveFacs(std::string prefix) {
-  std::cout << "Not saving..." << std::endl; 
-  return;
   std::cout << "Saving model... " << prefix << std::endl;
   std::string modelSign = modelSignature();
   //save user latent factors
@@ -759,6 +757,227 @@ bool Model::isTerminateModel(Model& bestModel, const Data& data, int iter,
 }
 
 
+double Model::NDCG(std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems, gk_csr_t* testMat) {
+  
+  int N = 10, nValUsers = 0;
+  double ndcg = 0;
+  
+  auto sortDescUPredRatings = [] (const ItemActPredTriplet& s1, 
+      const ItemActPredTriplet& s2) {
+    return std::get<2>(s1) > std::get<2>(s2);
+  };
+  
+  auto sortDescUActRatings = [] (const ItemActPredTriplet& s1, 
+      const ItemActPredTriplet& s2) {
+    return std::get<1>(s1) > std::get<1>(s2);
+  };
+
+#pragma omp parallel for reduction(+:ndcg, nValUsers)
+  for (int u = 0; u < testMat->nrows; u++) {
+    
+    if (invalidUsers.count(u) > 0) {
+      continue;
+    }
+    
+    std::vector<ItemActPredTriplet> uIRatings;
+
+    for (int ii = testMat->rowptr[u]; ii < testMat->rowptr[u+1]; ii++) {
+      int item = testMat->rowind[ii];
+      if (invalidItems.count(item) > 0) {continue;}
+      float rat = testMat->rowval[ii];
+      float predRat = estRating(u, item);
+      uIRatings.push_back(ItemActPredTriplet(item, rat, predRat));    
+      std::push_heap(uIRatings.begin(), uIRatings.end(), sortDescUPredRatings);
+      if (uIRatings.size() > N) {
+        std::pop_heap(uIRatings.begin(), uIRatings.end(), sortDescUPredRatings);
+        uIRatings.pop_back();
+      }
+    }
+    
+    if (uIRatings.size() < 2) {
+      continue;
+    }
+
+    std::sort(uIRatings.begin(), uIRatings.end(), sortDescUPredRatings);
+    
+    float u_ndcg = 0.0;
+    for (int i = 0; i < N && i < uIRatings.size(); i++) {
+      float rel = std::get<1>(uIRatings[i]);
+      u_ndcg += (std::pow(2.0, rel) - 1) / std::log2((i+1)+1); 
+    }
+
+    std::sort(uIRatings.begin(), uIRatings.end(), sortDescUActRatings);
+
+    float u_dcg_max = 0.0;
+    for (int i = 0; i < N && i < uIRatings.size(); i++) {
+      float rel = std::get<1>(uIRatings[i]);
+      u_dcg_max += (std::pow(2.0, rel) - 1) / std::log2((i+1)+1); 
+    }
+    
+    if (u_dcg_max > EPS) {
+      ndcg += u_ndcg/u_dcg_max;
+    } else {
+      continue;
+    }
+    
+    nValUsers++;
+  }
+  
+  //std::cout << "nValUsers: " << nValUsers << std::endl;
+
+  return ndcg/nValUsers;
+}
+
+
+std::pair<int, double> Model::NDCGU(std::unordered_set<int>& filtUsers,
+    std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems, gk_csr_t* testMat) {
+  
+  int N = 10, nValUsers = 0;
+  double ndcg = 0;
+  
+  auto sortDescUPredRatings = [] (const ItemActPredTriplet& s1, 
+      const ItemActPredTriplet& s2) {
+    return std::get<2>(s1) > std::get<2>(s2);
+  };
+
+  auto sortDescUActRatings = [] (const ItemActPredTriplet& s1, 
+      const ItemActPredTriplet& s2) {
+    return std::get<1>(s1) > std::get<1>(s2);
+  };
+
+#pragma omp parallel for reduction(+:ndcg, nValUsers)
+  for (int u = 0; u < testMat->nrows; u++) {
+    
+    if (invalidUsers.count(u) > 0 || filtUsers.count(u) == 0) {
+      continue;
+    }
+    
+    std::vector<ItemActPredTriplet> uIRatings;
+
+    for (int ii = testMat->rowptr[u]; ii < testMat->rowptr[u+1]; ii++) {
+      int item = testMat->rowind[ii];
+      if (invalidItems.count(item) > 0) {
+        continue;
+      }
+      float rat = testMat->rowval[ii];
+      float predRat = estRating(u, item);
+      uIRatings.push_back(ItemActPredTriplet(item, rat, predRat));    
+      std::push_heap(uIRatings.begin(), uIRatings.end(), sortDescUPredRatings);
+      if (uIRatings.size() > N) {
+        std::pop_heap(uIRatings.begin(), uIRatings.end(), sortDescUPredRatings);
+        uIRatings.pop_back();
+      }
+    }
+   
+    if (uIRatings.size() < 2) {
+      continue;
+    }
+
+    std::sort(uIRatings.begin(), uIRatings.end(), sortDescUPredRatings);
+    
+    float u_ndcg = 0.0;
+    for (int i = 0; i < N && i < uIRatings.size(); i++) {
+      float rel = std::get<1>(uIRatings[i]);
+      u_ndcg += (std::pow(2.0, rel) - 1) / std::log2((i+1)+1); 
+    }
+
+    std::sort(uIRatings.begin(), uIRatings.end(), sortDescUActRatings);
+
+    float u_dcg_max = 0.0;
+    for (int i = 0; i < N && i < uIRatings.size(); i++) {
+      float rel = std::get<1>(uIRatings[i]);
+      u_dcg_max += (std::pow(2.0, rel) - 1) / std::log2((i+1)+1); 
+    }
+
+    if (u_dcg_max > EPS) {
+      ndcg += u_ndcg/u_dcg_max;
+    } else {
+      continue;
+    }
+    
+    nValUsers++;
+  }
+  //std::cout << "ndcg: " << ndcg << " nValUsers: " << nValUsers << std::endl;
+  return std::make_pair(nValUsers, ndcg/nValUsers);
+}
+
+
+std::pair<int, double> Model::NDCGI(std::unordered_set<int>& filtItems, 
+    std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems, gk_csr_t* testMat) {
+  
+  int N = 10, nValUsers = 0;
+  double ndcg = 0;
+  
+  auto sortDescUPredRatings = [] (const ItemActPredTriplet& s1, 
+      const ItemActPredTriplet& s2) {
+    return std::get<2>(s1) > std::get<2>(s2);
+  };
+  
+  auto sortDescUActRatings = [] (const ItemActPredTriplet& s1, 
+      const ItemActPredTriplet& s2) {
+    return std::get<1>(s1) > std::get<1>(s2);
+  };
+
+#pragma omp parallel for reduction(+:ndcg, nValUsers)
+  for (int u = 0; u < testMat->nrows; u++) {
+    
+    if (invalidUsers.count(u) > 0) {
+      continue;
+    }
+    
+    std::vector<ItemActPredTriplet> uIRatings;
+
+    for (int ii = testMat->rowptr[u]; ii < testMat->rowptr[u+1]; ii++) {
+      int item = testMat->rowind[ii];
+      if (invalidItems.count(item) > 0 || filtItems.count(item) == 0) {
+        continue;
+      }
+      float rat = testMat->rowval[ii];
+      float predRat = estRating(u, item);
+      uIRatings.push_back(ItemActPredTriplet(item, rat, predRat));    
+      std::push_heap(uIRatings.begin(), uIRatings.end(), sortDescUPredRatings);
+      if (uIRatings.size() > N) {
+        std::pop_heap(uIRatings.begin(), uIRatings.end(), sortDescUPredRatings);
+        uIRatings.pop_back();
+      }
+    }
+    
+    if (uIRatings.size() < 2) {
+      continue;
+    }
+
+    std::sort(uIRatings.begin(), uIRatings.end(), sortDescUPredRatings);
+    
+    float u_ndcg = 0.0;
+    for (int i = 0; i < N && i < uIRatings.size(); i++) {
+      float rel = std::get<1>(uIRatings[i]);
+      u_ndcg += (std::pow(2.0, rel) - 1) / std::log2((i+1)+1); 
+    }
+
+    std::sort(uIRatings.begin(), uIRatings.end(), sortDescUActRatings);
+    
+    float u_dcg_max = 0.0;
+    for (int i = 0; i < N && i < uIRatings.size(); i++) {
+      float rel = std::get<1>(uIRatings[i]);
+      u_dcg_max += (std::pow(2.0, rel) - 1) / std::log2((i+1)+1); 
+    }
+
+    if (u_dcg_max > EPS) {
+      ndcg += u_ndcg/u_dcg_max;
+    } else {
+      continue;
+    }
+    
+    nValUsers++;
+  }
+  //std::cout << "ndcg: " << ndcg << " nValUsers: " << nValUsers << std::endl;
+  return std::make_pair(nValUsers, ndcg/nValUsers);
+}
+
+
 double Model::arHR(const Data& data, std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems, gk_csr_t* testMat) {
   
@@ -815,7 +1034,7 @@ double Model::arHR(const Data& data, std::unordered_set<int>& invalidUsers,
 }
 
 
-std::pair<int, double> Model::arHRI(const Data& data, std::unordered_set<int>& filtItems, 
+std::pair<double, double> Model::arHRI(const Data& data, std::unordered_set<int>& filtItems, 
     std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems, gk_csr_t* testMat) {
   
@@ -878,7 +1097,7 @@ std::pair<int, double> Model::arHRI(const Data& data, std::unordered_set<int>& f
 }
 
 
-std::pair<int, double> Model::arHRU(const Data& data, std::unordered_set<int>& filtUsers,
+std::pair<double, double> Model::arHRU(const Data& data, std::unordered_set<int>& filtUsers,
     std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems, gk_csr_t* testMat) {
   
@@ -1151,6 +1370,49 @@ bool Model::isTerminateModelHR(Model& bestModel, const Data& data, int iter,
   */
 
   prevHR = currHR;
+
+  return ret;
+}
+
+
+bool Model::isTerminateModelNDCG(Model& bestModel, const Data& data, int iter,
+    int& bestIter, double& bestNDCG, double& prevNDCG, 
+    std::unordered_set<int>& invalidUsers, 
+    std::unordered_set<int>& invalidItems) {
+  bool ret = false;
+  double currNDCG = NDCG(invalidUsers, invalidItems, data.valMat);
+
+  if (currNDCG > bestNDCG) {
+    bestModel = *this;
+    bestNDCG = currNDCG;
+    bestIter = iter;
+  }
+
+  if (iter - bestIter >= 100) {
+    //half the learning rate
+    if (learnRate > 1e-5) {
+      learnRate = learnRate/2;
+    }
+  }
+
+  if (iter - bestIter >= CHANCE_ITER) {
+    //can't go lower than best objective after 500 iterations
+    //printf("\nNOT CONVERGED: bestIter:%d bestObj: %.10e"
+    //    " currIter:%d currObj: %.10e", bestIter, bestObj, iter, currObj);
+    ret = true;
+  }
+  
+  
+  /*
+  if (fabs(prevNDCG - currNDCG) < EPS) {
+    //convergence
+    printf("\nConverged in iteration: %d prevNDCG: %.10e currNDCG: %.10e", iter,
+            prevNDCG, currNDCG); 
+    ret = true;
+  }
+  */
+
+  prevNDCG = currNDCG;
 
   return ret;
 }

@@ -14,6 +14,7 @@
 #include "const.h"
 #include "GKlib.h"
 #include "datastruct.h"
+#include "defs.h"
 #include <Eigen/Dense>
 #include <Eigen/Cholesky>
 #include <Eigen/LU>
@@ -176,6 +177,10 @@ class Model {
     int& bestIter, double& bestHR, double& prevHR, 
     std::unordered_set<int>& invalidUsers, 
     std::unordered_set<int>& invalidItems);
+  bool isTerminateModelNDCG(Model& bestModel, const Data& data, int iter,
+    int& bestIter, double& bestNDCG, double& prevNDCG, 
+    std::unordered_set<int>& invalidUsers, 
+    std::unordered_set<int>& invalidItems);
   std::pair<int, double> hitRateU(const Data& data, std::unordered_set<int>& filtUsers,
       std::unordered_set<int>& invalidUsers,
       std::unordered_set<int>& invalidItems, gk_csr_t* testMat);
@@ -184,10 +189,18 @@ class Model {
       std::unordered_set<int>& invalidItems, gk_csr_t* testMat);
   double arHR(const Data& data, std::unordered_set<int>& invalidUsers,
     std::unordered_set<int>& invalidItems, gk_csr_t* testMat);
-  std::pair<int, double> arHRU(const Data& data, std::unordered_set<int>& filtUsers,
+  std::pair<double, double> arHRU(const Data& data, std::unordered_set<int>& filtUsers,
       std::unordered_set<int>& invalidUsers,
       std::unordered_set<int>& invalidItems, gk_csr_t* testMat);
-  std::pair<int, double> arHRI(const Data& data, std::unordered_set<int>& filtItems, 
+  std::pair<double, double> arHRI(const Data& data, std::unordered_set<int>& filtItems, 
+      std::unordered_set<int>& invalidUsers,
+      std::unordered_set<int>& invalidItems, gk_csr_t* testMat);
+  double NDCG(std::unordered_set<int>& invalidUsers,
+      std::unordered_set<int>& invalidItems, gk_csr_t* testMat);
+  std::pair<int, double> NDCGU(std::unordered_set<int>& filtUsers,
+      std::unordered_set<int>& invalidUsers,
+      std::unordered_set<int>& invalidItems, gk_csr_t* testMat);
+  std::pair<int, double> NDCGI(std::unordered_set<int>& filtItems, 
       std::unordered_set<int>& invalidUsers,
       std::unordered_set<int>& invalidItems, gk_csr_t* testMat);
 };

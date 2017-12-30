@@ -251,6 +251,29 @@ void writeBinarizedTrainValTest(gk_csr_t* mat, int ratThresh,
 }
 
 
+void writeBinarizedMat(gk_csr_t* mat, int ratThresh, const char* opFName) {
+  std::ofstream opFile(opFName);
+  if (opFile.is_open()) {
+    for (int u = 0; u < mat->nrows; u++) {
+      for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+        int item = mat->rowind[ii];
+        float rating = mat->rowval[ii];
+        opFile << item << " ";
+        if (rating > ratThresh) {
+          opFile << 1 << " ";
+        } else {
+          opFile << 0 << " ";
+        }
+      }
+      opFile << std::endl;
+    }
+    opFile.close();
+  } else {
+    std::cout << "Can't open file " << opFName << std::endl;
+  }
+}
+
+
 void readMatBin(std::vector<std::vector<double>>& mat, int nrows, int ncols, 
     const char *opFileName) {
   std::ifstream ipFile(opFileName, std::ios::binary);

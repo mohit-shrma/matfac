@@ -58,6 +58,136 @@ std::vector<std::tuple<int, int, float>> ModelMFBPR::getBPRUIRatings(gk_csr_t* m
 }
 
 
+PosNegPair ModelMFBPR::samplePosNegItem(int u, const gk_csr_t* trainMat,
+    std::unordered_set<int>& trainItems) const {
+
+  int jj;
+  int nUserItems, start, end;
+  int nTrainItems = trainMat->ncols;//trainItems.size();
+  int32_t *ui_rowind = trainMat->rowind;
+  ssize_t *ui_rowptr = trainMat->rowptr;
+  float   *ui_rowval = trainMat->rowval;
+  int nTry = 0;
+  
+  nUserItems = ui_rowptr[u+1] - ui_rowptr[u];
+  if (nUserItems == 0) {
+    return PosNegPair(-1, -1);
+  }
+
+  //sample pos item
+  int pos = std::rand()%nUserItems;
+  //std::cout << u << " " << pos << " " << std::endl;
+  int posItem = -1, negItem = -1;
+  float posRat, negRat;
+  if (ui_rowval[pos + ui_rowptr[u]] > 0.0) {
+    posRat = ui_rowval[pos + ui_rowptr[u]];
+    posItem = ui_rowind[pos + ui_rowptr[u]];
+    //sample neg item
+    while(nTry < 50) {
+      jj = std::rand()%nUserItems;
+      if (ui_rowval[jj + ui_rowptr[u]] < posRat) {
+        //explicit negative
+        negItem = ui_rowind[jj + ui_rowptr[u]];
+        negRat = ui_rowval[jj + ui_rowptr[u]];
+        break;
+      } else {
+        //search for implicit 0
+
+        if (0 == jj) {
+          start = 0;
+          end = ui_rowind[ui_rowptr[u]]; //first rated item by u
+        } else if (nUserItems-1 == jj) {
+          start = ui_rowind[ui_rowptr[u] + jj] + 1; //item next to last rated item
+          end = nTrainItems;
+        } else {
+          start = ui_rowind[ui_rowptr[u] + jj] + 1; //item next to jjth item
+          end = ui_rowind[ui_rowptr[u] + jj + 1]; //item rated after jjth item
+        }
+
+        //check for empty interval
+        if (end - start > 0) {
+          negItem = std::rand()%(end-start) + start;
+          negRat = 0;
+        } else {
+          continue;
+        }
+
+        if (trainItems.find(negItem) != trainItems.end()) {
+          break;
+        }
+      }
+      nTry++;
+    } //end while
+    
+    if (50 == nTry) {
+      negItem = -1;
+    }
+    
+  }
+  
+  //std::cout << u << " " << posItem << " " << posRat 
+  //          << " " << negItem << " " << negRat
+  //          << std::endl;
+  return PosNegPair(posItem, negItem);
+}
+
+
+int ModelMFBPR::sampleNegItem(int u, int posItem, float posRat, 
+    const gk_csr_t* trainMat, std::unordered_set<int>& trainItems) const {
+
+  int jj;
+  int nUserItems, start, end;
+  int nTrainItems = trainMat->ncols;//trainItems.size();
+  int32_t *ui_rowind = trainMat->rowind;
+  ssize_t *ui_rowptr = trainMat->rowptr;
+  float   *ui_rowval = trainMat->rowval;
+  int nTry = 0;
+  nUserItems = ui_rowptr[u+1] - ui_rowptr[u];
+  int negItem = -1;
+  
+  //sample neg item
+  while(nTry < 50) {
+    jj = std::rand()%nUserItems;
+    if (ui_rowval[jj + ui_rowptr[u]] < posRat) {
+      //explicit negative
+      negItem = ui_rowind[jj + ui_rowptr[u]];
+      break;
+    } else {
+      //search for implicit 0
+
+      if (0 == jj) {
+        start = 0;
+        end = ui_rowind[ui_rowptr[u]]; //first rated item by u
+      } else if (nUserItems-1 == jj) {
+        start = ui_rowind[ui_rowptr[u] + jj] + 1; //item next to last rated item
+        end = nTrainItems;
+      } else {
+        start = ui_rowind[ui_rowptr[u] + jj] + 1; //item next to jjth item
+        end = ui_rowind[ui_rowptr[u] + jj + 1]; //item rated after jjth item
+      }
+
+      //check for empty interval
+      if (end - start > 0) {
+        negItem = std::rand()%(end-start) + start;
+      } else {
+        continue;
+      }
+
+      if (trainItems.find(negItem) != trainItems.end()) {
+        break;
+      }
+    }
+    nTry++;
+  } //end while
+  
+  if (50 == nTry) {
+    negItem = -1;
+  }
+  
+  return negItem;
+}
+
+
 int ModelMFBPR::sampleNegItem(int u, const gk_csr_t* trainMat,
     std::unordered_set<int>& trainItems) const {
 
@@ -172,9 +302,8 @@ void ModelMFBPR::trainHog(const Data& data, Model& bestModel,
     }
   }
 
-  valHR = hitRate(data, invalidUsers, invalidItems, data.valMat);
-  std::cout << "\nValidation HR: " << valHR << std::endl;
-  
+  valHR = NDCG(invalidUsers, invalidItems, data.valMat);
+  std::cout << "\nValidation NDCG: " << valHR << std::endl;
 
   for (int iter = 0; iter < maxIter; iter++) {
 
@@ -250,7 +379,7 @@ void ModelMFBPR::trainHog(const Data& data, Model& bestModel,
     subIterDuration = duration.count();
 
     if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
-      if (isTerminateModelHR(bestModel, data, iter, bestIter, bestHR, valHR,
+      if (isTerminateModelNDCG(bestModel, data, iter, bestIter, bestHR, valHR,
             invalidUsers, invalidItems)) {
         break;
       }
@@ -258,8 +387,8 @@ void ModelMFBPR::trainHog(const Data& data, Model& bestModel,
 
     if (iter % DISP_ITER == 0) {
       std::cout << "ModelMFBPR::trainHog trainSeed: " << trainSeed
-                << " Iter: " << iter << " HR: " << std::scientific << valHR
-                << " best HR: " << bestHR
+                << " Iter: " << iter << " NDCG: " << std::scientific << valHR
+                << " best NDCG: " << bestHR
                 << " nTrainInversions: " << nTrainInversions
                 << " trainLoss: " << trainLoss
                 << " subIterDuration: " << subIterDuration
@@ -267,8 +396,8 @@ void ModelMFBPR::trainHog(const Data& data, Model& bestModel,
     }
   }
 
-  std::cout  << "\nBest model validation HR: " << bestModel.hitRate(data,
-      invalidUsers, invalidItems, data.valMat) << std::endl;
+  std::cout  << "\nBest model validation NDCG: " << bestModel.NDCG(invalidUsers, 
+      invalidItems, data.valMat) << std::endl;
 
 }
 
@@ -428,3 +557,168 @@ void ModelMFBPR::train(const Data& data, Model& bestModel,
       invalidUsers, invalidItems, data.valMat) << std::endl;
 
 }
+
+
+void ModelMFBPR::trainHogPosNeg(const Data& data, Model& bestModel,
+    std::unordered_set<int>& invalidUsers,
+    std::unordered_set<int>& invalidItems) {
+
+  int nTrainInversions = 0;
+  float itemRat;
+  double bestRecall, valRecall;
+  double bestHR, valHR;
+  double subIterDuration = 0;
+  int bestIter = -1;
+  double trainLoss  = 0;
+
+  std::cout << "\nModelMFBPR::trainHogPosNeg trainSeed: " << trainSeed << std::endl;
+  std::chrono::time_point<std::chrono::system_clock> start, end;
+
+  //random engine
+  std::mt19937 mt(trainSeed);
+
+  //get non-zero ratings from training data
+  const auto uiRatings = getBPRUIRatings(data.trainMat);
+  //index to above uiRatings pair
+  std::vector<size_t> uiRatingInds(uiRatings.size());
+  std::iota(uiRatingInds.begin(), uiRatingInds.end(), 0);
+
+  std::vector<std::unordered_set<int>> uISet(nUsers);
+  genStats(data.trainMat, uISet, std::to_string(trainSeed));
+  getInvalidUsersItems(data.trainMat, uISet, invalidUsers, invalidItems);
+  for (int u = data.trainMat->nrows; u < data.nUsers; u++) {
+    invalidUsers.insert(u);
+  }
+  for (int item = data.trainMat->ncols; item < data.nItems; item++) {
+    invalidItems.insert(item);
+  }
+
+  std::cout << "\nModelMFBPR::trainHogPosNeg trainSeed: " << trainSeed
+    << " invalidUsers: " << invalidUsers.size()
+    << " invalidItems: " << invalidItems.size() << std::endl;
+
+  gk_csr_t *mat = data.trainMat;
+  std::unordered_set<int> trainItems, testItems, valItems;
+  for (int item = 0; item < mat->ncols; item++) {
+    if (mat->colptr[item+1] - mat->colptr[item] > 0) {
+      trainItems.insert(item);
+    }
+  }
+
+  mat = data.testMat;
+  for (int item = 0; item < mat->ncols; item++) {
+    if (mat->colptr[item+1] - mat->colptr[item] > 0) {
+      testItems.insert(item);
+    }
+  }
+
+  mat = data.valMat;
+  for (int item = 0; item < mat->ncols; item++) {
+    if (mat->colptr[item+1] - mat->colptr[item] > 0) {
+      valItems.insert(item);
+    }
+  }
+
+  int nnz = 0;
+  std::vector<int> trainUsers;
+  for (int u = 0; u < data.trainMat->nrows; u++) {
+    if (invalidUsers.count(u) == 0 && 
+        data.trainMat->rowptr[u+1] - data.trainMat->rowptr[u] > 0) {
+      trainUsers.push_back(u);
+      nnz += data.trainMat->rowptr[u+1] - data.trainMat->rowptr[u];
+    }
+  }
+
+  valHR = NDCG(invalidUsers, invalidItems, data.valMat);
+  std::cout << "\nValidation NDCG: " << valHR << std::endl;
+
+  for (int iter = 0; iter < maxIter; iter++) {
+
+    start = std::chrono::system_clock::now();
+
+    nTrainInversions = 0;
+    trainLoss = 0;
+ 
+    for (int nzInd = 0; nzInd < nnz/trainUsers.size(); nzInd++) {
+#pragma omp parallel for reduction(+:trainLoss,nTrainInversions)
+    for (int ind = 0; ind < trainUsers.size(); ind++) {
+      int u = trainUsers[ind];
+      PosNegPair posNegItems = samplePosNegItem(u, data.trainMat, trainItems);
+      int pI = posNegItems.first;
+      int nI = posNegItems.second;
+      
+      //std::cout << u << " " << pI << " " << nI << std::endl;
+
+      if (pI == -1 || nI == -1) {
+        continue;
+      }
+
+      float r_ui_est = uFac.row(u).dot(iFac.row(pI));
+      float r_uj_est = uFac.row(u).dot(iFac.row(nI));
+      
+      if (r_uj_est - r_ui_est > EPS) {
+        nTrainInversions++;
+      }
+      
+      double r_uij = r_ui_est - r_uj_est;
+      trainLoss += log(1.0 + exp(-r_uij));
+      
+      double expCoeff = -1.0 /(1.0 + std::exp(r_uij));
+
+      if (!std::isfinite(expCoeff) || !std::isfinite(trainLoss)) {
+        std::cout << "Gradient/trainLoss is not finite (decrease learn rate): " 
+          << expCoeff << " " << trainLoss << std::endl;
+        exit(0);
+      }
+      
+      //update user
+      for (int i = 0; i < facDim; i++) {
+        uFac(u, i) -= learnRate*( (expCoeff*(iFac(pI, i) - iFac(nI, i)))
+                                  + 2.0*uReg*(uFac(u, i)) );
+      }
+
+      //update item
+      for (int i = 0; i < facDim; i++) {
+        iFac(pI, i) -= learnRate*( (expCoeff*uFac(u, i)) + 2.0*iReg*iFac(pI, i));
+        iFac(nI, i) -= learnRate*( (-expCoeff*uFac(u,i)) + 2.0*iReg*iFac(nI, i));
+      }
+     
+    }
+    }
+    end = std::chrono::system_clock::now();
+    
+    if (!std::isfinite(trainLoss)) {
+      std::cout << "Training loss is not finite (decrease learn rate): " << trainLoss << std::endl;
+      exit(0);
+    }
+   
+    //decay learning rate
+    learnRate = learnRate*0.9;
+
+    std::chrono::duration<double> duration =  end - start;
+    subIterDuration = duration.count();
+
+    if (iter % OBJ_ITER == 0 || iter == maxIter-1) {
+      if (isTerminateModelNDCG(bestModel, data, iter, bestIter, bestHR, valHR,
+            invalidUsers, invalidItems)) {
+        break;
+      }
+    }
+
+    if (iter % DISP_ITER == 0) {
+      std::cout << "ModelMFBPR::trainHogPosNeg trainSeed: " << trainSeed
+                << " Iter: " << iter << " NDCG: " << std::scientific << valHR
+                << " best NDCG: " << bestHR
+                << " nTrainInversions: " << nTrainInversions
+                << " trainLoss: " << trainLoss
+                << " subIterDuration: " << subIterDuration
+                << std::endl;
+    }
+  }
+
+  std::cout  << "\nBest model validation NDCG: " << bestModel.NDCG(invalidUsers, 
+      invalidItems, data.valMat) << std::endl;
+
+}
+
+

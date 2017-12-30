@@ -304,7 +304,7 @@ void topNRec(Model& model, gk_csr_t *trainMat, gk_csr_t *testMat,
   std::uniform_int_distribution<int> itemDist(0, nItems-1);
   std::uniform_int_distribution<int> userDist(0, nUsers-1);
 
-  auto compPairsIndAsc = [] (std::pair<int, double> a, std::pair<int, double> b) {
+  auto compPairsIndAsc = [] (const std::pair<int, double> a, const std::pair<int, double> b) {
     return a.first < b.second;
   };
   std::vector<std::pair<int, double>> itemScorePairs; 

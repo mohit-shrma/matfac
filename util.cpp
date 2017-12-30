@@ -757,11 +757,11 @@ double normVec(std::vector<double>& vec) {
 }
 
 
-bool descComp(std::pair<int, double>& a, std::pair<int, double>& b) {
+bool descComp(const std::pair<int, double> a, const std::pair<int, double> b) {
   return a.second > b.second;
 }
 
-bool ascComp(std::pair<int, double>& a, std::pair<int, double>& b) {
+bool ascComp(const std::pair<int, double> a, const std::pair<int, double> b) {
   return a.second <= b.second;
 }
 
