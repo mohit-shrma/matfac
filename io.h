@@ -96,4 +96,5 @@ void writeTriplets(gk_csr_t *mat, const char *fName);
 void writeBinarizedTrainValTest(gk_csr_t* mat, int ratThresh,
     std::string opFilePref, int seed);
 void writeBinarizedMat(gk_csr_t* mat, int ratThresh, const char* opFName);
+void writeSampledSpMat(gk_csr_t* mat, const char *opFileName, int seed);
 #endif

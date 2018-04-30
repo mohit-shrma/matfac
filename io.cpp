@@ -375,6 +375,7 @@ void writeVector(std::vector<double>& vec, const char *opFileName) {
   }
 }
 
+
 void writeVector(Eigen::VectorXf& vec, const char *opFileName) {
   std::ofstream opFile(opFileName);
   if (opFile.is_open()) {
@@ -384,6 +385,7 @@ void writeVector(Eigen::VectorXf& vec, const char *opFileName) {
     opFile.close();
   }
 }
+
 
 void writeVector(std::vector<double>& vec, std::ofstream& opFile) {
   if (opFile.is_open()) {
@@ -418,12 +420,13 @@ void writeTrainTestValMat(gk_csr_t *mat,  const char* trainFileName,
   std::mt19937 mt(seed);
   //nnz dist
   std::uniform_int_distribution<int> nnzDist(0, nnz-1);
-
+  
+  std::cout << "nTest: " << nTest << " nVal: " << nVal << std::endl;
   for (i = 0; i < nTest; i++) {
     k = nnzDist(mt);
     color[k] = 1;
   }
-  
+   
   i = 0;
   while (i < nVal) {
     k = nnzDist(mt);
@@ -433,7 +436,7 @@ void writeTrainTestValMat(gk_csr_t *mat,  const char* trainFileName,
     }
   }
 
-
+  std::cout  << "Partitionining matrix..." << std::endl;
   //split the matrix based on color
   gk_csr_t** mats = gk_csr_Split(mat, color);
   
@@ -552,6 +555,133 @@ void writeSubSampledMat(gk_csr_t *mat,  const char* sampFileName,
   gk_csr_Free(&mats[1]);
   //TODO: free mats
   //gk_csr_Free(&mats);
+}
+
+
+void writeSampledSpMat(gk_csr_t* mat, const char *opFileName, int seed) {
+
+  //initialize uniform random engine
+  std::mt19937 mt(seed);
+  
+  std::vector<int> uSampledNRatings;
+  
+  std::cout << "sampling ratings for users..." << std::endl;
+#pragma omp parallel for  
+  for (int u = 0; u < mat->nrows; u++) {
+    int nItems = mat->rowptr[u+1] - mat->rowptr[u];
+    if (nItems <= 1) { 
+      continue;
+    } 
+    std::uniform_int_distribution<> dis(1, nItems);
+    int nSampRatings = dis(mt);
+   
+    std::unordered_set<int> filtUItems;
+    int nTries = 0;
+    while (filtUItems.size() < nSampRatings && nTries < nSampRatings + 500) {
+      int sampOffset = dis(mt) - 1;
+      int item = mat->rowind[mat->rowptr[u] + sampOffset];
+      filtUItems.insert(item);
+      nTries++;
+    }
+
+    for (int ii = mat->rowptr[u]; ii < mat->rowptr[u+1]; ii++) {
+      int item = mat->rowind[ii]; 
+      if (filtUItems.count(item) == 0) {
+        mat->rowval[ii] = -1; //flag the rating for deletion
+      }
+    }
+
+  }
+
+  //create inverted index
+  gk_csr_CreateIndex(mat, GK_CSR_COL);
+
+  std::cout << "sampling ratings for items..." << std::endl;
+  //randomly sampled ratings from columns 
+#pragma omp parallel for
+  for (int item = 0; item < mat->ncols; item++) {
+    int nUsers = 0;
+    
+    for (int uu = mat->colptr[item]; uu < mat->colptr[item+1]; uu++) {
+      if (mat->colval[uu] >= 0) {
+        nUsers++;
+      }
+    }
+    
+    //std::cout << "item... " << item << " nUsers... " << nUsers << std::endl;
+    if (nUsers <= 1) {
+      continue;
+    }
+
+    std::uniform_int_distribution<> dis(1, nUsers);
+    int nSampRatings = dis(mt);
+
+    //std::cout << "nSampRatings... " << nSampRatings << std::endl;
+
+    std::unordered_set<int> filtIUsers;
+    int nTries = 0;
+    while (filtIUsers.size() < nSampRatings && nTries < nSampRatings + 500) {
+      int sampOffset = dis(mt) - 1;
+      int user = mat->colind[mat->colptr[item] +  sampOffset];
+      if (mat->colval[mat->colptr[item] + sampOffset] > 0) {
+        filtIUsers.insert(user);
+      }
+      nTries++;
+    }
+     
+    for (int uu = mat->colptr[item]; uu < mat->colptr[item+1]; uu++) {
+      int user = mat->colind[uu];
+      if (filtIUsers.count(user) == 0) {
+        mat->colval[uu] = -1;
+      }
+    }
+    
+  }
+
+  std::cout << "writing transpose..." << std::endl;
+  //write transpose
+  std::ofstream opFile("temp.transpose.mat");
+  if (opFile.is_open()) {
+    for (int item = 0; item < mat->ncols; item++) {
+      for (int uu = mat->colptr[item]; uu < mat->colptr[item+1]; uu++) {
+        if (mat->colval[uu] >= 0) {
+          opFile << mat->colind[uu] << " " << mat->colval[uu] << " ";
+        }
+      }
+      opFile << std::endl;
+    } 
+    opFile.close();
+  }
+
+  //read transposed matrix
+  gk_csr_t *transMat = gk_csr_Read((char *) ("temp.transpose.mat"),
+      GK_CSR_FMT_CSR, GK_CSR_IS_VAL, 0);
+  gk_csr_t *writeMat = gk_csr_Transpose(transMat);
+ 
+  //create inverted index
+  gk_csr_CreateIndex(writeMat, GK_CSR_COL);
+  
+  //generate distribution of user ratings
+  std::ofstream opFile2("userCount.txt");
+  if (opFile2.is_open()) {
+    for (int u = 0; u < writeMat->nrows; u++) {
+      opFile2 << writeMat->rowptr[u+1] - writeMat->rowptr[u]  << std::endl;
+    }
+    opFile2.close();
+  }
+
+  //generate distribution of item ratings
+  std::ofstream opFile3("itemCount.txt");
+  if (opFile3.is_open()) {
+    for (int item = 0; item < writeMat->ncols; item++) {
+      opFile3 << writeMat->colptr[item+1] - writeMat->colptr[item] << std::endl;
+    }
+    opFile3.close();
+  }
+
+
+  //write the matrix
+  gk_csr_Write(writeMat, (char *)opFileName, GK_CSR_FMT_CSR, GK_CSR_IS_VAL, 0);
 }
 
 

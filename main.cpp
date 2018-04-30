@@ -1020,6 +1020,23 @@ void transformBinData(Data& data, Params& params) {
 }
 
 
+void writePartition(
+    std::vector<std::pair<int, std::vector<int>>>& partItems,
+    const char *opFileName) {
+  std::ofstream opFile(opFileName);
+  if (opFile.is_open()) {
+    for (auto&& part : partItems) {
+      int& partInd = part.first;
+      std::vector<int>& partElems = part.second;
+      for (auto& elem: partElems) {
+        opFile << partInd << " " << elem << std::endl;
+      }
+    }
+    opFile.close();
+  }
+}
+
+
 void setAdapRank(std::vector<int>& rankMap,
     std::vector<std::pair<int, std::vector<int>>>& partItems,
     std::vector<std::pair<int, double>>& freqPairs, int facDim) {
@@ -1153,20 +1170,26 @@ gk_csr_t** splitValMat(gk_csr_t* valMat, int seed) {
 
 int main(int argc , char* argv[]) {
   
+  //write sampled matrix
+  /*
+  gk_csr_t* mat = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, 1, 0);
+  writeSampledSpMat(mat, argv[2], 1);  
+  return 0;
+  */
+
   /*
   gk_csr_t* mat = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, 1, 0);
   writeBinarizedMat(mat, 3, argv[2]);
   return 0;
   */
 
-  /*
   //partition the given matrix into train test val
   gk_csr_t *mat = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, GK_CSR_IS_VAL, 0);
-  //writeTrainTestValMat(mat, argv[2], argv[3], argv[4], 0.1, 0.1, atoi(argv[5]));
-  writeBinarizedTrainValTest(mat, atoi(argv[2]), std::string(argv[3]),
-      atoi(argv[4]));
+  std::cout << "Read... " << argv[1] << std::endl;
+  writeTrainTestValMat(mat, argv[2], argv[3], argv[4], 0.2, 0.2, atoi(argv[5]));
+  //writeBinarizedTrainValTest(mat, atoi(argv[2]), std::string(argv[3]),
+  //    atoi(argv[4]));
   return 0;
-  */
 
   /*
   gk_csr_t *mat1 = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, 1, 0);
@@ -1323,6 +1346,11 @@ int main(int argc , char* argv[]) {
   auto rowColFreq = getRowColFreq(data.trainMat);
   auto userFreq = rowColFreq.first;
   auto itemFreq = rowColFreq.second;
+
+  //writePartition(partItems, "itemPartition.txt");
+  //writePartition(partUsers, "userPartition.txt");  
+
+  //exit(0);
 
   /*
   std::vector<std::string> modelPrefs = {
