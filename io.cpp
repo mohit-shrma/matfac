@@ -83,7 +83,8 @@ void readMat(std::vector<std::vector<double>>& mat, int nrows, int ncols,
 void readMat(Eigen::MatrixXf& mat, int nrows, int ncols, 
     const char *fileName) {
  
-  std::cout << "\nReading ... " << fileName << std::endl;
+  std::cout << "\nReading ... " << fileName << " nrows: " << nrows << 
+    " ncols: " << ncols << std::endl;
 
   std::string line, token;
   std::string delimiter = " ";
@@ -546,9 +547,10 @@ void writeSubSampledMat(gk_csr_t *mat,  const char* sampFileName,
   std::cout << "\nPercent nnz in sample matrix: " 
     << (float)sampNNZ/(float)nnz << std::endl;
   
+  std::cout << "Writing..." << sampFileName << std::endl;
   //save first matrix as sample mat
   gk_csr_Write(mats[1], (char*) sampFileName, GK_CSR_FMT_CSR, 1, 0);
-
+  
 
   free(color);
   gk_csr_Free(&mats[0]);
