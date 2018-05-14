@@ -4,7 +4,7 @@
 #include <chrono>
 #include <thread>
 
-#define EIGEN_USE_MKL_ALL
+//#define EIGEN_USE_MKL_ALL
 
 #include "io.h"
 #include "util.h"
@@ -15,7 +15,6 @@
 #include "topBucketComp.h"
 #include "longTail.h"
 #include "analyzeModels.h"
-#include "modelDropoutMF.h"
 #include "modelPoissonDropout.h"
 #include "modelIncrement.h"
 #include "modelMFBPR.h"
@@ -1022,6 +1021,7 @@ void transformBinData(Data& data, Params& params) {
 
 void writePartition(
     std::vector<std::pair<int, std::vector<int>>>& partItems,
+    std::unordered_set<int>& invalidItems,
     const char *opFileName) {
   std::ofstream opFile(opFileName);
   if (opFile.is_open()) {
@@ -1029,7 +1029,9 @@ void writePartition(
       int& partInd = part.first;
       std::vector<int>& partElems = part.second;
       for (auto& elem: partElems) {
-        opFile << partInd << " " << elem << std::endl;
+        if (invalidItems.count(elem) == 0) {
+          opFile << partInd << " " << elem << std::endl;
+        }
       }
     }
     opFile.close();
@@ -1184,12 +1186,14 @@ int main(int argc , char* argv[]) {
   */
 
   //partition the given matrix into train test val
+  /*
   gk_csr_t *mat = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, GK_CSR_IS_VAL, 0);
   std::cout << "Read... " << argv[1] << std::endl;
   writeTrainTestValMat(mat, argv[2], argv[3], argv[4], 0.2, 0.2, atoi(argv[5]));
   //writeBinarizedTrainValTest(mat, atoi(argv[2]), std::string(argv[3]),
   //    atoi(argv[4]));
   return 0;
+  */
 
   /*
   gk_csr_t *mat1 = gk_csr_Read(argv[1], GK_CSR_FMT_CSR, 1, 0);
@@ -1238,7 +1242,7 @@ int main(int argc , char* argv[]) {
   //initialize seed
   std::srand(params.seed);
 
-   /*
+  /*
   auto meanVar = getMeanVar(data.origUFac, data.origIFac, data.origFacDim,
       data.nUsers, data.nItems);
 
@@ -1347,8 +1351,6 @@ int main(int argc , char* argv[]) {
   auto userFreq = rowColFreq.first;
   auto itemFreq = rowColFreq.second;
 
-  //writePartition(partItems, "itemPartition.txt");
-  //writePartition(partUsers, "userPartition.txt");  
 
   //exit(0);
 
@@ -1392,7 +1394,7 @@ int main(int argc , char* argv[]) {
   return 0;
   */
 
-  //ModelMFBias mfModel(params, params.seed);
+  ModelMF mfModel(params, params.seed);
   //ModelDropoutMF mfModel(params, params.seed, userRankMap, itemRankMap, ranks);
 
   /*
@@ -1408,7 +1410,7 @@ int main(int argc , char* argv[]) {
   std::cout << "graph nusers: " << data.graphMat->nrows << " nItems: " << data.graphMat->ncols << std::endl;
   */
 
-  ModelMFBPR mfModel(params, params.seed);
+  //ModelMFBPR mfModel(params, params.seed);
   //ModelPoissonDropout mfModel(params, params.seed, userRankPc, itemRankPc,
   //    userFreq, itemFreq);
   //ModelBPRPoissonDropout mfModel(params, params.seed, userRankPc, itemRankPc,
@@ -1425,7 +1427,6 @@ int main(int argc , char* argv[]) {
   std::unordered_set<int> invalidUsers;
   std::unordered_set<int> invalidItems;
 
-  /*
   ModelMF bestModel(mfModel);
   std::cout << "\nStarting model train...";
   if (FLAGS_method == "ccd++") {
@@ -1449,11 +1450,10 @@ int main(int argc , char* argv[]) {
   } else {
     mfModel.train(data, bestModel, invalidUsers, invalidItems);
   }
-  */
 
   //ModelInvPopMF bestModel(mfModel);
   //ModelBPRPoissonDropout bestModel(mfModel);
-  ModelMFBPR bestModel(mfModel);
+  //ModelMFBPR bestModel(mfModel);
   //ModelDropoutMF bestModel(mfModel);
   //ModelIncrement bestModel(mfModel);
   //ModelPoissonDropout bestModel(mfModel);
@@ -1461,7 +1461,7 @@ int main(int argc , char* argv[]) {
   //ModelMFBias bestModel(mfModel);
 
   std::cout << "Begin train..." << std::endl;
-  mfModel.trainHogPosNeg(data, bestModel, invalidUsers, invalidItems);
+  //mfModel.trainHogPosNeg(data, bestModel, invalidUsers, invalidItems);
  
   //mfModel.trainSGDProbOrderedPar(data, bestModel, invalidUsers, invalidItems);
   //mfModel.trainSGDProbPar(data, bestModel, invalidUsers, invalidItems);
@@ -1469,13 +1469,13 @@ int main(int argc , char* argv[]) {
   //mfModel.train(data, bestModel, invalidUsers, invalidItems);
 
  
+  /*
   std::cout << "Test NDCG: "
     << bestModel.NDCG(invalidUsers, invalidItems, data.testMat)
     << std::endl;
 
   quartileNDCG(bestModel, data, partItems, partUsers, invalidUsers,
       invalidItems);
-  /*
   std::cout << "Test ar hit rate: "
     << bestModel.arHR(data, invalidUsers, invalidItems, data.testMat)
     << std::endl;
@@ -1489,7 +1489,7 @@ int main(int argc , char* argv[]) {
   bestModel.currRankMapI = mfModel.currRankMapI;
   */
 
-  /*
+  
   std::cout << "\nTrain RMSE: " << bestModel.RMSE(data.trainMat, invalidUsers,
       invalidItems);
   std::cout << "\nTest RMSE: " << bestModel.RMSE(data.testMat, invalidUsers,
@@ -1517,8 +1517,14 @@ int main(int argc , char* argv[]) {
   std::cout << std::endl;
   Model& bestModel2 = bestModel;
   //diffRankRMSEs(bestModel, data, userRankMap, itemRankMap, invalidUsers, invalidItems);
-  */
-  //quartileRMSEs(bestModel, data, partItems, partUsers, invalidUsers, invalidItems);
+  
+
+  std::cout << "invalid users: " << invalidUsers.size() << " invalid items: " 
+    << invalidItems.size() << std::endl;
+  quartileRMSEs(bestModel, data, partItems, partUsers, invalidUsers, invalidItems);
+
+  writePartition(partItems, invalidItems, "itemPartition.txt");
+  writePartition(partUsers, invalidUsers, "userPartition.txt");  
 
   //computeSampTopNFrmFullModel(data, params);
   //computeFreqRMSEsAdapRank(data, params, userRankMap, itemRankMap);
