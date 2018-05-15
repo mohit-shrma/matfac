@@ -33,6 +33,8 @@ def quartileRMSEs(predFName, uPartMap, iPartMap, valMat):
     partISqCount = defaultdict(float)
     
     missingUICount = 0
+    allSqDiff      = 0.0
+    allCount       = 0.0
 
     with open(predFName, 'r') as f:
         for line in f:
@@ -52,13 +54,18 @@ def quartileRMSEs(predFName, uPartMap, iPartMap, valMat):
 
                 partUSqDiff[uPart]  += diff*diff
                 partISqDiff[iPart]  += diff*diff
-                
+                            
                 partUSqCount[uPart] += 1.0
                 partISqCount[iPart] += 1.0
+                
+                allSqDiff += diff*diff
+                allCount += 1
             else:
                 missingUICount += 1
     
     print "missing ui: ", missingUICount
+    
+    print 'All RMSE: ', math.sqrt(allSqDiff/allCount)
 
     print "user partitions RMSEs count:"
     for partInd, count in partUSqCount.items():
