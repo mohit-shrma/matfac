@@ -745,8 +745,17 @@ void diffModelRMSEs(int nUsers, int nItems, std::vector<int>& ranks,
     std::vector<std::pair<int, std::vector<int>>> partUsers,
     std::unordered_set<int> invalidUsers, std::unordered_set<int> invalidItems) {
 
-  std::cout << "nusers: " << nUsers << " nItems: " << nItems << std::endl;
 
+  auto opFName = "u_i_part_rmses.txt";
+  std::ofstream  opFile(opFName);
+  if (!opFile.is_open()) {
+    std::cerr << "Can not open file... " << opFName << std::endl;
+    exit(-1);
+  } 
+
+
+  std::cout << "nusers: " << nUsers << " nItems: " << nItems << std::endl;
+  
   std::vector<ModelMF> iModels;
   ModelMF m1 = loadModel(nUsers, nItems, ranks[0], modelPrefs[0]);
   iModels.push_back(m1);
@@ -796,7 +805,6 @@ void diffModelRMSEs(int nUsers, int nItems, std::vector<int>& ranks,
   std::vector<double> itemSE(4, 0), userSE(4, 0);
   std::vector<int> itemCount(4, 0), userCount(4, 0);
 
-
   for (int u = 0; u < testMat->nrows; u++) {
 
     if (invalidUsers.count(u) > 0) { continue; }
@@ -820,6 +828,11 @@ void diffModelRMSEs(int nUsers, int nItems, std::vector<int>& ranks,
       itemCount[iPartMap[item]] += 1;
       userSE[uPartMap[u]] += diff;
       userCount[uPartMap[u]] += 1;
+      
+      opFile << u << " " << item << " " 
+             << uPartMap[u] << " " << iPartMap[item] << " "
+             << rating << " " << diff << std::endl;
+
       nnz++;
     }
   }
@@ -846,7 +859,8 @@ void diffModelRMSEs(int nUsers, int nItems, std::vector<int>& ranks,
     std::cout << userCount[i] << " ";
   }
   std::cout << std::endl;
-
+  
+  opFile.close();
 }
 
 
