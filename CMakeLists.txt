@@ -5,26 +5,29 @@ set(CMAKE_CXX_FLAGS "-std=c++11 -O3 -g -Wall")
 #set(CMAKE_CXX_FLAGS "-std=c++11  -g -Wall")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "bin/")          
 set(CMAKE_FILES_DIRECTORY "build/")    
+set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
-include_directories(/home/u8249/dev/GKlib/trunk)
-include_directories(/home/u8249/dev/eigen)
-include_directories(/home/u8249/dev/SVDLIBC)
-#include_directories(/home/grad02/mohit/exmoh/dev/github/gflags/lib)
+include_directories(/home/sharm163/George/GKlib/trunk)
+include_directories(/home/sharm163/lib/eigen)
+include_directories(/home/sharm163/lib/SVDLIBC)
+#include_directories(/home/sharm163/exmoh/dev/github/gflags/lib)
 
-link_directories(/home/u8249/dev/GKlib/trunk/build/Linux-x86_64/)
-link_directories(/home/u8249/dev/SVDLIBC)
+link_directories(/home/sharm163/George/GKlib/trunk/build/Linux-x86_64/)
+link_directories(/home/sharm163/lib/SVDLIBC)
 
 file(GLOB SOURCES "*.cpp")
 add_executable(mf ${SOURCES})
 
-set(gflags_DIR "/home/u8249/dev/gflags")
+set(gflags_DIR "/home/sharm163/exmoh/dev/gflags/")
 find_package(gflags REQUIRED)
 
 find_package(OpenMP)
 if (OPENMP_FOUND)
-  set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__OPENMP__ ${OpenMP_C_FLAGS}")
-  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__OPENMP__ ${OpenMP_CXX_FLAGS}")
+  set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
 target_link_libraries(mf GKlib svd m gflags)
+
+
 
