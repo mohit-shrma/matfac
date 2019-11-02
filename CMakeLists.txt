@@ -18,7 +18,7 @@ link_directories(/home/sharm163/lib/SVDLIBC)
 file(GLOB SOURCES "*.cpp")
 add_executable(mf ${SOURCES})
 
-set(gflags_DIR "/home/sharm163/exmoh/dev/gflags/")
+set(gflags_DIR "/home/sharm163/lib/gflags/")
 find_package(gflags REQUIRED)
 
 find_package(OpenMP)
