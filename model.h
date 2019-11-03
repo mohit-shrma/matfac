@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <iostream>
 #include <numeric>
+#include <queue>
 #include <random>
 #include <set>
 #include <string>
@@ -182,9 +183,10 @@ public:
   double hitRate(const Data &data, std::unordered_set<int> &invalidUsers,
                  std::unordered_set<int> &invalidItems, gk_csr_t *testMat,
                  const int N = 10);
-  double hitRateNegatives(const Data &data, std::unordered_set<int> &invalidUsers,
-                      std::unordered_set<int> &invalidItems, gk_csr_t *testMat,
-                      const int N = 10);
+  double hitRateNegatives(const Data &data,
+                          std::unordered_set<int> &invalidUsers,
+                          std::unordered_set<int> &invalidItems,
+                          gk_csr_t *testMat, const int N = 10);
   bool isTerminateModelHR(Model &bestModel, const Data &data, int iter,
                           int &bestIter, double &bestHR, double &prevHR,
                           std::unordered_set<int> &invalidUsers,
@@ -218,6 +220,9 @@ public:
   double NDCG(std::unordered_set<int> &invalidUsers,
               std::unordered_set<int> &invalidItems, gk_csr_t *testMat,
               const int N = 10);
+  double NDCGNegatives(const Data &data, std::unordered_set<int> &invalidUsers,
+                       std::unordered_set<int> &invalidItems, gk_csr_t *testMat,
+                       const int N = 10);
   std::pair<int, double> NDCGU(std::unordered_set<int> &filtUsers,
                                std::unordered_set<int> &invalidUsers,
                                std::unordered_set<int> &invalidItems,

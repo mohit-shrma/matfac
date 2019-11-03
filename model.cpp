@@ -803,6 +803,105 @@ double Model::NDCG(std::unordered_set<int> &invalidUsers,
   return ndcg / nValUsers;
 }
 
+double Model::NDCGNegatives(const Data &data,
+                            std::unordered_set<int> &invalidUsers,
+                            std::unordered_set<int> &invalidItems,
+                            gk_csr_t *testMat, const int N) {
+
+  gk_csr_t *trainMat = data.trainMat;
+  gk_csr_t *negMat = data.negMat;
+  int nValUsers = 0;
+  double ndcg = 0;
+
+  auto sortDescUPredRatings = [](const ItemActPredTriplet &s1,
+                                 const ItemActPredTriplet &s2) {
+    return std::get<2>(s1) > std::get<2>(s2);
+  };
+
+  auto sortDescUActRatings = [](const ItemActPredTriplet &s1,
+                                const ItemActPredTriplet &s2) {
+    return std::get<1>(s1) > std::get<1>(s2);
+  };
+
+#pragma omp parallel for reduction(+ : ndcg, nValUsers)
+  for (int u = 0; u < testMat->nrows; u++) {
+
+    if (invalidUsers.count(u) > 0) {
+      continue;
+    }
+
+    std::vector<ItemActPredTriplet> uIRatings;
+
+    std::unordered_set<int> uTrItems;
+    for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u + 1]; ii++) {
+      int item = trainMat->rowind[ii];
+      uTrItems.insert(item);
+    }
+
+    for (int ii = testMat->rowptr[u]; ii < testMat->rowptr[u + 1]; ii++) {
+      int item = testMat->rowind[ii];
+      if (uTrItems.count(item) || invalidItems.count(item) > 0) {
+        continue;
+      }
+      float rat = testMat->rowval[ii];
+      float predRat = estRating(u, item);
+      uIRatings.push_back(ItemActPredTriplet(item, rat, predRat));
+      std::push_heap(uIRatings.begin(), uIRatings.end(), sortDescUPredRatings);
+      if (uIRatings.size() > N) {
+        std::pop_heap(uIRatings.begin(), uIRatings.end(), sortDescUPredRatings);
+        uIRatings.pop_back();
+      }
+    }
+
+    for (int ii = negMat->rowptr[u]; ii < negMat->rowptr[u + 1]; ii++) {
+      int item = negMat->rowind[ii];
+      if (uTrItems.count(item) || invalidItems.count(item) > 0) {
+        continue;
+      }
+      float rat = 0; // negMat->rowval[ii];
+      float predRat = estRating(u, item);
+      uIRatings.push_back(ItemActPredTriplet(item, rat, predRat));
+      std::push_heap(uIRatings.begin(), uIRatings.end(), sortDescUPredRatings);
+      if (uIRatings.size() > N) {
+        std::pop_heap(uIRatings.begin(), uIRatings.end(), sortDescUPredRatings);
+        uIRatings.pop_back();
+      }
+    }
+
+    if (uIRatings.size() < 2) {
+      continue;
+    }
+
+    std::sort(uIRatings.begin(), uIRatings.end(), sortDescUPredRatings);
+
+    float u_ndcg = 0.0;
+    for (int i = 0; i < N && i < uIRatings.size(); i++) {
+      float rel = std::get<1>(uIRatings[i]);
+      u_ndcg += (std::pow(2.0, rel) - 1) / std::log2((i + 1) + 1);
+    }
+
+    std::sort(uIRatings.begin(), uIRatings.end(), sortDescUActRatings);
+
+    float u_dcg_max = 0.0;
+    for (int i = 0; i < N && i < uIRatings.size(); i++) {
+      float rel = std::get<1>(uIRatings[i]);
+      u_dcg_max += (std::pow(2.0, rel) - 1) / std::log2((i + 1) + 1);
+    }
+
+    if (u_dcg_max > EPS) {
+      ndcg += u_ndcg / u_dcg_max;
+    } else {
+      continue;
+    }
+
+    nValUsers++;
+  }
+
+  // std::cout << "nValUsers: " << nValUsers << std::endl;
+
+  return ndcg / nValUsers;
+}
+
 std::pair<int, double> Model::NDCGU(std::unordered_set<int> &filtUsers,
                                     std::unordered_set<int> &invalidUsers,
                                     std::unordered_set<int> &invalidItems,
@@ -1188,11 +1287,10 @@ double Model::hitRate(const Data &data, std::unordered_set<int> &invalidUsers,
   return (double)nHits / (double)nValUsers;
 }
 
-
-
-double Model::hitRateNegatives(const Data &data, std::unordered_set<int> &invalidUsers,
-                      std::unordered_set<int> &invalidItems, gk_csr_t *testMat,
-                      const int N) {
+double Model::hitRateNegatives(const Data &data,
+                               std::unordered_set<int> &invalidUsers,
+                               std::unordered_set<int> &invalidItems,
+                               gk_csr_t *testMat, const int N) {
 
   gk_csr_t *trainMat = data.trainMat;
   gk_csr_t *negMat = data.negMat;
@@ -1205,46 +1303,35 @@ double Model::hitRateNegatives(const Data &data, std::unordered_set<int> &invali
       continue;
     }
 
-    int testItem = testMat->rowind[testMat->rowptr[u]];
     std::unordered_set<int> uTrItems;
-    std::vector<std::pair<int, double>> topNItemRat;
-
     for (int ii = trainMat->rowptr[u]; ii < trainMat->rowptr[u + 1]; ii++) {
       int item = trainMat->rowind[ii];
       uTrItems.insert(item);
     }
 
-    std::make_heap(topNItemRat.begin(), topNItemRat.end(), descComp);
-    
-    for (int ii = negMat->rowptr[u]; ii < negMat->rowptr[u+1]; ii++) {
-        int item = negMat->rowind[ii];
-        if (uTrItems.count(item) || invalidItems.count(item) > 0) {
-          continue;
-        }
-        
-      topNItemRat.push_back(std::make_pair(item, estRating(u, item)));
-      std::push_heap(topNItemRat.begin(), topNItemRat.end(), descComp);
-      if (topNItemRat.size() > N) {
-        std::pop_heap(topNItemRat.begin(), topNItemRat.end(), descComp);
-        topNItemRat.pop_back();
+    std::priority_queue<
+        std::pair<int, double>, std::vector<std::pair<int, double>>,
+        std::function<bool(std::pair<int, double>, std::pair<int, double>)>>
+        pq(ascComp);
+
+    int testItem = testMat->rowind[testMat->rowptr[u]];
+    pq.push(std::make_pair(testItem, estRating(u, testItem)));
+
+    for (int ii = negMat->rowptr[u]; ii < negMat->rowptr[u + 1]; ii++) {
+      int item = negMat->rowind[ii];
+      if (uTrItems.count(item) || invalidItems.count(item) > 0) {
+        continue;
       }
+      pq.push(std::make_pair(item, estRating(u, item)));
     }
 
-    topNItemRat.push_back(std::make_pair(item, estRating(u, testItem)));
-    std::push_heap(topNItemRat.begin(), topNItemRat.end(), descComp);
-    if (topNItemRat.size() > N) {
-      std::pop_heap(topNItemRat.begin(), topNItemRat.end(), descComp);
-      topNItemRat.pop_back();
-    }
-
-    std::sort(topNItemRat.begin(), topNItemRat.end(), descComp);
-
-    for (int pos = 0; pos < topNItemRat.size(); pos++) {
-      if (testItem == topNItemRat[pos].first) {
+    for (int pos = 0; pos < N && !pq.empty(); pos++) {
+      if (testItem == pq.top().first) {
         // hit
         nHits++;
         break;
       }
+      pq.pop();
     }
 
     nValUsers++;
@@ -1386,7 +1473,8 @@ bool Model::isTerminateModelHR(Model &bestModel, const Data &data, int iter,
                                std::unordered_set<int> &invalidUsers,
                                std::unordered_set<int> &invalidItems) {
   bool ret = false;
-  double currHR = hitRateNegatives(data, invalidUsers, invalidItems, data.valMat);
+  double currHR =
+      hitRateNegatives(data, invalidUsers, invalidItems, data.valMat);
 
   if (currHR > bestHR) {
     bestModel = *this;
