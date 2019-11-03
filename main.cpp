@@ -36,6 +36,7 @@ DEFINE_string(trainmat, "", "training CSR matrix");
 DEFINE_string(testmat, "", "test CSR matrix");
 DEFINE_string(valmat, "", "validation CSR matrix");
 DEFINE_string(graphmat, "", "item-item graph csr matrix");
+DEFINE_string(negmat, "", "sampled negatives csr matrix");
 DEFINE_string(origufac, "", "original user factors");
 DEFINE_string(origifac, "", "original item factors");
 DEFINE_string(initufac, "", "initial user factors");
@@ -64,7 +65,7 @@ Params parse_cmd_line(int argc, char *argv[]) {
   Params params(FLAGS_facdim, FLAGS_maxiter, FLAGS_svdfacdim, FLAGS_seed,
                 FLAGS_ureg, FLAGS_ireg, FLAGS_learnrate, FLAGS_rhorms,
                 FLAGS_alpha, FLAGS_trainmat, FLAGS_testmat, FLAGS_valmat,
-                FLAGS_graphmat, FLAGS_origufac, FLAGS_origifac, FLAGS_initufac,
+                FLAGS_graphmat, FLAGS_negmat, FLAGS_origufac, FLAGS_origifac, FLAGS_initufac,
                 FLAGS_initifac, FLAGS_prefix);
 
   return params;
@@ -1547,10 +1548,10 @@ int main(int argc, char *argv[]) {
             << std::endl;
 
   std::cout << "Test HR@10: "
-            << bestModel.hitRate(data, invalidUsers, invalidItems, data.testMat,
+            << bestModel.hitRateNegatives(data, invalidUsers, invalidItems, data.testMat,
                                  10)
             << " HR@5: "
-            << bestModel.hitRate(data, invalidUsers, invalidItems, data.testMat,
+            << bestModel.hitRateNegatives(data, invalidUsers, invalidItems, data.testMat,
                                  5)
             << std::endl;
 

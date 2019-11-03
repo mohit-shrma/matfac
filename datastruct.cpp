@@ -103,6 +103,19 @@ Data::Data(const Params& params) {
         }
       }
 
+      negMat = NULL;
+      if (NULL != params.negMatFile) {
+        if (isFileExist(params.negMatFile)) { 
+        std::cout << "\nReading neg mat file... 0-indexed w val " 
+          << params.negMatFile;
+        negMat = gk_csr_Read((char*) params.negMatFile, GK_CSR_FMT_CSR, 1, 0);
+        std::cout << "\nnegatives nrows: " << negMat->nrows << " ncols: " 
+          << negMat->ncols;
+        } else {
+          std::cerr << "\nFile dont exists: " << params.negMatFile << std::endl;
+        }
+      }
+
       if (facDim > 0) {
         if (NULL != params.origUFacFile) {
           origUFac.assign(nUsers, std::vector<double>(facDim, 0));

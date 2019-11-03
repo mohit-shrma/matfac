@@ -478,7 +478,7 @@ void ModelMFBPR::train(const Data &data, Model &bestModel,
     }
   }
 
-  valHR = hitRate(data, invalidUsers, invalidItems, data.valMat);
+  valHR = hitRateNegatives(data, invalidUsers, invalidItems, data.valMat);
   std::cout << "\nValidation HR: " << valHR << std::endl;
 
   double trainLoss = 0;
@@ -572,7 +572,7 @@ void ModelMFBPR::train(const Data &data, Model &bestModel,
   }
 
   std::cout << "\nBest model validation HR: "
-            << bestModel.hitRate(data, invalidUsers, invalidItems, data.valMat)
+            << bestModel.hitRateNegatives(data, invalidUsers, invalidItems, data.valMat)
             << std::endl;
 }
 

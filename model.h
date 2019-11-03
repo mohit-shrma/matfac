@@ -182,6 +182,9 @@ public:
   double hitRate(const Data &data, std::unordered_set<int> &invalidUsers,
                  std::unordered_set<int> &invalidItems, gk_csr_t *testMat,
                  const int N = 10);
+  double hitRateNegatives(const Data &data, std::unordered_set<int> &invalidUsers,
+                      std::unordered_set<int> &invalidItems, gk_csr_t *testMat,
+                      const int N = 10);
   bool isTerminateModelHR(Model &bestModel, const Data &data, int iter,
                           int &bestIter, double &bestHR, double &prevHR,
                           std::unordered_set<int> &invalidUsers,

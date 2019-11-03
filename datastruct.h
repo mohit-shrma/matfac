@@ -27,6 +27,7 @@ class Params {
     const char *testMatFile;
     const char *valMatFile;
     const char *graphMatFile;
+    const char *negMatFile;
     const char *origUFacFile;
     const char *origIFacFile;
     const char *initUFacFile;
@@ -36,13 +37,14 @@ class Params {
     Params(int facDim, int maxIter, int svdFacDim, int seed,
         float uReg, float iReg,  float learnRate, float rhoRMS, 
         float alpha, std::string& trainMatFile, std::string& testMatFile, std::string& valMatFile,
-        std::string& graphMatFile, std::string& origUFacFile, std::string& origIFacFile, 
+        std::string& graphMatFile, std::string& negMatFile, std::string& origUFacFile, std::string& origIFacFile, 
         std::string& initUFacFile, std::string& initIFacFile, std::string& prefix)
       : nUsers(-1), nItems(-1), facDim(facDim), maxIter(maxIter), svdFacDim(svdFacDim), seed(seed),
       uReg(uReg), iReg(iReg), learnRate(learnRate), rhoRMS(rhoRMS), 
       alpha(alpha), trainMatFile(trainMatFile.c_str()), testMatFile(testMatFile.c_str()), 
       valMatFile(valMatFile.c_str()), 
       graphMatFile(graphMatFile.empty()?NULL:graphMatFile.c_str()),
+      negMatFile(negMMatFile.empty()?NULL:negMatFile.c_str()),
       origUFacFile(origUFacFile.empty()?NULL:origUFacFile.c_str()), 
       origIFacFile(origIFacFile.empty()?NULL:origIFacFile.c_str()), 
       initUFacFile(initUFacFile.empty()?NULL:initUFacFile.c_str()), 
@@ -61,6 +63,7 @@ class Params {
       std::cout << "testMat: " << testMatFile << std::endl;
       std::cout << "valMat: " << valMatFile << std::endl;
       std::cout << "graphMat: " << (NULL != graphMatFile? graphMatFile : " ") << std::endl;
+      std::cout << "negMat: " << (NULL != negMatFile? negMatFile : " ") << std::endl;
       std::cout << "origUFac: " << (NULL != origUFacFile? origUFacFile : " ") << std::endl;
       std::cout << "origIFac: " << (NULL != origIFacFile? origIFacFile : " ") << std::endl;
       std::cout << "initUFac: " << (NULL != initUFacFile? initUFacFile : " ") << std::endl;
@@ -78,6 +81,7 @@ class Params {
     gk_csr_t *testMat;
     gk_csr_t *valMat;
     gk_csr_t *graphMat;
+    gk_csr_t *negMat;
 
     std::vector<std::vector<double>> origUFac;
     std::vector<std::vector<double>> origIFac;
@@ -129,6 +133,10 @@ class Params {
 
       if (NULL != graphMat) {
         gk_csr_Free(&graphMat);
+      }
+
+      if (NULL != negMat) {
+        gk_csr_Free(&negMat);
       }
 
     }
