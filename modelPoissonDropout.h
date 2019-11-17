@@ -151,9 +151,6 @@ class ModelPoissonDropout : public Model {
     virtual void train(const Data& data, Model &bestModel, 
         std::unordered_set<int>& invalidUsers,
         std::unordered_set<int>& invalidItems) override;
-    void trainSigmoid(const Data& data, Model &bestModel, 
-        std::unordered_set<int>& invalidUsers,
-        std::unordered_set<int>& invalidItems);
     virtual double estRating(int user, int item) override;
     void initCDFRanks();
 };
