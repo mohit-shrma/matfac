@@ -1,5 +1,10 @@
-## matfac
-This repository contains scalable matrix factorization code using SGD, ALS and CCD++. Also, it includes code for the paper "Adaptive Matrix Completion for the Users and the Items in Tail" by Mohit Sharma and George Karypis, University of Minnesota (The Web Conference'19, formerly WWW).
+## Code for matrix completion
+This repository contains scalable matrix factorization code using SGD, ALS and CCD++. Also, it includes code for the paper "Adaptive Matrix Completion for the Users and the Items in Tail" by Mohit Sharma and George Karypis, University of Minnesota (The Web Conference'19, formerly WWW). The researchers or users should look for following source files for implementation details of methods in the paper:
+
+* Matrix Factorization (MF) - modelMF.h and modelMF.cpp
+* IFWMF - modelInvPopMF.h and modelInvPopMF.cpp
+* TMF - modelDropoutSigmoid.h and modelDropoutSigmoid.cpp
+* TMF + Dropout - modelPoissonDropout.cpp and modelPoissonDropout.h
 
 
 ## Citing:
