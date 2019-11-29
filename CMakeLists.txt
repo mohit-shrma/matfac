@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
 project(mf)
-set(CMAKE_CXX_FLAGS "-std=c++11 -O3 -g -Wall")
+set(CMAKE_CXX_FLAGS "-std=c++14 -O3 -g -Wall")
 #set(CMAKE_CXX_FLAGS "-std=c++11 -O3 -flto -g -Wall")
 #set(CMAKE_CXX_FLAGS "-std=c++11  -g -Wall")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "bin/")          

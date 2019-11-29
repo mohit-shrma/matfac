@@ -1,15 +1,10 @@
-
-#include "modelPoissonDropoutSigmoid.h"
-
-// to be used with trainSigmoid
-double ModelPoissonDropoutSigmoid::estRating(int user, int item) {
-  // std::cout << "ModelPoissonDropoutSigmoid::estRating (" << user << "," <<
-  // item <<
-  // ") " << std::endl;
+// TMF
+#include "modelDropoutSigmoid.h"
+// NOTE: this method is not being used in train method but its identical except
+// for assert statement
+double ModelDropoutSigmoid::estRating(int user, int item) {
   double rat = 0;
   bool isUMinFreq = userFreq[user] < itemFreq[item];
-  // double scaleFreq = isUMinFreq ? (userFreq[user] - minFreq) / (maxFreq -
-  // minFreq) : (itemFreq[item] - minFreq) / (maxFreq - minFreq);
   double scaleFreq = isUMinFreq ? (userFreq[user] - meanFreq) / stdFreq
                                 : (itemFreq[item] - meanFreq) / stdFreq;
   double sigmPc = 1.0 / (1.0 + exp(-rhoRMS * (scaleFreq - alpha)));
@@ -28,34 +23,11 @@ double ModelPoissonDropoutSigmoid::estRating(int user, int item) {
   return rat;
 }
 
-void ModelPoissonDropoutSigmoid::initCDFRanks() {
-  cdfRanks = std::vector<int>(facDim, 0);
-  double cdf = 0, wt = 0;
-  for (int lambda = 1; lambda <= facDim; lambda++) {
-    // cdf for effective rank 0
-    cdf = std::exp(-lambda) * (std::pow(lambda, 0) / factorial[0]);
-    int k = 0;
-    for (k = 0; k < facDim; k++) {
-      wt = std::exp(-lambda) * (std::pow(lambda, k + 1) / factorial[k + 1]);
-      cdf += wt;
-      if (cdf >= 0.99) {
-        break;
-      }
-    }
-    cdfRanks[lambda - 1] = k; // end index of rank to be use for update
-    if (k == facDim) {
-      cdfRanks[lambda - 1] = k - 1; // end index of rank to be use for update
-    }
-    std::cout << "cdfRank: " << lambda - 1 << " " << cdfRanks[lambda - 1]
-              << std::endl;
-  }
-}
-
-void ModelPoissonDropoutSigmoid::train(const Data &data, Model &bestModel,
+void ModelDropoutSigmoid::train(const Data &data, Model &bestModel,
                                        std::unordered_set<int> &invalidUsers,
                                        std::unordered_set<int> &invalidItems) {
 
-  std::cout << "\nModelPoissonDropout ::train trainSeed: " << trainSeed;
+  std::cout << "\nModelDropoutSigmoid ::train trainSeed: " << trainSeed;
 
   int nnz = data.trainNNZ;
 
@@ -102,7 +74,7 @@ void ModelPoissonDropoutSigmoid::train(const Data &data, Model &bestModel,
   std::chrono::time_point<std::chrono::system_clock> start, end;
   std::chrono::duration<double> duration;
 
-  std::cout << "\n ModelSigmoidDropout:train trainSeed: " << trainSeed
+  std::cout << "\n ModelDropoutSigmoid:train trainSeed: " << trainSeed
             << " invalidUsers: " << invalidUsers.size()
             << " invalidItems: " << invalidItems.size() << std::endl;
 
@@ -184,9 +156,6 @@ void ModelPoissonDropoutSigmoid::train(const Data &data, Model &bestModel,
             }
 
             bool isUMinFreq = userFreq[u] < itemFreq[item];
-            // double scaleFreq = isUMinFreq ? (userFreq[u] - minFreq) /
-            // (maxFreq - minFreq) : (itemFreq[item] - minFreq) / (maxFreq -
-            // minFreq);
             double scaleFreq = isUMinFreq
                                    ? (userFreq[u] - meanFreq) / stdFreq
                                    : (itemFreq[item] - meanFreq) / stdFreq;

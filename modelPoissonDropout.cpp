@@ -1,54 +1,17 @@
+// TMF + Dropout
 #include "modelPoissonDropout.h"
 
-//TODO: userRankMap contains percentile
-/*
+
 double ModelPoissonDropout::estRating(int user, int item) {
-  //std::cout << "ModelPoissonDropout::estRating (" << user << "," << item << ") " << std::endl;
   double rat = 0;
   bool isUMinFreq = userFreq[user] < itemFreq[item];
-  int lambda = std::ceil(isUMinFreq ? userRankMap[user]*(facDim-1) : itemRankMap[item]*(facDim-1));
-  if (lambda < EPS) {
-    lambda = 1;
-  }
-  double sumWt = 0;
-  int maxFac = facDim-1, maxWt = 0;
-  for (int k = 0; k < facDim; k++) {
-    double wt = (std::exp(-lambda)* std::pow(lambda, k)) / factorial[k];
-    fDimWt[k] = wt;
-    if (wt > maxWt) {
-      maxWt = wt;
-      maxFac = k;
-    }
-    sumWt += wt;
-  }
-
-  //std::cout << std::endl;
-  for (int k = 0; k <= maxFac ; k++) {
-  //for (int k = 0; k < facDim ; k++) {
-    //fDimWt[k] = fDimWt[k]/sumWt;
-    //std::cout << fDimWt[k]/sumWt << " ";
-    rat += uFac(user, k)*iFac(item, k);
-  }
-  //std::cout << std::endl;
-
-  return rat;
-}
-*/
-
-
-//to be used with train 
-double ModelPoissonDropout::estRating(int user, int item) {
-  //std::cout << "ModelPoissonDropout::estRating (" << user << "," << item << ") " << std::endl;
-  double rat = 0;
-  bool isUMinFreq = userFreq[user] < itemFreq[item];
-  //double scaleFreq = isUMinFreq ? (userFreq[user] - minFreq) / (maxFreq - minFreq) : (itemFreq[item] - minFreq) / (maxFreq - minFreq);
   double scaleFreq = isUMinFreq ? (userFreq[user] - meanFreq) / stdFreq : (itemFreq[item] - meanFreq) / stdFreq;
   double sigmPc = 1.0/(1.0+exp(-rhoRMS*(scaleFreq-alpha)));
 
   //no. of effective ranks
   int lambda = std::ceil(sigmPc*((double)facDim)); // facDim
   assert(lambda > 0);
-
+  
   int k = 0;
   double cdf = 0, wt = 0, lowerRat = 0;
   for (k = 0; k <= cdfRanks[lambda-1] && k < facDim; k++) {
@@ -135,7 +98,7 @@ void ModelPoissonDropout::train(const Data& data, Model &bestModel,
   std::chrono::time_point<std::chrono::system_clock> start, end;
   std::chrono::duration<double> duration;
   
-  std::cout << "\n ModelPoissonDropout:train trainSeed: " << trainSeed 
+  std::cout << "\nModelPoissonDropout:train trainSeed: " << trainSeed 
     << " invalidUsers: " << invalidUsers.size()
     << " invalidItems: " << invalidItems.size() << std::endl;
   
@@ -295,7 +258,7 @@ void ModelPoissonDropout::train(const Data& data, Model &bestModel,
       duration =  end - start;
 
       if (iter % DISP_ITER == 0) {
-        std::cout << "trainPoisson " 
+        std::cout << "ModelPoissonDropout::train " 
                   << " Iter: " << iter << " Obj: " << std::scientific << prevObj 
                   << " Train: " << RMSE(data.trainMat, invalidUsers, invalidItems)
                   << " Val: " << prevValRMSE
